@@ -188,7 +188,7 @@ const AppRoutes = () => {
         path="/"
         element={
           <RouteWrapper>
-            <ComingSoon />
+            <MobileHome />
           </RouteWrapper>
         }
       />
