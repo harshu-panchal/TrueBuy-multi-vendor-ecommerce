@@ -142,6 +142,7 @@ import TermsConditions from "./modules/Admin/pages/policies/TermsConditions";
 // Firebase child pages
 import PushConfig from "./modules/Admin/pages/firebase/PushConfig";
 import Authentication from "./modules/Admin/pages/firebase/Authentication";
+import Plugins from "./modules/Admin/pages/plugins/Plugins";
 import RouteWrapper from "./shared/components/RouteWrapper";
 import ScrollToTop from "./shared/components/ScrollToTop";
 import AppBootstrap from "./shared/components/AppBootstrap";
@@ -617,6 +618,7 @@ const AppRoutes = () => {
         <Route path="system/maintenance" element={<Maintenance />} />
         <Route path="system/warnings" element={<Warnings />} />
         <Route path="system/system-information" element={<SystemInformation />} />
+        <Route path="plugins" element={<Plugins />} />
         <Route path="banners" element={<Banners />} />
         <Route path="reviews" element={<Reviews />} />
         <Route path="content" element={<Content />} />

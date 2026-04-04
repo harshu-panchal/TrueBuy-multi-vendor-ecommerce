@@ -232,5 +232,10 @@
       "Warnings",
       "System Information"
     ]
+  },
+  {
+    "title": "Plugins",
+    "route": "/admin/plugins",
+    "children": []
   }
 ]

@@ -56,6 +56,7 @@ const iconMap = {
   CMS: FiLayers,
   Configuration: FiLayers,
   System: FiCpu,
+  Plugins: FiCpu,
 };
 
 // Helper function to convert child name to route path
