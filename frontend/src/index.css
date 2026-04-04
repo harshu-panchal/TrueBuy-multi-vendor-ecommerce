@@ -29,6 +29,32 @@ body {
   scrollbar-width: none;
 }
 
+/* Disable text selection ONLY on mobile/tablet devices */
+@media (max-width: 768px) {
+  body {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+}
+
+/* Re-enable selection for interactive elements (Always selectable) */
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
+/* Specific class for selectable descriptions or news (Always selectable) */
+.selectable-text {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
 body::-webkit-scrollbar {
   display: none;
 }
@@ -251,6 +277,20 @@ body::-webkit-scrollbar {
 
   .hover-lift {
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    will-change: transform;
+    transform: translateZ(0);
+  }
+
+  /* Device-Aware Image Zoom Implementation (Optimized) */
+  /* This ensures standard desktop zoom while preventing buggy touch behavior */
+  @media (pointer: fine) {
+    .group:hover .zoom-image {
+      transform: scale(1.1);
+    }
+  }
+
+  .zoom-image {
+    /* Hardware acceleration for all devices */
     will-change: transform;
     transform: translateZ(0);
   }

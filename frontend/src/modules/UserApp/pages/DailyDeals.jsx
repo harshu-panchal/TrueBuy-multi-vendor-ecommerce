@@ -25,6 +25,7 @@ const normalizeProduct = (raw) => {
     originalPrice:
       raw?.originalPrice !== undefined ? Number(raw.originalPrice) : undefined,
     rating: Number(raw?.rating) || 0,
+    reviewCount: Number(raw?.reviewCount) || 0,
   };
 };
 
@@ -175,7 +176,7 @@ const MobileDailyDeals = () => {
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
         <div className="w-full pb-24">
-          <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-0 z-30">
+          <div className="px-3 py-4 bg-white border-b border-gray-200 sticky top-0 z-30">
             <div className="flex items-center gap-3 mb-3">
               <button
                 onClick={() => navigate(-1)}
@@ -289,7 +290,7 @@ const MobileDailyDeals = () => {
             </div>
           </div>
 
-          <div className="px-4 py-4">
+          <div className="px-3 py-4">
             {filteredProducts.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl text-gray-300 mx-auto mb-4">[ ]</div>
@@ -298,7 +299,7 @@ const MobileDailyDeals = () => {
               </div>
             ) : viewMode === "grid" ? (
               <>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-5">
                   {displayedItems.map((product, index) => (
                     <motion.div key={product.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
                       <ProductCard product={product} isFlashSale={true} />

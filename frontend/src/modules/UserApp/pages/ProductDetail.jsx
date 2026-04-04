@@ -499,9 +499,7 @@ const MobileProductDetail = () => {
           <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-16 lg:px-8 lg:items-start">
             {/* Left Column: Product Image */}
             <div className="px-4 py-4 lg:p-0 sticky top-24">
-              <div className="bg-white rounded-3xl p-2 lg:p-4 shadow-sm border border-gray-100">
-                <ImageGallery images={productImages} productName={product.name} />
-              </div>
+              <ImageGallery images={productImages} productName={product.name} />
               {product.flashSale && (
                 <div className="mt-4 flex justify-center lg:justify-start">
                   <Badge variant="flash" size="lg">Flash Sale - Limited Time Offer</Badge>
@@ -718,7 +716,7 @@ const MobileProductDetail = () => {
                   <h3 className="text-lg font-bold text-gray-900 mb-4">
                     Product Description
                   </h3>
-                  <div className="prose prose-sm lg:prose-base text-gray-600 leading-relaxed bg-gray-50 p-6 rounded-2xl border border-gray-100">
+                  <div className="prose prose-sm lg:prose-base text-gray-600 leading-relaxed bg-gray-50 p-6 rounded-2xl border border-gray-100 selectable-text">
                     {product.description ? (
                       <p>{product.description}</p>
                     ) : (
@@ -746,7 +744,7 @@ const MobileProductDetail = () => {
                           <p className="text-sm font-bold text-gray-800 mb-2">
                             {faq.question}
                           </p>
-                          <p className="text-sm text-gray-600 leading-relaxed">
+                          <p className="text-sm text-gray-600 leading-relaxed selectable-text">
                             {faq.answer}
                           </p>
                         </div>

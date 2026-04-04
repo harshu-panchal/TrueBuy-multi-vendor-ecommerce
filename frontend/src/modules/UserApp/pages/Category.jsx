@@ -57,6 +57,7 @@ const normalizeProduct = (raw) => {
     brandName: raw?.brandName || brandObj?.name || "",
     categoryId: normalizeId(categoryObj?._id || categoryObj?.id || raw?.categoryId),
     categoryName: raw?.categoryName || categoryObj?.name || "",
+    parentCategoryName: categoryObj?.parentId?.name || "",
     image: raw?.image || raw?.images?.[0] || "",
     images: Array.isArray(raw?.images)
       ? raw.images
@@ -65,6 +66,7 @@ const normalizeProduct = (raw) => {
         : [],
     price: Number(raw?.price) || 0,
     rating: Number(raw?.rating) || 0,
+    reviewCount: Number(raw?.reviewCount) || 0,
   };
 };
 

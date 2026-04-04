@@ -76,6 +76,7 @@ const normalizeProduct = (raw) => {
     brandName: raw?.brandName || brandObj?.name || "",
     categoryId,
     categoryName: raw?.categoryName || categoryObj?.name || "",
+    parentCategoryName: categoryObj?.parentId?.name || "",
     image,
     images: Array.isArray(raw?.images) ? raw.images : image ? [image] : [],
     price: toNumber(raw?.price, 0),

@@ -25,6 +25,7 @@ const normalizeProduct = (raw) => {
     originalPrice:
       raw?.originalPrice !== undefined ? Number(raw.originalPrice) : undefined,
     rating: Number(raw?.rating) || 0,
+    reviewCount: Number(raw?.reviewCount) || 0,
   };
 };
 

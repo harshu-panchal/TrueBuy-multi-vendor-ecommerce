@@ -1,4 +1,4 @@
-import { FiHeart, FiShoppingBag, FiStar, FiTrash2 } from "react-icons/fi";
+import { FiHeart, FiShoppingBag, FiStar, FiTrash2, FiTruck } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { useCartStore, useUIStore } from "../store/useStore";
@@ -15,6 +15,8 @@ import { getVariantSignature } from "../utils/variant";
 
 const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
   const navigate = useNavigate();
+  const [activeColorIdx, setActiveColorIdx] = useState(0);
+
   const productLink = `/product/${product.id}`;
   const { items, addItem, removeItem } = useCartStore();
   const triggerCartAnimation = useUIStore(
@@ -171,172 +173,241 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
     <>
       <motion.div
         whileTap={{ scale: 0.98 }}
-        whileHover={{ y: -4 }}
-        style={{ willChange: "transform", transform: "translateZ(0)" }}
-        className={`glass-card rounded-xl overflow-hidden group cursor-pointer h-full flex flex-col hover:shadow-lg transition-all duration-300 ${isFlashSale ? "border border-red-100 bg-red-50/10" : ""
-          }`}
-        {...longPressHandlers}>
-        <div className="relative">
-          {/* Favorite Icon */}
-          <div className="absolute top-2 right-2 z-10">
-            <button
+        whileHover={{ y: -8, transition: { duration: 0.4, ease: "easeOut" } }}
+        className={`rounded-2xl overflow-hidden group cursor-pointer h-full flex flex-col border transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] ${
+          isFlashSale 
+            ? "bg-[#ffffff] border-amber-500 shadow-lg" 
+            : "bg-white border-gray-100/80"
+        }`}
+        {...longPressHandlers}
+      >
+        {/* Image Container */}
+        <div className="relative h-44 lg:h-52 w-full overflow-hidden rounded-t-2xl bg-gray-50">
+          {/* Discount Badge */}
+          {product.originalPrice && (
+            <div className={`absolute top-3 left-3 z-10 px-2.5 py-1 rounded-lg text-[10px] font-bold text-white shadow-sm backdrop-blur-md ${isFlashSale ? "bg-red-600/90" : "bg-blue-600/90"}`}>
+              {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
+            </div>
+          )}
+
+          {/* Flash Sale Badge */}
+          {isFlashSale && (
+            <div className="absolute top-3 left-20 z-10">
+              <div className="bg-amber-400 text-gray-900 text-[8px] font-black px-2 py-1 rounded-lg shadow-sm uppercase tracking-tighter flex items-center gap-1 animate-pulse">
+                <FiStar className="fill-current" />
+                Hot Deal
+              </div>
+            </div>
+          )}
+
+          {/* Wishlist Button */}
+          <div className="absolute top-3 right-3 z-10">
+            <motion.button
+              whileHover={{ scale: 1.1, backgroundColor: "rgba(255, 255, 255, 0.9)" }}
+              whileTap={{ scale: 0.9 }}
               onClick={handleFavorite}
-              className="p-1.5 glass rounded-full shadow-lg transition-all duration-300 group hover:bg-white">
+              className="p-2.5 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg shadow-black/5 border border-white/20 transition-all group/wishlist"
+            >
               <FiHeart
-                className={`text-xs md:text-sm transition-all duration-300 ${isFavorite
-                  ? "text-red-500 fill-red-500 scale-110"
-                  : "text-gray-400 group-hover:text-gray-600"
+                className={`text-[15px] transition-all duration-300 ${isFavorite
+                  ? "text-red-500 fill-red-500"
+                  : "text-gray-600 group-hover/wishlist:text-red-500"
                   }`}
               />
-            </button>
+            </motion.button>
           </div>
 
           {/* Product Image */}
-          <Link to={productLink} className="block">
-            <div className="w-full h-28 md:h-40 lg:h-36 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center overflow-hidden relative group-hover:bg-gray-200/50 transition-colors">
-              {product.originalPrice && (
-                <div className={`absolute top-0 left-0 text-white text-[10px] md:text-xs font-bold px-2 py-1 rounded-br-lg z-10 shadow-sm ${isFlashSale ? "bg-gradient-to-r from-red-600 to-orange-500" : "bg-red-500"}`}>
-                  {Math.round(
-                    ((product.originalPrice - product.price) /
-                      product.originalPrice) *
-                    100
-                  )}% OFF
-                </div>
-              )}
-              {isFlashSale && (
-                <div className="absolute top-0 right-0 p-1">
-                  <div className="bg-yellow-400 text-gray-900 text-[8px] font-black px-1.5 py-0.5 rounded-full animate-pulse uppercase tracking-tighter">
-                    Hot Deal
-                  </div>
-                </div>
-              )}
-              <LazyImage
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-contain p-2 md:p-4 group-hover:scale-110 transition-transform duration-500"
-                style={{ willChange: "transform", transform: "translateZ(0)" }}
-                onError={(e) => {
-                  e.target.src = getPlaceholderImage(300, 300, "Product Image");
-                }}
-              />
-            </div>
+          <Link to={productLink} className="block h-full w-full">
+            <img
+              src={product.image || product.images?.[0]}
+              alt={product.name}
+              className="w-full h-full object-cover transition-transform duration-700 zoom-image"
+              style={{ willChange: "transform" }}
+              onError={(e) => {
+                e.target.src = getPlaceholderImage(400, 500, "Product");
+              }}
+            />
+            {/* Hover Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </Link>
+
+          {/* Stock Urgency Tag */}
+          {product.stockQuantity > 0 && product.stockQuantity <= 5 && (
+            <div className="absolute bottom-3 left-3 bg-red-600 text-white text-[9px] font-bold px-2 py-1 rounded-md shadow-sm">
+              Only {product.stockQuantity} left!
+            </div>
+          )}
         </div>
 
-        {/* Product Info */}
-        <div className="p-1.5 md:p-4 lg:p-3 flex-1 flex flex-col bg-white">
-          <Link to={productLink} className="block lg:h-6">
-            <h3 className="font-bold text-gray-800 mb-0 md:mb-1 lg:mb-0.5 line-clamp-2 md:line-clamp-1 text-[11px] md:text-sm transition-colors group-hover:text-primary-600 leading-tight">
-              {product.name}
-            </h3>
-          </Link>
-          <p className="text-[9px] md:text-xs text-gray-400 mb-0.5 md:mb-2 lg:mb-1 font-medium lg:h-4">
-            {product.unit}
-          </p>
+        {/* Product Details - ~35% Height Area */}
+        <div className="p-3 md:p-4 flex-1 flex flex-col justify-between">
+          <div className="space-y-2">
+            {/* Category / Type */}
+            <div className="flex items-center gap-1.5">
+              <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[9px] font-bold uppercase tracking-wider">
+                {product.parentCategoryName || product.categoryName || product.category || "General"}
+              </span>
+              {product.categoryName && product.parentCategoryName && (
+                <>
+                  <span className="text-[10px] text-gray-300 font-light translate-y-[-1px]">/</span>
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest opacity-80">
+                    {product.categoryName}
+                  </span>
+                </>
+              )}
+            </div>
 
+            {/* Product Name */}
+            <Link to={productLink} className="block group/title">
+              <h3 className="font-semibold text-gray-800 line-clamp-1 text-xs md:text-sm group-hover/title:text-blue-600 transition-colors">
+                {product.name}
+              </h3>
+            </Link>
 
+            {/* Color Swatches (if available) */}
+            <div className="min-h-[22px] flex items-center gap-1.5 py-1">
+              {product.variants?.colors && product.variants.colors.length > 0 ? (
+                <>
+                  {product.variants.colors.slice(0, 4).map((color, idx) => {
+                    const colorMap = {
+                      red: "#ef4444",
+                      blue: "#3b82f6",
+                      green: "#22c55e",
+                      yellow: "#eab308",
+                      black: "#18181b",
+                      white: "#ffffff",
+                      gray: "#71717a",
+                      brown: "#78350f",
+                      pink: "#ec4899",
+                      purple: "#a855f7",
+                      orange: "#f97316",
+                      navy: "#1e3a8a",
+                      silver: "#e5e7eb",
+                      gold: "#d4af37",
+                    };
+                    const colorCode = color.startsWith("#")
+                      ? color
+                      : colorMap[color.toLowerCase()] || "#d1d5db";
 
-          {/* Rating */}
-          <div className="flex items-center justify-between mb-2">
-            {product.rating && !hideRating && (
-              <div className="flex items-center gap-1">
-                <div className="flex items-center bg-yellow-50 px-1.5 py-0.5 rounded-md border border-yellow-100">
-                  <span className="text-[9px] md:text-xs font-bold text-yellow-700 mr-0.5">{product.rating}</span>
-                  <FiStar className="text-[8px] md:text-[10px] text-yellow-500 fill-yellow-500" />
+                    const isVeryLight = ["white", "#ffffff", "silver", "#e5e7eb"].includes(color.toLowerCase());
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onMouseEnter={() => setActiveColorIdx(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(productLink);
+                        }}
+                        className={`w-3 h-3 rounded-full border transition-all duration-300 transform-gpu cursor-pointer flex-shrink-0 ${activeColorIdx === idx
+                          ? "ring-1 ring-gray-900 ring-offset-2 scale-110"
+                          : "hover:scale-125"
+                          } ${isVeryLight ? "border-gray-300 shadow-inner" : "border-gray-200"
+                          } hover:ring-1 hover:ring-gray-300 hover:ring-offset-1`}
+                        style={{ backgroundColor: colorCode }}
+                        title={color}
+                      />
+                    );
+                  })}
+                  {product.variants.colors.length > 4 && (
+                    <span className="text-[10px] font-bold text-gray-400 pl-0.5">
+                      +{product.variants.colors.length - 4}
+                    </span>
+                  )}
+                </>
+              ) : (
+                // Spacer to maintain height if no colors
+                <div className="h-3.5 invisible" />
+              )}
+            </div>
+
+            {/* Ratings */}
+            {!hideRating && product.reviewCount > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <FiStar
+                      key={i}
+                      className={`text-[10px] ${i < Math.floor(product.rating || 0) ? "text-amber-400 fill-amber-400" : "text-gray-200"}`}
+                    />
+                  ))}
                 </div>
-                <span className="text-[9px] md:text-xs text-gray-400 font-medium hidden md:inline">
-                  ({product.reviewCount || 0})
+                <span className="text-[10px] font-bold text-gray-500">
+                  {Number(product.rating || 0).toFixed(1)} <span className="font-medium opacity-60">({product.reviewCount || 0})</span>
                 </span>
               </div>
             )}
-            {isFlashSale && (
-              <span className="text-[9px] font-bold text-red-500 uppercase tracking-tighter hidden md:inline">
-                Ending Soon
-              </span>
-            )}
-          </div>
 
-          {/* Flash Sale Progress Bar */}
-          {isFlashSale && (
-            <div className="mb-3 space-y-1">
-              <div className="flex justify-between text-[8px] md:text-[10px] font-bold">
-                <span className="text-gray-500 uppercase">Available</span>
-                <span className="text-orange-600">{soldPercentage}% Sold</span>
-              </div>
-              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${soldPercentage}%` }}
-                  transition={{ duration: 1, delay: 0.2 }}
-                  className="h-full bg-gradient-to-r from-red-500 to-orange-400"
-                />
-              </div>
+            {/* Price section */}
+            <div className="flex items-center flex-nowrap gap-2 overflow-hidden mb-1">
+              <span className="text-sm md:text-lg font-black text-gray-900 tracking-tight">
+                {formatPrice(product.price)}
+              </span>
+              {product.originalPrice && (
+                <span className="text-[10px] md:text-xs text-gray-600/90 line-through decoration-gray-900/30 font-medium">
+                  {formatPrice(product.originalPrice)}
+                </span>
+              )}
+              {product.originalPrice && (
+                <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-md">
+                  Save {formatPrice(product.originalPrice - product.price)}
+                </span>
+              )}
             </div>
-          )}
 
-          {/* Price */}
-          <div className="flex flex-col items-start gap-0 md:flex-row md:items-end md:gap-2 lg:gap-1.5 mb-1.5 md:mb-3 lg:mb-2 mt-auto">
-            <span className={`text-xs md:text-xl font-black ${isFlashSale ? "text-red-600" : "text-gray-900"}`}>
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice && (
-              <span className="text-[9px] md:text-xs text-gray-400 line-through font-medium leading-none mb-0.5">
-                {formatPrice(product.originalPrice)}
-              </span>
+            {/* Urgency Indicator (Flash Sale Only) */}
+            {isFlashSale && (
+              <div className="mt-2.5 space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className={`text-[10px] font-bold tracking-tight ${isFlashSale ? "text-gray-900/80" : "text-gray-700"}`}>
+                    🔥 {soldPercentage}% sold
+                  </span>
+                </div>
+                <div className={`w-full h-1.5 rounded-full overflow-hidden bg-gray-100`}>
+                  <motion.div 
+                    initial={{ width: 0 }}
+                    animate={{ width: `${soldPercentage}%` }}
+                    transition={{ duration: 1,  ease: "easeOut" }}
+                    className="h-full bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.2)]"
+                  />
+                </div>
+              </div>
             )}
+
+
           </div>
 
-          {/* Add/Remove Button */}
-          {isInCart ? (
-            <motion.button
-              type="button"
-              onClick={handleRemoveFromCart}
-              whileTap={{ scale: 0.95 }}
-              className="w-full py-1.5 md:py-2.5 lg:py-2 rounded-xl font-bold text-xs md:text-sm bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-all duration-300 flex items-center justify-center gap-1.5">
-              <FiTrash2 className="text-xs md:text-base" />
-              <span>Remove</span>
-            </motion.button>
-          ) : (
-            <motion.button
-              ref={buttonRef}
-              type="button"
-              onClick={handleAddToCart}
-              disabled={product.stock === "out_of_stock" || isAdding}
-              whileTap={{ scale: 0.95 }}
-              animate={
-                isAdding
-                  ? {
-                    scale: [1, 1.1, 1],
-                  }
-                  : {}
-              }
-              style={{ willChange: "transform", transform: "translateZ(0)" }}
-              className={`w-full py-1 md:py-2.5 lg:py-2 rounded-xl font-bold text-[10px] md:text-sm transition-all duration-300 flex items-center justify-center gap-1.5 ${product.stock === "out_of_stock"
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                : isFlashSale
-                  ? "bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg hover:shadow-red-200 hover:-translate-y-0.5"
-                  : "gradient-green text-white shadow-md hover:shadow-lg hover:-translate-y-0.5"
-                }`}>
-              <motion.div
-                animate={
-                  isAdding
-                    ? {
-                      rotate: [0, -10, 10, -10, 0],
-                    }
-                    : {}
-                }
-                transition={{ duration: 0.5 }}>
-                <FiShoppingBag className="text-xs md:text-base transition-transform" />
-              </motion.div>
-              <span>
-                {product.stock === "out_of_stock"
-                  ? "Out of Stock"
-                  : isAdding
-                    ? "Adding..."
-                    : <><span className="md:hidden">Add</span><span className="hidden md:inline">Add to Cart</span></>}
-              </span>
-            </motion.button>
-          )}
+          {/* Interaction Zone */}
+          <div className="mt-auto pt-4">
+            {isInCart ? (
+              <motion.button
+                type="button"
+                onClick={handleRemoveFromCart}
+                whileTap={{ scale: 0.95 }}
+                className="w-full py-2.5 rounded-xl font-bold text-[11px] bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-all flex items-center justify-center gap-2"
+              >
+                <FiTrash2 size={14} />
+                <span>Remove from Bag</span>
+              </motion.button>
+            ) : (
+              <motion.button
+                ref={buttonRef}
+                type="button"
+                onClick={handleAddToCart}
+                disabled={product.stock === "out_of_stock" || isAdding}
+                whileTap={{ scale: 0.95 }}
+                className={`w-full py-2.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 shadow-sm ${product.stock === "out_of_stock"
+                  ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                  : "bg-[#0f172a] text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/10 active:scale-[0.98]"
+                  }`}
+              >
+                <FiShoppingBag size={14} />
+                <span>{product.stock === "out_of_stock" ? "Out of Stock" : "Add to Cart"}</span>
+              </motion.button>
+            )}
+          </div>
         </div>
       </motion.div>
 
