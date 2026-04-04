@@ -19,11 +19,29 @@ import AdminOrders from "./modules/Admin/pages/Orders";
 import OrderDetail from "./modules/Admin/pages/OrderDetail";
 import ReturnRequests from "./modules/Admin/pages/ReturnRequests";
 import ReturnRequestDetail from "./modules/Admin/pages/ReturnRequestDetail";
+import Shipments from "./modules/Admin/pages/sales/Shipments";
+import RecurringPayments from "./modules/Admin/pages/sales/RecurringPayments";
+import GiftCards from "./modules/Admin/pages/sales/GiftCards";
+import CurrentShoppingCarts from "./modules/Admin/pages/sales/CurrentShoppingCarts";
+import CurrentWishlists from "./modules/Admin/pages/sales/CurrentWishlists";
+import Bestsellers from "./modules/Admin/pages/sales/Bestsellers";
+import ProductsNeverPurchased from "./modules/Admin/pages/sales/ProductsNeverPurchased";
+import ExternalAuthenticationMethods from "./modules/Admin/pages/customers/ExternalAuthenticationMethods";
+import Manufacturers from "./modules/Admin/pages/catalog/Manufacturers";
+import ProductsTags from "./modules/Admin/pages/catalog/ProductsTags";
+import RecycleBin from "./modules/Admin/pages/catalog/RecycleBin";
+import Stores from "./modules/Admin/pages/catalog/Stores";
+import ProductAttributes from "./modules/Admin/pages/catalog/ProductAttributes";
+import SpecificationAttributes from "./modules/Admin/pages/catalog/SpecificationAttributes";
+import CheckoutAttributes from "./modules/Admin/pages/catalog/CheckoutAttributes";
+import Discounts from "./modules/Admin/pages/promotions/Discounts";
+import Affiliates from "./modules/Admin/pages/promotions/Affiliates";
+import NewsletterSubscribers from "./modules/Admin/pages/promotions/NewsletterSubscribers";
 import Categories from "./modules/Admin/pages/Categories";
 import Brands from "./modules/Admin/pages/Brands";
 import Customers from "./modules/Admin/pages/Customers";
 
-import Campaigns from "./modules/Admin/pages/Campaigns";
+import Campaigns from "./modules/Admin/pages/promotions/Campaigns";
 import Banners from "./modules/Admin/pages/Banners";
 import Reviews from "./modules/Admin/pages/Reviews";
 import Analytics from "./modules/Admin/pages/Analytics";
@@ -40,6 +58,28 @@ import Invoice from "./modules/Admin/pages/orders/Invoice";
 import ManageProducts from "./modules/Admin/pages/products/ManageProducts";
 import TaxPricing from "./modules/Admin/pages/products/TaxPricing";
 import ProductRatings from "./modules/Admin/pages/products/ProductRatings";
+// CMS child pages
+import Topics from "./modules/Admin/pages/cms/topics";
+import Menus from "./modules/Admin/pages/cms/Menus";
+import MessageTemplates from "./modules/Admin/pages/cms/MessageTemplates";
+import Plans from "./modules/Admin/pages/configuration/Plans";
+import SetUpLevel from "./modules/Admin/pages/configuration/SetUpLevel";
+import RegionalSettings from "./modules/Admin/pages/configuration/RegionalSettings";
+import Lists from "./modules/Admin/pages/configuration/Lists";
+import PaymentMethods from "./modules/Admin/pages/configuration/PaymentMethods";
+import EmailAccounts from "./modules/Admin/pages/configuration/EmailAccounts";
+import ActivityTypes from "./modules/Admin/pages/configuration/ActivityTypes";
+import Import from "./modules/Admin/pages/configuration/Import";
+import Export from "./modules/Admin/pages/configuration/Export";
+import Themes from "./modules/Admin/pages/configuration/Themes";
+import Rules from "./modules/Admin/pages/system/Rules";
+import Logs from "./modules/Admin/pages/system/Logs";
+import MessageQueue from "./modules/Admin/pages/system/MessageQueue";
+import ScheduledTasks from "./modules/Admin/pages/system/ScheduledTasks";
+import SEONames from "./modules/Admin/pages/system/SEONames";
+import Maintenance from "./modules/Admin/pages/system/Maintenance";
+import Warnings from "./modules/Admin/pages/system/Warnings";
+import SystemInformation from "./modules/Admin/pages/system/SystemInformation";
 
 // Categories child pages
 import ManageCategories from "./modules/Admin/pages/categories/ManageCategories";
@@ -50,6 +90,10 @@ import ManageBrands from "./modules/Admin/pages/brands/ManageBrands";
 import ViewCustomers from "./modules/Admin/pages/customers/ViewCustomers";
 import CustomerAddresses from "./modules/Admin/pages/customers/Addresses";
 import Transactions from "./modules/Admin/pages/customers/Transactions";
+import Roles from "./modules/Admin/pages/customers/Roles";
+import OnlineCustomers from "./modules/Admin/pages/customers/OnlineCustomers";
+import CustomerReports from "./modules/Admin/pages/customers/CustomerReports";
+import ActivityLog from "./modules/Admin/pages/customers/ActivityLog";
 import CustomerDetailPage from "./modules/Admin/pages/customers/CustomerDetailPage";
 // Delivery Management child pages
 import DeliveryBoys from "./modules/Admin/pages/delivery/DeliveryBoys";
@@ -447,12 +491,32 @@ const AppRoutes = () => {
         <Route path="orders/:id/invoice" element={<Invoice />} />
         <Route path="orders/all-orders" element={<AllOrders />} />
         <Route path="orders/order-tracking" element={<OrderTracking />} />
+        <Route path="catalog/manufacturers" element={<Manufacturers />} />
+        <Route path="catalog/product-tags" element={<ProductsTags />} />
+        <Route path="catalog/recycle-bin" element={<RecycleBin />} />
+        <Route path="catalog/stores" element={<Stores />} />
+        <Route path="catalog/product-attributes" element={<ProductAttributes />} />
+        <Route path="catalog/specification-attributes" element={<SpecificationAttributes />} />
+        <Route path="catalog/checkout-attributes" element={<CheckoutAttributes />} />
+        <Route path="sales" element={<Navigate to="sales/shipments" replace />} />
+        <Route path="sales/shipments" element={<Shipments />} />
+        <Route path="sales/recurring-payments" element={<RecurringPayments />} />
+        <Route path="sales/gift-cards" element={<GiftCards />} />
+        <Route path="sales/shopping-carts" element={<CurrentShoppingCarts />} />
+        <Route path="sales/wishlists" element={<CurrentWishlists />} />
+        <Route path="sales/bestsellers" element={<Bestsellers />} />
+        <Route path="sales/never-purchased" element={<ProductsNeverPurchased />} />
         <Route path="return-requests" element={<ReturnRequests />} />
         <Route path="return-requests/:id" element={<ReturnRequestDetail />} />
         <Route path="customers" element={<Customers />} />
         <Route path="customers/view-customers" element={<ViewCustomers />} />
         <Route path="customers/addresses" element={<CustomerAddresses />} />
         <Route path="customers/transactions" element={<Transactions />} />
+        <Route path="customers/roles" element={<Roles />} />
+        <Route path="customers/online-customers" element={<OnlineCustomers />} />
+        <Route path="customers/reports" element={<CustomerReports />} />
+        <Route path="customers/activity-log" element={<ActivityLog />} />
+        <Route path="customers/external-auth" element={<ExternalAuthenticationMethods />} />
         <Route path="customers/:id" element={<CustomerDetailPage />} />
 
         <Route path="delivery" element={<DeliveryBoys />} />
@@ -471,6 +535,30 @@ const AppRoutes = () => {
           element={<AdminVendorAnalytics />}
         />
         <Route path="vendors/:id" element={<VendorDetail />} />
+        <Route path="promotions" element={<Navigate to="discounts" replace />} />
+        <Route path="promotions/discounts" element={<Discounts />} />
+        <Route path="promotions/affiliates" element={<Affiliates />} />
+        <Route path="promotions/newsletter-subscribers" element={<NewsletterSubscribers />} />
+        <Route path="promotions/campaigns" element={<Campaigns />} />
+
+        <Route path="cms" element={<Navigate to="topics" replace />} />
+        <Route path="cms/topics" element={<Topics />} />
+        <Route path="cms/menus" element={<Menus />} />
+        <Route path="cms/message-templates" element={<MessageTemplates />} />
+        <Route
+          path="configuration"
+          element={<Navigate to="/admin/configuration/plans" replace />}
+        />
+        <Route path="configuration/plans" element={<Plans />} />
+        <Route path="configuration/uplevel" element={<SetUpLevel />} />
+        <Route path="configuration/regional-settings" element={<RegionalSettings />} />
+        <Route path="configuration/lists" element={<Lists />} />
+        <Route path="configuration/payment-methods" element={<PaymentMethods />} />
+        <Route path="configuration/email-accounts" element={<EmailAccounts />} />
+        <Route path="configuration/activity-types" element={<ActivityTypes />} />
+        <Route path="configuration/import" element={<Import />} />
+        <Route path="configuration/export" element={<Export />} />
+        <Route path="configuration/themes" element={<Themes />} />
 
         <Route path="offers" element={<HomeSliders />} />
         <Route path="offers/home-sliders" element={<HomeSliders />} />
@@ -520,7 +608,15 @@ const AppRoutes = () => {
         <Route path="firebase" element={<PushConfig />} />
         <Route path="firebase/push-config" element={<PushConfig />} />
         <Route path="firebase/authentication" element={<Authentication />} />
-        <Route path="campaigns" element={<Campaigns />} />
+        <Route path="system" element={<Navigate to="/admin/system/rules" replace />} />
+        <Route path="system/rules" element={<Rules />} />
+        <Route path="system/logs" element={<Logs />} />
+        <Route path="system/message-queue" element={<MessageQueue />} />
+        <Route path="system/scheduled-tasks" element={<ScheduledTasks />} />
+        <Route path="system/seo-names" element={<SEONames />} />
+        <Route path="system/maintenance" element={<Maintenance />} />
+        <Route path="system/warnings" element={<Warnings />} />
+        <Route path="system/system-information" element={<SystemInformation />} />
         <Route path="banners" element={<Banners />} />
         <Route path="reviews" element={<Reviews />} />
         <Route path="content" element={<Content />} />

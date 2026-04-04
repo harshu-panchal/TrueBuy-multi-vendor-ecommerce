@@ -23,6 +23,9 @@ import {
   FiChevronDown,
   FiX,
   FiUser,
+  FiTrendingUp,
+  FiLayers,
+  FiCpu,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "../../store/adminStore";
 import adminMenu from "../../config/adminMenu.json";
@@ -32,6 +35,7 @@ import { appLogo } from "../../../../data/logos";
 const iconMap = {
   Dashboard: FiHome,
   Orders: FiShoppingBag,
+  Sales: FiTrendingUp,
   "Return Requests": FiRotateCcw,
   Products: FiPackage,
   Categories: FiGrid,
@@ -48,6 +52,10 @@ const iconMap = {
   Settings: FiSettings,
   Policies: FiShield,
   Firebase: FiDatabase,
+  Promotions: FiPercent,
+  CMS: FiLayers,
+  Configuration: FiLayers,
+  System: FiCpu,
 };
 
 // Helper function to convert child name to route path
@@ -56,6 +64,24 @@ const getChildRoute = (parentRoute, childName) => {
     "/admin/orders": {
       "All Orders": "/admin/orders/all-orders",
       "Order Tracking": "/admin/orders/order-tracking",
+    },
+    "/admin/catalog": {
+      Manufacturers: "/admin/catalog/manufacturers",
+      "Product Tags": "/admin/catalog/product-tags",
+      "Recycle Bin": "/admin/catalog/recycle-bin",
+      Stores: "/admin/catalog/stores",
+      "Product Attributes": "/admin/catalog/product-attributes",
+      "Specification Attributes": "/admin/catalog/specification-attributes",
+      "Checkout Attributes": "/admin/catalog/checkout-attributes",
+    },
+    "/admin/sales": {
+      Shipments: "/admin/sales/shipments",
+      "Recurring Payments": "/admin/sales/recurring-payments",
+      "Gift Cards": "/admin/sales/gift-cards",
+      "Current Shopping Carts": "/admin/sales/shopping-carts",
+      "Current Wishlists": "/admin/sales/wishlists",
+      Bestsellers: "/admin/sales/bestsellers",
+      "Products Never Purchased": "/admin/sales/never-purchased",
     },
     "/admin/products": {
       "Manage Products": "/admin/products/manage-products",
@@ -73,11 +99,28 @@ const getChildRoute = (parentRoute, childName) => {
       "View Customers": "/admin/customers/view-customers",
       Addresses: "/admin/customers/addresses",
       Transactions: "/admin/customers/transactions",
+      Roles: "/admin/customers/roles",
+      "Online Customers": "/admin/customers/online-customers",
+      "Customer Reports": "/admin/customers/reports",
+      "Activity Log": "/admin/customers/activity-log",
+      "External Authentication Methods": "/admin/customers/external-auth",
     },
     "/admin/delivery": {
       "Delivery Boys": "/admin/delivery/delivery-boys",
       "Cash Collection": "/admin/delivery/cash-collection",
       "Assign Delivery": "/admin/delivery/assign-delivery",
+    },
+    "/admin/vendors": {
+      "Manage Vendors": "/admin/vendors/manage-vendors",
+      "Pending Approvals": "/admin/vendors/pending-approvals",
+      "Commission Rates": "/admin/vendors/commission-rates",
+      "Vendor Analytics": "/admin/vendors/vendor-analytics",
+    },
+    "/admin/promotions": {
+      "Discounts": "/admin/promotions/discounts",
+      "Affiliates": "/admin/promotions/affiliates",
+      "Newsletter Subscribers": "/admin/promotions/newsletter-subscribers",
+      "Campaigns": "/admin/promotions/campaigns",
     },
     "/admin/offers": {
       "Home Sliders": "/admin/offers/home-sliders",
@@ -105,6 +148,11 @@ const getChildRoute = (parentRoute, childName) => {
       "Tax Reports": "/admin/finance/tax-reports",
       "Refund Reports": "/admin/finance/refund-reports",
     },
+    "/admin/cms": {
+      "Topics": "/admin/cms/topics",
+      "Menus": "/admin/cms/menus",
+      "Message Templates": "/admin/cms/message-templates",
+    },
     "/admin/settings": {
       General: "/admin/settings/general",
       "Payment & Shipping": "/admin/settings/payment-shipping",
@@ -121,6 +169,28 @@ const getChildRoute = (parentRoute, childName) => {
     "/admin/firebase": {
       "Push Config": "/admin/firebase/push-config",
       Authentication: "/admin/firebase/authentication",
+    },
+    "/admin/configuration": {
+      Plans: "/admin/configuration/plans",
+      "UpLevel ID": "/admin/configuration/uplevel",
+      "Regional Settings": "/admin/configuration/regional-settings",
+      Lists: "/admin/configuration/lists",
+      "Payment Methods": "/admin/configuration/payment-methods",
+      "Email Accounts": "/admin/configuration/email-accounts",
+      "Activity Types": "/admin/configuration/activity-types",
+      Import: "/admin/configuration/import",
+      Export: "/admin/configuration/export",
+      Themes: "/admin/configuration/themes",
+    },
+    "/admin/system": {
+      Rules: "/admin/system/rules",
+      Logs: "/admin/system/logs",
+      "Message Queue": "/admin/system/message-queue",
+      "Scheduled Tasks": "/admin/system/scheduled-tasks",
+      "SEO Names": "/admin/system/seo-names",
+      "Maintenance": "/admin/system/maintenance",
+      "Warnings": "/admin/system/warnings",
+      "System Information": "/admin/system/system-information",
     },
   };
 
@@ -263,7 +333,7 @@ const AdminSidebar = ({ isOpen, onClose }) => {
           className={`
             flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 cursor-pointer
             ${active
-              ? "bg-primary-600 text-white shadow-sm"
+              ? "text-white font-bold"
               : "text-gray-300 hover:bg-slate-700"
             }
           `}

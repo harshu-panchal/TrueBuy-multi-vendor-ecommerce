@@ -13,6 +13,32 @@
     ]
   },
   {
+    "title": "Catalog",
+    "route": "/admin/catalog",
+    "children": [
+      "Manufacturers",
+      "Product Tags",
+      "Recycle Bin",
+      "Stores",
+      "Product Attributes",
+      "Specification Attributes",
+      "Checkout Attributes"
+    ]
+  },
+  {
+    "title": "Sales",
+    "route": "/admin/sales",
+    "children": [
+      "Shipments",
+      "Recurring Payments",
+      "Gift Cards",
+      "Current Shopping Carts",
+      "Current Wishlists",
+      "Bestsellers",
+      "Products Never Purchased"
+    ]
+  },
+  {
     "title": "Return Requests",
     "route": "/admin/return-requests",
     "children": []
@@ -47,7 +73,12 @@
     "children": [
       "View Customers",
       "Addresses",
-      "Transactions"
+      "Transactions",
+      "Roles",
+      "Online Customers",
+      "Customer Reports",
+      "Activity Log",
+      "External Authentication Methods"
     ]
   },
   {
@@ -67,6 +98,16 @@
       "Pending Approvals",
       "Commission Rates",
       "Vendor Analytics"
+    ]
+  },
+  {
+    "title": "Promotions",
+    "route": "/admin/promotions",
+    "children": [
+      "Discounts",
+      "Affiliates",
+      "Newsletter Subscribers",
+      "Campaigns"
     ]
   },
   {
@@ -137,6 +178,22 @@
     ]
   },
   {
+    "title": "Configuration",
+    "route": "/admin/configuration",
+    "children": [
+      "Plans",
+      "UpLevel ID",
+      "Regional Settings",
+      "Lists",
+      "Payment Methods",
+      "Email Accounts",
+      "Activity Types",
+      "Import",
+      "Export",
+      "Themes"
+    ]
+  },
+  {
     "title": "Policies",
     "route": "/admin/policies",
     "children": [
@@ -146,11 +203,34 @@
     ]
   },
   {
+    "title": "CMS",
+    "route": "/admin/cms",
+    "children": [
+      "Topics",
+      "Menus",
+      "Message Templates"
+    ]
+  },
+  {
     "title": "Firebase",
     "route": "/admin/firebase",
     "children": [
       "Push Config",
       "Authentication"
+    ]
+  },
+  {
+    "title": "System",
+    "route": "/admin/system",
+    "children": [
+      "Rules",
+      "Logs",
+      "Message Queue",
+      "Scheduled Tasks",
+      "SEO Names",
+      "Maintenance",
+      "Warnings",
+      "System Information"
     ]
   }
 ]
