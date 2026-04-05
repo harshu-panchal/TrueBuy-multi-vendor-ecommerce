@@ -59,7 +59,7 @@ import ManageProducts from "./modules/Admin/pages/products/ManageProducts";
 import TaxPricing from "./modules/Admin/pages/products/TaxPricing";
 import ProductRatings from "./modules/Admin/pages/products/ProductRatings";
 // CMS child pages
-import Topics from "./modules/Admin/pages/cms/topics";
+import Topics from "./modules/Admin/pages/cms/Topics";
 import Menus from "./modules/Admin/pages/cms/Menus";
 import MessageTemplates from "./modules/Admin/pages/cms/MessageTemplates";
 import Plans from "./modules/Admin/pages/configuration/Plans";
