@@ -39,3 +39,13 @@ export const createReturnRequestSchema = Joi.object({
         .optional(),
     images: Joi.array().items(Joi.string().uri()).max(6).optional(),
 });
+
+export const orderIdParamSchema = Joi.object({
+    id: Joi.string().trim().required(),
+});
+
+export const verifyRazorpaySchema = Joi.object({
+    razorpay_order_id: Joi.string().trim().required(),
+    razorpay_payment_id: Joi.string().trim().required(),
+    razorpay_signature: Joi.string().trim().required(),
+});

@@ -10,6 +10,8 @@ import Admin from '../../../models/Admin.model.js';
 import { generateOrderId } from '../../../utils/generateOrderId.js';
 import { generateTrackingNumber } from '../../../utils/generateTrackingNumber.js';
 import mongoose from 'mongoose';
+import crypto from 'crypto';
+import Razorpay from 'razorpay';
 import { createNotification } from '../../../services/notification.service.js';
 import { calculateVendorShippingForGroups } from '../../../services/vendorShipping.service.js';
 
@@ -191,6 +193,34 @@ const resolveOrderItemVariantKey = (product, orderItem) => {
         if (normalized) return normalized;
     }
     return null;
+};
+
+let razorpayClient = null;
+let razorpayClientKeyId = null;
+let razorpayClientSecret = null;
+
+const resetRazorpayClient = () => {
+    razorpayClient = null;
+    razorpayClientKeyId = null;
+    razorpayClientSecret = null;
+};
+
+const getRazorpayClient = () => {
+    const keyId = String(process.env.RAZORPAY_KEY_ID || '').trim();
+    const keySecret = String(process.env.RAZORPAY_KEY_SECRET || '').trim();
+    if (!keyId || !keySecret) {
+        throw new ApiError(500, 'Razorpay is not configured on server.');
+    }
+
+    // Rebuild client if env values changed (avoids needing a server restart for key rotation).
+    if (razorpayClient && razorpayClientKeyId === keyId && razorpayClientSecret === keySecret) {
+        return razorpayClient;
+    }
+
+    razorpayClientKeyId = keyId;
+    razorpayClientSecret = keySecret;
+    razorpayClient = new Razorpay({ key_id: keyId, key_secret: keySecret });
+    return razorpayClient;
 };
 
 // POST /api/user/orders
@@ -494,6 +524,161 @@ export const placeOrder = asyncHandler(async (req, res) => {
             responseMessage
         )
     );
+});
+
+// GET /api/user/payments/razorpay/key
+export const getRazorpayPublicKey = asyncHandler(async (req, res) => {
+    const keyId = String(process.env.RAZORPAY_KEY_ID || '').trim();
+    if (!keyId) {
+        throw new ApiError(500, 'Razorpay is not configured on server.');
+    }
+    res.status(200).json(new ApiResponse(200, { key: keyId }, 'Razorpay key fetched.'));
+});
+
+// POST /api/user/orders/:id/payments/razorpay/order
+export const createRazorpayOrder = asyncHandler(async (req, res) => {
+    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id });
+    if (!order) throw new ApiError(404, 'Order not found.');
+    if (order.status === 'cancelled') throw new ApiError(400, 'Cancelled order cannot be paid.');
+    if (order.paymentStatus === 'paid') {
+        return res.status(200).json(
+            new ApiResponse(200, {
+                orderId: order.orderId,
+                razorpayOrderId: order.razorpayOrderId || null,
+                amount: Math.round(Number(order.total || 0) * 100),
+                currency: 'INR',
+                alreadyPaid: true,
+            }, 'Order is already paid.')
+        );
+    }
+
+    const amountInPaise = Math.round(Number(order.total || 0) * 100);
+    if (!Number.isFinite(amountInPaise) || amountInPaise <= 0) {
+        throw new ApiError(400, 'Invalid payable amount.');
+    }
+
+    const client = getRazorpayClient();
+    let razorpayOrder;
+    try {
+        razorpayOrder = await client.orders.create({
+            amount: amountInPaise,
+            currency: 'INR',
+            receipt: `ord_${String(order.orderId).slice(-30)}`,
+            notes: {
+                appOrderId: String(order.orderId),
+                userId: String(req.user.id),
+            },
+        });
+    } catch (err) {
+        // Never bubble a 401 from the payment gateway to the frontend.
+        // The frontend treats 401 as session expiry and redirects to /login.
+        const statusCode = Number(err?.statusCode || err?.response?.statusCode || 0);
+        const message =
+            err?.error?.description ||
+            err?.error?.reason ||
+            err?.message ||
+            'Payment gateway error.';
+
+        if (statusCode === 401) {
+            // Retry once after resetting the cached client (handles "env changed without restart").
+            resetRazorpayClient();
+            try {
+                const retryClient = getRazorpayClient();
+                razorpayOrder = await retryClient.orders.create({
+                    amount: amountInPaise,
+                    currency: 'INR',
+                    receipt: `ord_${String(order.orderId).slice(-30)}`,
+                    notes: {
+                        appOrderId: String(order.orderId),
+                        userId: String(req.user.id),
+                    },
+                });
+            } catch {
+                const safeKey = String(process.env.RAZORPAY_KEY_ID || '').trim();
+                const safeSecretLen = String(process.env.RAZORPAY_KEY_SECRET || '').trim().length;
+                throw new ApiError(
+                    500,
+                    `Razorpay authentication failed. Check RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET (key=${safeKey || 'missing'}, secretLen=${safeSecretLen}).`
+                );
+            }
+        }
+
+        throw new ApiError(502, message);
+    }
+
+    order.paymentGateway = 'razorpay';
+    order.razorpayOrderId = razorpayOrder.id;
+    order.paymentStatus = 'pending';
+    await order.save();
+
+    res.status(200).json(new ApiResponse(200, {
+        orderId: order.orderId,
+        razorpayOrderId: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+    }, 'Razorpay order created.'));
+});
+
+// POST /api/user/orders/:id/payments/razorpay/verify
+export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
+    const {
+        razorpay_order_id: razorpayOrderId,
+        razorpay_payment_id: razorpayPaymentId,
+        razorpay_signature: razorpaySignature,
+    } = req.body;
+
+    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id });
+    if (!order) throw new ApiError(404, 'Order not found.');
+    if (order.paymentStatus === 'paid') {
+        return res.status(200).json(new ApiResponse(200, { orderId: order.orderId, alreadyPaid: true }, 'Payment already verified.'));
+    }
+    if (!order.razorpayOrderId) {
+        throw new ApiError(400, 'No Razorpay order found for this order.');
+    }
+    if (order.razorpayOrderId !== razorpayOrderId) {
+        throw new ApiError(400, 'Razorpay order mismatch.');
+    }
+
+    const secret = String(process.env.RAZORPAY_KEY_SECRET || '').trim();
+    if (!secret) throw new ApiError(500, 'Razorpay is not configured on server.');
+
+    const generatedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+        .digest('hex');
+
+    if (generatedSignature !== razorpaySignature) {
+        await Order.updateOne(
+            { _id: order._id, paymentStatus: { $ne: 'paid' } },
+            { $set: { paymentStatus: 'failed' } }
+        );
+        throw new ApiError(400, 'Payment signature verification failed.');
+    }
+
+    order.paymentStatus = 'paid';
+    order.paymentMethod = order.paymentMethod === 'cod' ? 'card' : order.paymentMethod;
+    if (order.status === 'pending') {
+        order.status = 'processing';
+    }
+    order.razorpayPaymentId = razorpayPaymentId;
+    order.razorpaySignature = razorpaySignature;
+    order.paidAt = new Date();
+
+    if (Array.isArray(order.vendorItems) && order.vendorItems.length > 0) {
+        order.vendorItems = order.vendorItems.map((vendorGroup) => ({
+            ...vendorGroup.toObject(),
+            status: vendorGroup.status === 'pending' ? 'processing' : vendorGroup.status,
+        }));
+    }
+
+    await order.save();
+
+    res.status(200).json(new ApiResponse(200, {
+        orderId: order.orderId,
+        paymentStatus: order.paymentStatus,
+        status: order.status,
+        razorpayPaymentId: order.razorpayPaymentId,
+    }, 'Payment verified successfully.'));
 });
 
 // GET /api/user/orders

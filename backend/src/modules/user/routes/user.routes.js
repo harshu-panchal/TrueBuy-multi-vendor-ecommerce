@@ -28,6 +28,7 @@ import {
     updateAddressSchema,
 } from '../validators/address.validator.js';
 import { placeOrderSchema, createReturnRequestSchema } from '../validators/order.validator.js';
+import { orderIdParamSchema, verifyRazorpaySchema } from '../validators/order.validator.js';
 
 const router = Router();
 const customerAuth = [authenticate, authorize('customer'), enforceAccountStatus];
@@ -68,6 +69,9 @@ router.post('/reviews/:id/helpful', reviewController.voteHelpful);
 router.post('/orders', ...customerAuth, validate(placeOrderSchema), orderController.placeOrder);
 router.get('/orders', ...customerAuth, orderController.getUserOrders);
 router.get('/orders/:id', ...customerAuth, orderController.getOrderDetail);
+router.get('/payments/razorpay/key', ...customerAuth, orderController.getRazorpayPublicKey);
+router.post('/orders/:id/payments/razorpay/order', ...customerAuth, validate(orderIdParamSchema, 'params'), orderController.createRazorpayOrder);
+router.post('/orders/:id/payments/razorpay/verify', ...customerAuth, validate(orderIdParamSchema, 'params'), validate(verifyRazorpaySchema), orderController.verifyRazorpayPayment);
 router.patch('/orders/:id/cancel', ...customerAuth, orderController.cancelOrder);
 router.post('/orders/:id/returns', ...customerAuth, validate(createReturnRequestSchema), orderController.createReturnRequest);
 router.get('/returns', ...customerAuth, orderController.getUserReturnRequests);
