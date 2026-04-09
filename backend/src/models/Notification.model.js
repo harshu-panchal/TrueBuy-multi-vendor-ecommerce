@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const notificationSchema = new mongoose.Schema(
     {
+        notificationId: { type: String, trim: true, index: true, unique: true, sparse: true },
         recipientId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
         recipientType: { type: String, enum: ['user', 'vendor', 'delivery', 'admin'], required: true },
         title: { type: String, required: true },

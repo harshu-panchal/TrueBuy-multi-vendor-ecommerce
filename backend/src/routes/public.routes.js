@@ -10,6 +10,15 @@ import Coupon from '../models/Coupon.model.js';
 import Banner from '../models/Banner.model.js';
 import Campaign from '../models/Campaign.model.js';
 import { calculateVendorShippingForGroups } from '../services/vendorShipping.service.js';
+import * as fcmController from '../controllers/fcm.controller.js';
+import { authenticate } from '../middlewares/authenticate.js';
+import { enforceAccountStatus } from '../middlewares/authorize.js';
+import { validate } from '../middlewares/validate.js';
+import {
+    saveFcmTokenSchema,
+    removeFcmTokenSchema,
+    testFcmTokenSchema,
+} from '../validators/fcm.validator.js';
 
 const router = Router();
 
@@ -513,6 +522,15 @@ router.get('/orders/track/:id', asyncHandler(async (req, res) => {
     if (!order) throw new ApiError(404, 'Order not found.');
     res.status(200).json(new ApiResponse(200, order, 'Order tracking info.'));
 }));
+
+// POST /api/fcm-tokens/save
+router.post('/fcm-tokens/save', authenticate, enforceAccountStatus, validate(saveFcmTokenSchema), fcmController.saveToken);
+
+// DELETE /api/fcm-tokens/remove
+router.delete('/fcm-tokens/remove', authenticate, enforceAccountStatus, validate(removeFcmTokenSchema), fcmController.removeToken);
+
+// POST /api/fcm-tokens/test
+router.post('/fcm-tokens/test', authenticate, enforceAccountStatus, validate(testFcmTokenSchema), fcmController.sendTestNotification);
 
 // Legacy support: GET /api/:id (only ObjectId-like values to avoid swallowing unknown routes)
 router.get('/:id([a-fA-F0-9]{24})', getProductDetail);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FiSend, FiBell, FiUsers, FiTarget } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import AnimatedSelect from '../../components/AnimatedSelect';
+import { sendPushNotification } from '../../services/adminService';
 import toast from 'react-hot-toast';
 
 const PushNotifications = () => {
@@ -13,13 +14,28 @@ const PushNotifications = () => {
     scheduledDate: '',
   });
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!formData.title || !formData.message) {
       toast.error('Please fill in all required fields');
       return;
     }
-    toast.success('Push notification sent successfully');
-    setFormData({ title: '', message: '', target: 'all', schedule: 'now', scheduledDate: '' });
+    try {
+      await sendPushNotification({
+        title: formData.title,
+        message: formData.message,
+        target: formData.target,
+        schedule: formData.schedule,
+        scheduledDate: formData.scheduledDate || undefined,
+        type: 'system',
+        data: {
+          channel: 'admin_push',
+        },
+      });
+      toast.success('Push notification sent successfully');
+      setFormData({ title: '', message: '', target: 'all', schedule: 'now', scheduledDate: '' });
+    } catch {
+      // adminService already shows the error toast
+    }
   };
 
   return (
@@ -34,7 +50,7 @@ const PushNotifications = () => {
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); void handleSend(); }} className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <FiBell className="inline mr-2" />
@@ -125,4 +141,3 @@ const PushNotifications = () => {
 };
 
 export default PushNotifications;
-
