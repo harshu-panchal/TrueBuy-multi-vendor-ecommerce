@@ -242,8 +242,19 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
         // Always trust server-side product pricing; never trust client-sent item.price.
         const { price: itemPrice, variantKey, hasVariantAxes } = resolveVariantSelection(product, item.variant);
-        const variantStockValue = variantKey ? Number(product?.variants?.stockMap?.get?.(variantKey) ?? product?.variants?.stockMap?.[variantKey]) : null;
-        if (hasVariantAxes && variantKey && Number.isFinite(variantStockValue) && variantStockValue < item.quantity) {
+        const rawVariantStock =
+            variantKey
+                ? (product?.variants?.stockMap?.get?.(variantKey) ?? product?.variants?.stockMap?.[variantKey])
+                : undefined;
+        const variantStockValue = rawVariantStock === undefined ? null : Number(rawVariantStock);
+        const variantStockKey =
+            hasVariantAxes && variantKey && Number.isFinite(variantStockValue)
+                ? variantKey
+                : null;
+
+        // Only enforce per-variant stock when it is explicitly configured in variants.stockMap.
+        // If stockMap is missing the key, we fall back to the global stockQuantity checks.
+        if (variantStockKey && variantStockValue < Number(item.quantity || 0)) {
             throw new ApiError(400, `Only ${variantStockValue} units available for selected variant of ${product.name}.`);
         }
         const itemSubtotal = itemPrice * item.quantity;
@@ -262,6 +273,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
             quantity: item.quantity,
             variant: item.variant,
             variantKey: variantKey || undefined,
+            variantStockKey: variantStockKey || undefined,
         };
         enrichedItems.push(enriched);
 
@@ -376,7 +388,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
             // 7. Deduct stock atomically to prevent oversell under concurrent checkout.
             for (const item of enrichedItems) {
-                const variantPath = item.variantKey ? `variants.stockMap.${item.variantKey}` : null;
+                const variantPath = item.variantStockKey ? `variants.stockMap.${item.variantStockKey}` : null;
                 const baseFilter = {
                     _id: item.productId,
                     stock: { $ne: 'out_of_stock' },
