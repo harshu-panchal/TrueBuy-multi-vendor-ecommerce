@@ -6,18 +6,13 @@ import Notification from '../../../models/Notification.model.js';
 // GET /api/admin/notifications
 export const getAdminNotifications = asyncHandler(async (req, res) => {
     const { page = 1, limit = 20, type } = req.query;
-    const skip = (page - 1) * limit;
-
-    // Filter for admin notifications
-    // recipientType is 'admin' OR recipientId matches the admin's ID (if targeting specific admin)
-    // For now, we'll assume a general 'admin' type or checks against the logged-in admin's ID if we had multiple admins.
-    // Given the model, we can look for recipientType: 'admin' OR specific admin ID.
+    const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNumber = Math.max(parseInt(limit, 10) || 20, 1);
+    const skip = (pageNumber - 1) * limitNumber;
 
     const filter = {
-        $or: [
-            { recipientType: 'admin' },
-            { recipientId: req.user._id, recipientType: 'admin' }
-        ]
+        recipientType: 'admin',
+        recipientId: req.user._id,
     };
 
     if (type) {
@@ -27,7 +22,7 @@ export const getAdminNotifications = asyncHandler(async (req, res) => {
     const notifications = await Notification.find(filter)
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(Number(limit));
+        .limit(limitNumber);
 
     const total = await Notification.countDocuments(filter);
 
@@ -38,8 +33,8 @@ export const getAdminNotifications = asyncHandler(async (req, res) => {
         notifications,
         total,
         unreadCount,
-        page: Number(page),
-        pages: Math.ceil(total / limit)
+        page: pageNumber,
+        pages: Math.ceil(total / limitNumber)
     }, 'Notifications fetched.'));
 });
 
@@ -47,8 +42,12 @@ export const getAdminNotifications = asyncHandler(async (req, res) => {
 export const markAsRead = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const notification = await Notification.findByIdAndUpdate(
-        id,
+    const notification = await Notification.findOneAndUpdate(
+        {
+            _id: id,
+            recipientType: 'admin',
+            recipientId: req.user._id,
+        },
         { isRead: true },
         { new: true }
     );
@@ -62,12 +61,9 @@ export const markAsRead = asyncHandler(async (req, res) => {
 
 // PUT /api/admin/notifications/read-all
 export const markAllAsRead = asyncHandler(async (req, res) => {
-    // Mark all 'admin' type notifications as read, or tailored to this user
     const filter = {
-        $or: [
-            { recipientType: 'admin' },
-            { recipientId: req.user._id, recipientType: 'admin' }
-        ],
+        recipientType: 'admin',
+        recipientId: req.user._id,
         isRead: false
     };
 
