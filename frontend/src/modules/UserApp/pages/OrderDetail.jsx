@@ -148,6 +148,12 @@ const MobileOrderDetail = () => {
     return returnRequests.find(r => r.orderId === order.id && r.items.some(i => i.id === productId));
   };
 
+  const isVendorDelivered = (vendorId) => {
+    if (!order?.vendorItems) return false;
+    const group = order.vendorItems.find(v => String(v.vendorId) === String(vendorId));
+    return group?.status === 'delivered';
+  };
+
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={true}>
@@ -219,7 +225,7 @@ const MobileOrderDetail = () => {
                                   const itemReturn = getItemReturn(item.id);
                                   if (!itemReturn) {
                                     return (
-                                      order.status === 'delivered' && (
+                                      (order.status === 'delivered' || vendorGroup.status === 'delivered') && (
                                         <button
                                           onClick={() => handleReturnNavigation(item)}
                                           className="mt-1 text-[10px] font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-2 py-1 rounded-md"
@@ -308,7 +314,7 @@ const MobileOrderDetail = () => {
                                   const itemReturn = getItemReturn(item.id);
                                   if (!itemReturn) {
                                     return (
-                                      order.status === 'delivered' && (
+                                      (order.status === 'delivered' || isVendorDelivered(item.vendorId)) && (
                                         <button
                                           onClick={() => handleReturnNavigation(item)}
                                           className="mt-1 text-[10px] font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-2 py-1 rounded-md"
