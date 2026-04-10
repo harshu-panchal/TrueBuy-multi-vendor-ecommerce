@@ -13,16 +13,18 @@ import {
   FiDollarSign,
   FiAlertCircle,
   FiEdit,
+  FiUser,
+  FiInfo,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
-import Badge from "../../../../shared/components/Badge";
-import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
+import StatusBadge from "../../../../shared/components/Badge";
 import { formatPrice } from "../../../../shared/utils/helpers";
+import ReturnTimeline from "../../../../shared/components/ReturnTimeline";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import {
-  getVendorReturnRequestById,
   updateVendorReturnRequestStatus,
 } from "../../services/vendorService";
+import { useReturnStore } from "../../../../shared/store/returnStore";
 import toast from "react-hot-toast";
 
 const statusTransitions = {
@@ -37,67 +39,55 @@ const ReturnRequestDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { vendor } = useVendorAuthStore();
-  const [returnRequest, setReturnRequest] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const { returnRequests, fetchReturnRequestById, updateReturnStatus } = useReturnStore();
+  const [returnRequest, setReturnRequest] = useState(null);
   const [status, setStatus] = useState("");
+  const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
 
   const vendorId = vendor?.id;
 
   useEffect(() => {
     if (!vendorId) return;
 
-    const fetchReturnRequest = async () => {
-      try {
-        const res = await getVendorReturnRequestById(id);
-        const data = res?.data ?? res;
-        if (!data) {
-          toast.error("Return request not found");
-          navigate("/vendor/return-requests");
-          return;
-        }
-        setReturnRequest(data);
-        setStatus(data.status);
-      } catch {
+    const loadReturnRequest = async () => {
+      // First check local store
+      let data = returnRequests.find(r => r.id === id);
+      
+      // If not in store, try fetching (fallback)
+      if (!data) {
+        data = await fetchReturnRequestById(id);
+      }
+
+      if (!data) {
         toast.error("Return request not found");
         navigate("/vendor/return-requests");
+        return;
       }
+
+      setReturnRequest(data);
+      setStatus(data.status);
     };
 
-    fetchReturnRequest();
-  }, [id, navigate, vendorId]);
+    loadReturnRequest();
+  }, [id, navigate, vendorId, returnRequests, fetchReturnRequestById]);
 
-  const handleStatusUpdate = async (
-    newStatus,
-    action = "",
-    options = {}
-  ) => {
+  const handleStatusUpdate = async (newStatus, action = "", options = {}) => {
     const statusData = { status: newStatus };
     if (newStatus === "approved" && action === "approve") {
       statusData.refundStatus = "pending";
     } else if (newStatus === "completed" && action === "process-refund") {
       statusData.refundStatus = "processed";
-    } else if (newStatus === "completed" && !action) {
-      statusData.refundStatus = "processed";
-    } else if (
-      newStatus === "approved" &&
-      !action &&
-      returnRequest?.refundStatus !== "processed"
-    ) {
-      statusData.refundStatus = "pending";
     }
-    if (newStatus === "rejected" && options?.rejectionReason !== undefined) {
+    if (newStatus === "rejected" && options.rejectionReason) {
       statusData.rejectionReason = options.rejectionReason;
     }
-
-    try {
-      const res = await updateVendorReturnRequestStatus(id, statusData);
-      const updatedRequest = res?.data ?? res;
-      if (!updatedRequest) return;
-      setReturnRequest(updatedRequest);
-      setStatus(updatedRequest.status);
+    const success = await updateReturnStatus(id, statusData);
+    if (success) {
+      const updatedReq = { ...returnRequest, ...statusData };
+      setReturnRequest(updatedReq);
+      setStatus(newStatus);
       setIsEditing(false);
-    } catch {
-      return;
     }
 
     const statusMessages = {
@@ -112,17 +102,23 @@ const ReturnRequestDetail = () => {
   const handleStatusSave = () => {
     if (status !== returnRequest.status) {
       if (status === "rejected") {
-        const reason = window.prompt(
-          "Optional rejection reason (visible in return details):",
-          returnRequest?.rejectionReason || ""
-        );
-        handleStatusUpdate(status, "", { rejectionReason: reason || "" });
+        setIsRejectionModalOpen(true);
         return;
       }
       handleStatusUpdate(status);
     } else {
       setIsEditing(false);
     }
+  };
+
+  const handleConfirmRejection = () => {
+    if (!rejectionReason.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+    handleStatusUpdate("rejected", "reject", { rejectionReason });
+    setIsRejectionModalOpen(false);
+    setRejectionReason("");
   };
 
   const getStatusVariant = (status) => {
@@ -202,12 +198,13 @@ const ReturnRequestDetail = () => {
             </>
           ) : (
             <>
-              <Badge variant={getStatusVariant(returnRequest.status)}>
+              <StatusBadge variant={getStatusVariant(returnRequest.status)}>
                 {returnRequest.status}
-              </Badge>
+              </StatusBadge>
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold">
+                disabled={returnRequest.status !== 'pending'}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
                 <FiEdit className="text-sm" />
                 Edit Status
               </button>
@@ -251,21 +248,30 @@ const ReturnRequestDetail = () => {
               )}
               {returnRequest.status === "approved" &&
                 returnRequest.refundStatus === "pending" && (
-                  <button
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Process refund for this return request?"
-                        )
-                      ) {
-                        handleStatusUpdate("completed", "process-refund");
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold">
-                    <FiRefreshCw className="text-sm" />
-                    Process Refund
-                  </button>
+                  <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 text-xs font-bold font-mono tracking-tighter shadow-sm animate-pulse">
+                    <FiClock />
+                    AWAITING PICKUP
+                  </div>
                 )}
+              {(returnRequest.status === "picked_up" || returnRequest.status === "shipped") && (
+                <button
+                  onClick={async () => {
+                    if (window.confirm("CONFIRM RECEIPT: Have you physically received the returned item and verified its condition?")) {
+                      const success = await updateReturnStatus(id, { 
+                        status: 'delivered_to_seller', 
+                        receivedAt: new Date().toISOString() 
+                      });
+                      if (success) {
+                        toast.success("Receipt confirmed! Admin notified for refund processing.");
+                      }
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-md shadow-purple-200 text-sm font-bold active:scale-95 border-b-2 border-purple-800"
+                >
+                  <FiCheck />
+                  Confirm Receipt
+                </button>
+              )}
             </>
           )}
         </div>
@@ -295,7 +301,7 @@ const ReturnRequestDetail = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Refund Status</p>
-                <Badge
+                <StatusBadge
                   variant={
                     returnRequest.refundStatus === "processed"
                       ? "success"
@@ -305,7 +311,7 @@ const ReturnRequestDetail = () => {
                   }
                   className="text-xs">
                   {returnRequest.refundStatus}
-                </Badge>
+                </StatusBadge>
               </div>
             </div>
           </div>
@@ -435,12 +441,67 @@ const ReturnRequestDetail = () => {
                   </a>
                 </div>
               )}
+              <div className="sm:col-span-2">
+                <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <FiPackage className="text-xs" />
+                  Pickup Address
+                </p>
+                <p className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                  {returnRequest.pickupAddress || returnRequest.customer.address || "No address provided"}
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Logistics Information */}
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+            <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+              <FiRefreshCw className="text-primary-600 text-base" />
+              Logistics Information
+            </h2>
+            {returnRequest.deliveryBoyId ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                    <FiUser size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">Assigned Partner</p>
+                    <p className="text-sm font-bold text-gray-800">
+                      {typeof returnRequest.deliveryBoyId === 'object' 
+                        ? returnRequest.deliveryBoyId.name 
+                        : "Rider ID: " + returnRequest.deliveryBoyId}
+                    </p>
+                    {typeof returnRequest.deliveryBoyId === 'object' && returnRequest.deliveryBoyId.phone && (
+                      <a href={`tel:${returnRequest.deliveryBoyId.phone}`} className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1 mt-0.5">
+                        <FiPhone size={10} />
+                        {returnRequest.deliveryBoyId.phone}
+                      </a>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">Pickup Status</p>
+                    <p className="text-xs font-bold text-gray-700 capitalize">{returnRequest.status === 'processing' ? 'In Progress' : returnRequest.status}</p>
+                  </div>
+                  <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">Handover OTP</p>
+                    <p className="text-xs font-bold text-primary-600 font-mono tracking-widest">••••</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 px-4 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                <FiInfo className="mx-auto text-2xl text-gray-300 mb-2" />
+                <p className="text-[11px] text-gray-500 font-medium">Logistics partner will be assigned by Admin after approval.</p>
+              </div>
+            )}
+          </div>
+
           {/* Refund Summary */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
@@ -468,7 +529,7 @@ const ReturnRequestDetail = () => {
               </div>
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <p className="text-xs text-gray-500 mb-1">Refund Status</p>
-                <Badge
+                <StatusBadge
                   variant={
                     returnRequest.refundStatus === "processed"
                       ? "success"
@@ -477,7 +538,7 @@ const ReturnRequestDetail = () => {
                       : "warning"
                   }>
                   {returnRequest.refundStatus}
-                </Badge>
+                </StatusBadge>
               </div>
             </div>
           </div>
@@ -486,72 +547,19 @@ const ReturnRequestDetail = () => {
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
               <FiCalendar className="text-primary-600 text-base" />
-              Status Timeline
+              Return Journey
             </h2>
-            <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-800">
-                    Request Submitted
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(returnRequest.requestDate).toLocaleDateString()}
-                  </p>
-                </div>
+            <div className="py-2">
+              <ReturnTimeline currentStatus={returnRequest.status} role="seller" />
+            </div>
+            
+            <div className="mt-6 p-3 bg-blue-50 rounded-xl border border-blue-100 italic">
+              <div className="flex gap-2">
+                <FiInfo className="text-blue-600 mt-1 flex-shrink-0" />
+                <p className="text-[10px] text-blue-800">
+                  <span className="font-bold">Seller Note:</span> The "Delivered to Seller" status is only visible to you and the Admin. Customers will see "Return Completed" once you verify the item.
+                </p>
               </div>
-              {returnRequest.status === "approved" && (
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">
-                      Approved
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(returnRequest.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {returnRequest.status === "processing" && (
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-1.5 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">
-                      Processing
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(returnRequest.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {returnRequest.status === "completed" && (
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">
-                      Completed
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(returnRequest.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              )}
-              {returnRequest.status === "rejected" && (
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-800">
-                      Rejected
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(returnRequest.updatedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -589,6 +597,68 @@ const ReturnRequestDetail = () => {
           </div>
         </div>
       </div>
+      <AnimatePresence>
+        {isRejectionModalOpen && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+              onClick={() => setIsRejectionModalOpen(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-600">
+                  <FiAlertCircle size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">Reject Request</h3>
+                  <p className="text-xs text-gray-500">Provide a reason for the customer</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
+                    Rejection Reason <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    value={rejectionReason}
+                    onChange={(e) => setRejectionReason(e.target.value)}
+                    placeholder="e.g., Product was used, or original packaging is missing..."
+                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 min-h-[120px] transition-all"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-2">
+                    This message will be visible exactly as written to the customer.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      setIsRejectionModalOpen(false);
+                      setStatus(returnRequest.status);
+                    }}
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-600 rounded-2xl font-bold text-sm hover:bg-gray-200 transition-colors">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmRejection}
+                    disabled={!rejectionReason.trim()}
+                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-2xl font-bold text-sm hover:bg-red-700 transition-colors shadow-lg shadow-red-200 disabled:opacity-50 disabled:shadow-none">
+                    Confirm Reject
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

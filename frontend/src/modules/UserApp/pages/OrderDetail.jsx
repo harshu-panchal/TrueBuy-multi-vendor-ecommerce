@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiPackage, FiTruck, FiMapPin, FiCreditCard, FiRotateCw, FiArrowLeft, FiShoppingBag, FiX } from 'react-icons/fi';
 import { motion } from 'framer-motion';
@@ -11,11 +11,14 @@ import toast from 'react-hot-toast';
 import PageTransition from '../../../shared/components/PageTransition';
 import Badge from '../../../shared/components/Badge';
 import LazyImage from '../../../shared/components/LazyImage';
+import { useReturnStore } from '../../../shared/store/returnStore';
+import { FiAlertCircle, FiInfo as FiInfoIcon } from 'react-icons/fi';
 
 const MobileOrderDetail = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { getOrder, cancelOrder, fetchOrderById, requestReturn } = useOrderStore();
+  const { returnRequests, fetchReturnRequests } = useReturnStore();
   const { addItem } = useCartStore();
   const [isResolving, setIsResolving] = useState(true);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -40,12 +43,15 @@ const MobileOrderDetail = () => {
       if (!order && orderId) {
         await fetchOrderById(orderId);
       }
+      // Also fetch return requests to get latest status
+      await fetchReturnRequests({ orderId });
+      
       if (mounted) setIsResolving(false);
     })();
     return () => {
       mounted = false;
     };
-  }, [order, orderId, fetchOrderById]);
+  }, [order, orderId, fetchOrderById, fetchReturnRequests]);
 
   useEffect(() => {
     if (!isResolving && !order) {
@@ -125,47 +131,21 @@ const MobileOrderDetail = () => {
     }
   };
 
-  const openReturnModal = () => {
-    if (order.status !== 'delivered') {
-      toast.error('Return can only be requested for delivered orders');
-      return;
-    }
-    if (vendorOptions.length === 1) {
-      setReturnVendorId(vendorOptions[0].id);
-    } else if (!vendorOptions.find((v) => v.id === returnVendorId)) {
-      setReturnVendorId(vendorOptions[0]?.id || '');
-    }
-    setShowReturnModal(true);
+  const handleReturnNavigation = (item) => {
+    const existingReturn = getItemReturn(item.id);
+    navigate(`/return-request/${order.id}/${item.id}`, { 
+      state: { 
+        item, 
+        orderDate: order.date,
+        isReRequest: existingReturn?.status === 'rejected',
+        previousReason: existingReturn?.reason,
+        previousDescription: existingReturn?.description
+      } 
+    });
   };
 
-  const handleRequestReturn = async () => {
-    if (isSubmittingReturn) return;
-
-    const reason = String(returnReason || '').trim();
-    if (reason.length < 5) {
-      toast.error('Please enter a valid return reason');
-      return;
-    }
-
-    if (vendorOptions.length > 1 && !returnVendorId) {
-      toast.error('Please select a vendor for return request');
-      return;
-    }
-
-    try {
-      setIsSubmittingReturn(true);
-      await requestReturn(order.id, {
-        reason,
-        ...(returnVendorId ? { vendorId: returnVendorId } : {}),
-      });
-      toast.success('Return request submitted successfully');
-      setShowReturnModal(false);
-      setReturnReason('Product issue');
-    } catch (error) {
-      toast.error(error?.response?.data?.message || error?.message || 'Failed to submit return request');
-    } finally {
-      setIsSubmittingReturn(false);
-    }
+  const getItemReturn = (productId) => {
+    return returnRequests.find(r => r.orderId === order.id && r.items.some(i => i.id === productId));
   };
 
   return (
@@ -231,9 +211,67 @@ const MobileOrderDetail = () => {
                                   </p>
                                 )}
                               </div>
-                              <p className="font-bold text-gray-800 text-sm">
-                                {formatPrice(item.price * item.quantity)}
-                              </p>
+                              <div className="text-right">
+                                <p className="font-bold text-gray-800 text-sm">
+                                  {formatPrice(item.price * item.quantity)}
+                                </p>
+                                {(() => {
+                                  const itemReturn = getItemReturn(item.id);
+                                  if (!itemReturn) {
+                                    return (
+                                      order.status === 'delivered' && (
+                                        <button
+                                          onClick={() => handleReturnNavigation(item)}
+                                          className="mt-1 text-[10px] font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-2 py-1 rounded-md"
+                                        >
+                                          RETURN
+                                        </button>
+                                      )
+                                    );
+                                  }
+
+                                  if (itemReturn.status === 'rejected') {
+                                    return (
+                                      <div className="mt-1 space-y-1">
+                                        <div className="flex items-center justify-end gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md">
+                                          <span>REJECTED</span>
+                                          <button 
+                                            onClick={() => toast((t) => (
+                                              <div className="flex flex-col gap-1">
+                                                <p className="font-bold text-sm">Rejection Reason:</p>
+                                                <p className="text-xs">{itemReturn.rejectionReason}</p>
+                                              </div>
+                                            ), { duration: 4000 })}
+                                            className="text-red-800"
+                                          >
+                                            <FiInfoIcon size={12} />
+                                          </button>
+                                        </div>
+                                        <button
+                                          onClick={() => handleReturnNavigation(item)}
+                                          className="w-full text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-md"
+                                        >
+                                          RE-REQUEST
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+
+                                  if (itemReturn.status === 'completed') {
+                                    return (
+                                      <div className="mt-1 text-[10px] font-bold text-success-600 bg-success-50 px-2 py-1 rounded-md text-center">
+                                        RETURN COMPLETED
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div className="mt-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-center">
+                                      {itemReturn.status.toUpperCase()}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -262,9 +300,67 @@ const MobileOrderDetail = () => {
                                   </p>
                                 )}
                         </div>
-                        <p className="font-bold text-gray-800 text-sm">
-                          {formatPrice(item.price * item.quantity)}
-                        </p>
+                        <div className="text-right">
+                          <p className="font-bold text-gray-800 text-sm">
+                            {formatPrice(item.price * item.quantity)}
+                          </p>
+                                {(() => {
+                                  const itemReturn = getItemReturn(item.id);
+                                  if (!itemReturn) {
+                                    return (
+                                      order.status === 'delivered' && (
+                                        <button
+                                          onClick={() => handleReturnNavigation(item)}
+                                          className="mt-1 text-[10px] font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-2 py-1 rounded-md"
+                                        >
+                                          RETURN
+                                        </button>
+                                      )
+                                    );
+                                  }
+
+                                  if (itemReturn.status === 'rejected') {
+                                    return (
+                                      <div className="mt-1 space-y-1">
+                                        <div className="flex items-center justify-end gap-1 text-[10px] font-bold text-red-600 bg-red-50 px-2 py-1 rounded-md">
+                                          <span>REJECTED</span>
+                                          <button 
+                                            onClick={() => toast((t) => (
+                                              <div className="flex flex-col gap-1">
+                                                <p className="font-bold text-sm">Rejection Reason:</p>
+                                                <p className="text-xs">{itemReturn.rejectionReason}</p>
+                                              </div>
+                                            ), { duration: 4000 })}
+                                            className="text-red-800"
+                                          >
+                                            <FiInfoIcon size={12} />
+                                          </button>
+                                        </div>
+                                        <button
+                                          onClick={() => handleReturnNavigation(item)}
+                                          className="w-full text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-md"
+                                        >
+                                          RE-REQUEST
+                                        </button>
+                                      </div>
+                                    );
+                                  }
+
+                                  if (itemReturn.status === 'completed') {
+                                    return (
+                                      <div className="mt-1 text-[10px] font-bold text-success-600 bg-success-50 px-2 py-1 rounded-md text-center">
+                                        RETURN COMPLETED
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <div className="mt-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-center">
+                                      {itemReturn.status.toUpperCase()}
+                                    </div>
+                                  );
+                                })()}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -361,15 +457,6 @@ const MobileOrderDetail = () => {
                   <FiRotateCw className="text-lg" />
                   Reorder
                 </button>
-                {order.status === 'delivered' && (
-                  <button
-                    onClick={openReturnModal}
-                    className="w-full py-3 bg-amber-50 text-amber-700 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-amber-100 transition-colors"
-                  >
-                    <FiPackage className="text-lg" />
-                    Request Return
-                  </button>
-                )}
                 <button
                   onClick={() => navigate(`/track-order/${order.id}`)}
                   className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors"
@@ -381,74 +468,6 @@ const MobileOrderDetail = () => {
             </div>
           </div>
 
-          {showReturnModal && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center sm:justify-center"
-              onClick={() => setShowReturnModal(false)}
-            >
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 20, opacity: 0 }}
-                onClick={(e) => e.stopPropagation()}
-                className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl p-4 sm:p-5"
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-800">Request Return</h3>
-                  <button
-                    onClick={() => setShowReturnModal(false)}
-                    className="p-2 rounded-full hover:bg-gray-100"
-                  >
-                    <FiX className="text-gray-600" />
-                  </button>
-                </div>
-
-                {vendorOptions.length > 1 && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Select Vendor
-                    </label>
-                    <select
-                      value={returnVendorId}
-                      onChange={(e) => setReturnVendorId(e.target.value)}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      <option value="">Choose vendor</option>
-                      {vendorOptions.map((vendor) => (
-                        <option key={vendor.id} value={vendor.id}>
-                          {vendor.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className="mb-4">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Reason
-                  </label>
-                  <textarea
-                    value={returnReason}
-                    onChange={(e) => setReturnReason(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Describe the issue briefly"
-                  />
-                </div>
-
-                <button
-                  onClick={handleRequestReturn}
-                  disabled={isSubmittingReturn}
-                  className="w-full py-3 gradient-green text-white rounded-xl font-semibold disabled:opacity-70"
-                >
-                  {isSubmittingReturn ? 'Submitting...' : 'Submit Return Request'}
-                </button>
-              </motion.div>
-            </motion.div>
-          )}
       </MobileLayout>
     </PageTransition>
   );

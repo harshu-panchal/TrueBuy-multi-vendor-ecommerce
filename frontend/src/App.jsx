@@ -174,6 +174,7 @@ import MobileNewArrivals from "./modules/UserApp/pages/NewArrivals";
 import MobileCampaignSale from "./modules/UserApp/pages/CampaignSale";
 import MobileTrackOrder from "./modules/UserApp/pages/TrackOrder";
 import MobileOrderConfirmation from "./modules/UserApp/pages/OrderConfirmation";
+import MobileReturnRequest from "./modules/UserApp/pages/ReturnRequest";
 import ComingSoon from "./modules/UserApp/pages/ComingSoon";
 // Delivery Routes
 import DeliveryLogin from "./modules/Delivery/pages/Login";
@@ -185,6 +186,7 @@ import DeliveryLayout from "./modules/Delivery/components/Layout/DeliveryLayout"
 import DeliveryDashboard from "./modules/Delivery/pages/Dashboard";
 import DeliveryOrders from "./modules/Delivery/pages/Orders";
 import DeliveryOrderDetail from "./modules/Delivery/pages/OrderDetail";
+import DeliveryReturnPickup from "./modules/Delivery/pages/ReturnPickup";
 import DeliveryProfile from "./modules/Delivery/pages/Profile";
 import DeliveryNotifications from "./modules/Delivery/pages/Notifications";
 // Vendor Routes
@@ -453,6 +455,16 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/return-request/:orderId/:productId"
+        element={
+          <RouteWrapper>
+            <ProtectedRoute>
+              <MobileReturnRequest />
+            </ProtectedRoute>
+          </RouteWrapper>
+        }
+      />
+      <Route
         path="/addresses"
         element={
           <RouteWrapper>
@@ -639,6 +651,7 @@ const AppRoutes = () => {
         <Route path="dashboard" element={<DeliveryDashboard />} />
         <Route path="orders" element={<DeliveryOrders />} />
         <Route path="orders/:id" element={<DeliveryOrderDetail />} />
+        <Route path="return-pickup/:id" element={<DeliveryReturnPickup />} />
         <Route path="notifications" element={<DeliveryNotifications />} />
         <Route path="profile" element={<DeliveryProfile />} />
       </Route>

@@ -1,24 +1,23 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiSearch, FiEye, FiCheck, FiX, FiRefreshCw } from "react-icons/fi";
+import { FiSearch, FiEye, FiCheck, FiX, FiRefreshCw, FiAlertCircle } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../Admin/components/DataTable";
 import ExportButton from "../../Admin/components/ExportButton";
-import Badge from "../../../shared/components/Badge";
+import StatusBadge from "../../../shared/components/Badge";
 import AnimatedSelect from "../../Admin/components/AnimatedSelect";
 import { formatPrice } from "../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import {
-  getAllVendorReturnRequests,
   updateVendorReturnRequestStatus,
 } from "../services/vendorService";
+import { useReturnStore } from "../../../shared/store/returnStore";
 import toast from "react-hot-toast";
 
 const ReturnRequests = () => {
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
-  const [returnRequests, setReturnRequests] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { returnRequests: allRequests, isLoading, fetchReturnRequests, updateReturnStatus } = useReturnStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
@@ -26,26 +25,15 @@ const ReturnRequests = () => {
   const vendorId = vendor?.id;
 
   useEffect(() => {
-    if (!vendorId) {
-      setReturnRequests([]);
-      return;
+    if (vendorId) {
+      fetchReturnRequests({ vendorId });
     }
+  }, [vendorId, fetchReturnRequests]);
 
-    const fetchReturnRequests = async () => {
-      setIsLoading(true);
-      try {
-        const res = await getAllVendorReturnRequests({ limit: 100 });
-        const payload = res?.data ?? res;
-        setReturnRequests(payload?.returnRequests ?? []);
-      } catch {
-        setReturnRequests([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchReturnRequests();
-  }, [vendorId]);
+  const returnRequests = useMemo(() => {
+    if (!vendorId) return [];
+    return allRequests.filter(req => req.vendorId === vendorId || req.items?.some(i => i.vendorId === vendorId));
+  }, [allRequests, vendorId]);
 
   // Filtered return requests
   const filteredRequests = useMemo(() => {
@@ -123,13 +111,7 @@ const ReturnRequests = () => {
     }
 
     try {
-      const res = await updateVendorReturnRequestStatus(requestId, statusData);
-      const updatedRequest = res?.data ?? res;
-      setReturnRequests((prev) =>
-        prev.map((request) =>
-          request.id === requestId ? updatedRequest : request
-        )
-      );
+      await updateReturnStatus(requestId, statusData);
     } catch {
       return;
     }
@@ -224,7 +206,7 @@ const ReturnRequests = () => {
       label: "Status",
       sortable: true,
       render: (value) => (
-        <Badge variant={getStatusVariant(value)}>{value}</Badge>
+        <StatusBadge variant={getStatusVariant(value)}>{value}</StatusBadge>
       ),
     },
     {
@@ -368,6 +350,17 @@ const ReturnRequests = () => {
           <p className="text-lg sm:text-2xl font-bold text-red-600">
             {statusCounts.rejected}
           </p>
+        </div>
+      </div>
+      
+      {/* Warning Banner */}
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
+          <FiAlertCircle size={24} />
+        </div>
+        <div className="flex-1">
+          <p className="text-amber-800 font-bold text-sm uppercase tracking-tight">Attention Required</p>
+          <p className="text-amber-700 text-sm font-medium">Please respond to all pending return requests within 24 hours to maintain service level agreements.</p>
         </div>
       </div>
 

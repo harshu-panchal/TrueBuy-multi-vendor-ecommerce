@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import PageTransition from '../../../shared/components/PageTransition';
 import toast from 'react-hot-toast';
 import { formatPrice } from '../../../shared/utils/helpers';
+import { useReturnStore } from '../../../shared/store/returnStore';
 
 const DeliveryDashboard = () => {
   const { deliveryBoy, updateStatus, fetchProfile, fetchDashboardSummary, isUpdatingStatus } = useDeliveryAuthStore();
@@ -21,6 +22,7 @@ const DeliveryDashboard = () => {
     openOrders: 0,
     earnings: 0,
   });
+  const { returnRequests, fetchReturnRequests } = useReturnStore();
   const statCards = [
     {
       icon: FiPackage,
@@ -85,7 +87,11 @@ const DeliveryDashboard = () => {
 
   useEffect(() => {
     loadDashboardData();
-  }, [fetchDashboardSummary, fetchProfile]);
+    // Also fetch return requests assigned to this delivery boy
+    if (deliveryBoy?.id) {
+      fetchReturnRequests({ deliveryBoyId: deliveryBoy.id });
+    }
+  }, [fetchDashboardSummary, fetchProfile, deliveryBoy?.id, fetchReturnRequests]);
 
   useEffect(() => {
     if (!statusMenuOpen) return undefined;
@@ -314,6 +320,58 @@ const DeliveryDashboard = () => {
                 </div>
               </motion.div>
             ))}
+          </div>
+        </motion.div>
+
+        {/* Return Tasks Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="bg-white rounded-2xl p-4 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-800">Return Tasks</h2>
+            <div className="px-2 py-0.5 bg-primary-100 text-primary-700 text-[10px] font-bold rounded-full uppercase tracking-tighter">NEW</div>
+          </div>
+
+          <div className="space-y-3">
+            {returnRequests.length === 0 ? (
+              <div className="text-sm text-gray-500 py-6 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                No return pickups assigned.
+              </div>
+            ) : (
+              returnRequests.map((req, index) => (
+                <div 
+                  key={req.id}
+                  onClick={() => navigate(`/delivery/return-pickup/${req.id}`)}
+                  className="border border-gray-100 bg-gray-50/30 rounded-xl p-4 hover:border-primary-200 transition-all cursor-pointer relative overflow-hidden group"
+                >
+                  <div className="absolute top-0 right-0 w-12 h-12 bg-primary-50 rounded-bl-3xl flex items-center justify-center text-primary-600 group-hover:bg-primary-600 group-hover:text-white transition-colors">
+                    <FiTruck size={18} />
+                  </div>
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-bold text-primary-600">#{req.id}</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full uppercase italic">Return</span>
+                    </div>
+                    <p className="font-bold text-gray-800 text-sm max-w-[80%]">{req.customer?.name}</p>
+                  </div>
+                  
+                  <div className="flex items-start gap-2 text-xs text-gray-600 mb-3 bg-white p-2 rounded-lg border border-gray-100">
+                    <FiMapPin className="text-primary-600 mt-0.5 flex-shrink-0" />
+                    <span className="line-clamp-2">{req.pickupAddress?.address || req.customer?.address}</span>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{req.status.replace('_', ' ')}</span>
+                    <button className="text-xs font-bold text-primary-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                      START PICKUP →
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
 

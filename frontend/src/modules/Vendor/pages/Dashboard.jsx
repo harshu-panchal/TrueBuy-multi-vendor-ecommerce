@@ -12,11 +12,14 @@ import { useVendorAuthStore } from "../store/vendorAuthStore";
 import { useVendorProductStore } from "../store/vendorProductStore";
 import { getVendorOrders, getVendorEarnings } from "../services/vendorService";
 import { formatPrice } from "../../../shared/utils/helpers";
+import { useReturnStore } from "../../../shared/store/returnStore";
+import { FiAlertCircle } from "react-icons/fi";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
   const { products, total: totalProductsCount, fetchProducts } = useVendorProductStore();
+  const { returnRequests, fetchReturnRequests } = useReturnStore();
 
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -78,7 +81,8 @@ const VendorDashboard = () => {
     };
 
     loadDashboardData();
-  }, [vendorId, fetchProducts, products.length]);
+    fetchReturnRequests();
+  }, [vendorId, fetchProducts, products.length, fetchReturnRequests]);
 
   // Sync product counts whenever the product store updates
   useEffect(() => {
@@ -148,6 +152,30 @@ const VendorDashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* Pending Returns Banner */}
+      {returnRequests.filter(r => r.status === 'pending').length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          onClick={() => navigate('/vendor/return-requests')}
+          className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-sm transition-all shadow-indigo-100/20"
+        >
+          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-indigo-600 shadow-sm flex-shrink-0">
+            <FiAlertCircle size={24} />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <span className="bg-indigo-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Action Required</span>
+              <p className="text-indigo-900 font-bold text-sm">Review Return Requests</p>
+            </div>
+            <p className="text-indigo-700/80 text-xs mt-0.5">
+              You have <span className="font-bold underline">{returnRequests.filter(r => r.status === 'pending').length} pending</span> return requests that need your immediate attention.
+            </p>
+          </div>
+          <FiArrowRight className="text-indigo-400" />
+        </motion.div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

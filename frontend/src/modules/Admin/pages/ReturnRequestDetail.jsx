@@ -1,32 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import {
-  FiArrowLeft,
-  FiCheck,
-  FiX,
-  FiPhone,
-  FiMail,
-  FiPackage,
-  FiCalendar,
-  FiRefreshCw,
-  FiShoppingBag,
-  FiDollarSign,
-  FiAlertCircle,
-  FiEdit
-} from 'react-icons/fi';
-import { motion } from 'framer-motion';
-import Badge from '../../../shared/components/Badge';
+import { motion, AnimatePresence } from 'framer-motion';
+import StatusBadge from '../../../shared/components/Badge';
 import AnimatedSelect from '../components/AnimatedSelect';
 import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
 import { useReturnStore } from '../../../shared/store/returnStore';
+import { 
+  FiArrowLeft, FiCheck, FiX, FiPhone, FiMail, FiPackage, 
+  FiCalendar, FiRefreshCw, FiShoppingBag, FiDollarSign, 
+  FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser 
+} from 'react-icons/fi';
 
 const ReturnRequestDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { fetchReturnRequestById, updateReturnStatus } = useReturnStore();
+  const { fetchReturnRequestById, updateReturnStatus, assignDeliveryToReturn, processReturnRefund } = useReturnStore();
   const [returnRequest, setReturnRequest] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState('');
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
   const statusTransitions = {
     pending: ['approved', 'rejected'],
     approved: ['processing', 'completed'],
@@ -80,6 +73,24 @@ const ReturnRequestDetail = () => {
       handleStatusUpdate(status);
     } else {
       setIsEditing(false);
+    }
+  };
+
+  const handleConfirmAssignment = async () => {
+    if (!selectedDeliveryBoyId) return;
+    const success = await assignDeliveryToReturn(id, selectedDeliveryBoyId);
+    if (success) {
+      setIsAssignModalOpen(false);
+      const data = await fetchReturnRequestById(id);
+      if (data) setReturnRequest(data);
+    }
+  };
+
+  const handleProcessRefund = async () => {
+    const success = await processReturnRefund(id);
+    if (success) {
+      const data = await fetchReturnRequestById(id);
+      if (data) setReturnRequest(data);
     }
   };
 
@@ -157,45 +168,35 @@ const ReturnRequestDetail = () => {
             </>
           ) : (
             <>
-              <Badge variant={getStatusVariant(returnRequest.status)}>{returnRequest.status}</Badge>
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
-              >
-                <FiEdit className="text-sm" />
-                Edit Status
-              </button>
-              {returnRequest.status === 'pending' && (
-                <>
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Are you sure you want to approve this return request?')) {
-                        handleStatusUpdate('approved', 'approve');
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-semibold"
-                  >
-                    <FiCheck className="text-sm" />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (window.confirm('Are you sure you want to reject this return request?')) {
-                        handleStatusUpdate('rejected', 'reject');
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold"
-                  >
-                    <FiX className="text-sm" />
-                    Reject
-                  </button>
-                </>
+              <StatusBadge variant={getStatusVariant(returnRequest.status)}>{returnRequest.status}</StatusBadge>
+              {returnRequest.status === 'pending' ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 text-xs font-bold">
+                  <FiClock className="animate-pulse" />
+                  WAITING FOR SELLER
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
+                >
+                  <FiEdit className="text-sm" />
+                  Edit Status
+                </button>
               )}
-              {returnRequest.status === 'approved' && returnRequest.refundStatus === 'pending' && (
+              {returnRequest.status === 'approved' && !returnRequest.deliveryBoyId && (
+                <button
+                  onClick={() => setIsAssignModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
+                >
+                  <FiTruck className="text-sm" />
+                  Assign Pickup
+                </button>
+              )}
+              {returnRequest.status === 'delivered_to_seller' && returnRequest.refundStatus === 'pending' && (
                 <button
                   onClick={() => {
                     if (window.confirm('Process refund for this return request?')) {
-                      handleStatusUpdate('completed', 'process-refund');
+                      handleProcessRefund();
                     }
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-semibold"
@@ -229,9 +230,9 @@ const ReturnRequestDetail = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Refund Status</p>
-                <Badge variant={returnRequest.refundStatus === 'processed' ? 'success' : returnRequest.refundStatus === 'failed' ? 'error' : 'pending'} className="text-xs">
+                <StatusBadge variant={returnRequest.refundStatus === 'processed' ? 'success' : returnRequest.refundStatus === 'failed' ? 'error' : 'pending'} className="text-xs">
                   {returnRequest.refundStatus}
-                </Badge>
+                </StatusBadge>
               </div>
             </div>
           </div>
@@ -378,9 +379,9 @@ const ReturnRequestDetail = () => {
               </div>
               <div className="mt-3 pt-3 border-t border-gray-200">
                 <p className="text-xs text-gray-500 mb-1">Refund Status</p>
-                <Badge variant={returnRequest.refundStatus === 'processed' ? 'success' : returnRequest.refundStatus === 'failed' ? 'error' : 'pending'}>
+                <StatusBadge variant={returnRequest.refundStatus === 'processed' ? 'success' : returnRequest.refundStatus === 'failed' ? 'error' : 'pending'}>
                   {returnRequest.refundStatus}
-                </Badge>
+                </StatusBadge>
               </div>
             </div>
           </div>
@@ -469,6 +470,59 @@ const ReturnRequestDetail = () => {
           </div>
         </div>
       </div>
+      
+      {/* Assignment Modal */}
+      <AnimatePresence>
+        {isAssignModalOpen && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4">
+            <motion.div 
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               className="absolute inset-0 bg-black/50" 
+               onClick={() => setIsAssignModalOpen(false)} 
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl"
+            >
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Assign Delivery Partner</h3>
+              <p className="text-sm text-gray-500 mb-6">Select a rider to pickup this return item.</p>
+              
+              <div className="space-y-4">
+                <AnimatedSelect
+                  value={selectedDeliveryBoyId}
+                  onChange={(e) => setSelectedDeliveryBoyId(e.target.value)}
+                  options={[
+                    { value: '', label: 'Select Delivery Boy' },
+                    { value: 'DB-001', label: 'Rahul Singh (+91 98XXX XXX01)' },
+                    { value: 'DB-002', label: 'Amit Kumar (+91 98XXX XXX02)' },
+                    { value: 'DB-003', label: 'Suresh Raina (+91 98XXX XXX03)' },
+                  ]}
+                />
+                
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    onClick={() => setIsAssignModalOpen(false)}
+                    className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleConfirmAssignment}
+                    disabled={!selectedDeliveryBoyId}
+                    className="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
+                  >
+                    Confirm Assignment
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
