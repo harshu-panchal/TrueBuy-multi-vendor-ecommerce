@@ -8,7 +8,7 @@ import { useReturnStore } from '../../../shared/store/returnStore';
 import { 
   FiArrowLeft, FiCheck, FiX, FiPhone, FiMail, FiPackage, 
   FiCalendar, FiRefreshCw, FiShoppingBag, FiDollarSign, 
-  FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser 
+  FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser, FiCamera, FiImage 
 } from 'react-icons/fi';
 
 const ReturnRequestDetail = () => {
@@ -317,6 +317,35 @@ const ReturnRequestDetail = () => {
               )}
             </div>
           </div>
+
+          {/* Return Images */}
+          {returnRequest.images && returnRequest.images.length > 0 && (
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                <FiCamera className="text-primary-600 text-base" />
+                Return Images ({returnRequest.images.length})
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {returnRequest.images.map((img, idx) => (
+                  <div 
+                    key={idx} 
+                    className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 group cursor-pointer"
+                    onClick={() => window.open(img, '_blank')}
+                  >
+                    <img 
+                      src={img} 
+                      alt={`Return Proof ${idx + 1}`} 
+                      className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <FiImage className="text-white text-xl" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-3 italic">Click an image to view it full size.</p>
+            </div>
+          )}
 
           {/* Customer Information */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">

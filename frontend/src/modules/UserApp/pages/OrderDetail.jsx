@@ -18,7 +18,7 @@ const MobileOrderDetail = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
   const { getOrder, cancelOrder, fetchOrderById, requestReturn } = useOrderStore();
-  const { returnRequests, fetchReturnRequests } = useReturnStore();
+  const { returnRequests, fetchReturnRequests, cancelReturnRequest } = useReturnStore();
   const { addItem } = useCartStore();
   const [isResolving, setIsResolving] = useState(true);
   const [showReturnModal, setShowReturnModal] = useState(false);
@@ -142,6 +142,12 @@ const MobileOrderDetail = () => {
         previousDescription: existingReturn?.description
       } 
     });
+  };
+  
+  const handleCancelReturn = async (returnId) => {
+    if (window.confirm('Are you sure you want to cancel this return request?')) {
+      await cancelReturnRequest(returnId);
+    }
   };
 
   const getItemReturn = (productId) => {
@@ -272,8 +278,18 @@ const MobileOrderDetail = () => {
                                   }
 
                                   return (
-                                    <div className="mt-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-center">
-                                      {itemReturn.status.toUpperCase()}
+                                    <div className="mt-1 space-y-1">
+                                      <div className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-center">
+                                        {itemReturn.status.toUpperCase()}
+                                      </div>
+                                      {itemReturn.status === 'pending' && (
+                                        <button
+                                          onClick={() => handleCancelReturn(itemReturn.id)}
+                                          className="w-full text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 px-2 py-0.5 rounded-md"
+                                        >
+                                          CANCEL
+                                        </button>
+                                      )}
                                     </div>
                                   );
                                 })()}
@@ -361,8 +377,18 @@ const MobileOrderDetail = () => {
                                   }
 
                                   return (
-                                    <div className="mt-1 text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-center">
-                                      {itemReturn.status.toUpperCase()}
+                                    <div className="mt-1 space-y-1">
+                                      <div className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-center">
+                                        {itemReturn.status.toUpperCase()}
+                                      </div>
+                                      {itemReturn.status === 'pending' && (
+                                        <button
+                                          onClick={() => handleCancelReturn(itemReturn.id)}
+                                          className="w-full text-[10px] font-bold text-red-600 hover:text-red-700 bg-red-50 px-2 py-0.5 rounded-md"
+                                        >
+                                          CANCEL
+                                        </button>
+                                      )}
                                     </div>
                                   );
                                 })()}

@@ -9,6 +9,8 @@ import PageTransition from '../../../shared/components/PageTransition';
 import Badge from '../../../shared/components/Badge';
 import LazyImage from '../../../shared/components/LazyImage';
 import { useAuthStore } from '../../../shared/store/authStore';
+import { useReturnStore } from '../../../shared/store/returnStore';
+import ReturnTimeline from '../../../shared/components/ReturnTimeline';
 
 const MobileTrackOrder = () => {
   const { orderId } = useParams();
@@ -17,6 +19,8 @@ const MobileTrackOrder = () => {
   const { user } = useAuthStore();
   const [isResolving, setIsResolving] = useState(true);
   const order = getOrder(orderId);
+  const { getReturnRequestByOrderId, fetchReturnRequests, cancelReturnRequest } = useReturnStore();
+  const returnRequest = getReturnRequestByOrderId(orderId);
   const shippingAddress = order?.shippingAddress || {};
   const orderItems = Array.isArray(order?.items) ? order.items : [];
   const normalizedStatus = String(order?.status || 'pending').toLowerCase();
@@ -38,6 +42,12 @@ const MobileTrackOrder = () => {
           await fetchPublicTrackingOrder(orderId);
         }
       }
+      
+      // Always try to fetch return requests for this order
+      if (orderId) {
+        await fetchReturnRequests({ orderId });
+      }
+
       if (mounted) setIsResolving(false);
     })();
     return () => {
@@ -95,6 +105,13 @@ const MobileTrackOrder = () => {
       month: 'short',
       day: 'numeric',
     });
+  };
+  
+  const handleCancelReturn = async (returnId) => {
+    if (window.confirm('Are you sure you want to cancel this return request?')) {
+      await cancelReturnRequest(returnId);
+      navigate(`/orders/${orderId}`); // Go back to order details after cancel
+    }
   };
 
   const getTrackingSteps = () => {
@@ -168,29 +185,46 @@ const MobileTrackOrder = () => {
             <div className="px-4 py-4 space-y-4">
               {/* Tracking Timeline */}
               <div className="glass-card rounded-2xl p-4">
-                <h2 className="text-base font-bold text-gray-800 mb-4">Order Status</h2>
-                <div className="space-y-4">
-                  {steps.map((step, index) => {
-                    const Icon = step.icon;
-                    return (
-                      <div key={index} className="flex items-start gap-4">
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${step.completed
-                          ? 'gradient-green text-white'
-                          : 'bg-gray-200 text-gray-500'
-                          }`}>
-                          <Icon className="text-lg" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className={`font-semibold text-sm mb-1 ${step.completed ? 'text-gray-800' : 'text-gray-500'
+                <h2 className="text-base font-bold text-gray-800 mb-4">
+                  {returnRequest ? 'Return Status' : 'Order Status'}
+                </h2>
+                
+                {returnRequest ? (
+                  <>
+                    <ReturnTimeline currentStatus={returnRequest.status} />
+                    {returnRequest.status === 'pending' && (
+                      <button
+                        onClick={() => handleCancelReturn(returnRequest.id)}
+                        className="w-full mt-4 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors"
+                      >
+                        CANCEL RETURN REQUEST
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    {steps.map((step, index) => {
+                      const Icon = step.icon;
+                      return (
+                        <div key={index} className="flex items-start gap-4">
+                          <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${step.completed
+                            ? 'gradient-green text-white'
+                            : 'bg-gray-200 text-gray-500'
                             }`}>
-                            {step.label}
-                          </h3>
-                          <p className="text-xs text-gray-500">{formatDate(step.date)}</p>
+                            <Icon className="text-lg" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className={`font-semibold text-sm mb-1 ${step.completed ? 'text-gray-800' : 'text-gray-500'
+                              }`}>
+                              {step.label}
+                            </h3>
+                            <p className="text-xs text-gray-500">{formatDate(step.date)}</p>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Tracking Number */}

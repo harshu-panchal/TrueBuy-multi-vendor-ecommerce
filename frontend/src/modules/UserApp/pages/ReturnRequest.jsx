@@ -82,6 +82,24 @@ const ReturnRequest = () => {
       toast.error('Please select a return reason');
       return;
     }
+
+    if (images.length < 1) {
+      toast.error('Please upload at least one product image');
+      return;
+    }
+
+    if (refundMethod === 'bank') {
+      const { accountName, accountNumber, ifscCode, bankName } = bankDetails;
+      if (!accountName || !accountNumber || !ifscCode || !bankName) {
+        toast.error('Please fill all bank details');
+        return;
+      }
+    }
+    
+    if (!pickupAddress) {
+      toast.error('Please select a pickup address');
+      return;
+    }
     
     setIsSubmitting(true);
     const success = await submitReturnRequest({
@@ -104,7 +122,7 @@ const ReturnRequest = () => {
 
     setIsSubmitting(false);
     if (success) {
-      navigate(`/orders/${orderId}`);
+      navigate(`/track-order/${orderId}`);
     }
   };
 
@@ -184,16 +202,22 @@ const ReturnRequest = () => {
 
             {/* 3. Additional Details */}
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <h2 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider">Additional Details</h2>
+              <h2 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider flex items-center justify-between">
+                <span>Additional Details</span>
+                <span className="text-[10px] text-gray-400 normal-case">(Optional)</span>
+              </h2>
               <textarea 
-                placeholder="Describe the issue in a few words"
+                placeholder="Type here if you have anything else to share..."
                 value={additionalDetails}
                 onChange={(e) => setAdditionalDetails(e.target.value)}
                 className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[100px]"
               />
               
               <div className="mt-4">
-                <label className="text-xs font-bold text-gray-500 block mb-3 uppercase tracking-wider">Upload Product Images (Max 5)</label>
+                <label className="text-xs font-bold text-gray-500 block mb-3 uppercase tracking-wider flex items-center justify-between">
+                  <span>Upload Product Images</span>
+                  <span className="text-[10px] text-primary-600 normal-case font-bold">At least 1 required, max 5</span>
+                </label>
                 <div className="flex flex-wrap gap-3">
                   {images.map((img, idx) => (
                     <div key={idx} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200 group">
@@ -353,7 +377,7 @@ const ReturnRequest = () => {
             {/* 7. Submit Button */}
             <button 
               onClick={handleSubmit}
-              disabled={!returnReason || isSubmitting || !isReturnWindowValid}
+              disabled={!returnReason || images.length < 1 || isSubmitting || !isReturnWindowValid}
               className="w-full py-4 gradient-green text-white rounded-2xl font-bold shadow-glow-green disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98]"
             >
               {isSubmitting ? 'Submitting Request...' : 'Submit Return Request'}

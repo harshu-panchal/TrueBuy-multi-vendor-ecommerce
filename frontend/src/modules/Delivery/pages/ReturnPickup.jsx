@@ -86,6 +86,17 @@ const ReturnPickup = () => {
     }
   };
 
+  if (!returnReq) {
+    return (
+      <PageTransition>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 px-4">
+          <div className="w-12 h-12 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading pickup details...</p>
+        </div>
+      </PageTransition>
+    );
+  }
+
   return (
     <PageTransition>
       <div className="bg-gray-50 min-h-screen pb-12">

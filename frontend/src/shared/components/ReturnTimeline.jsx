@@ -5,39 +5,27 @@ const ReturnTimeline = ({ currentStatus, role = 'user' }) => {
   const steps = [
     {
       id: 'requested',
-      label: 'Return Requested',
+      label: 'Return',
       icon: FiClock,
-      status: ['pending', 'approved', 'processing', 'picked_up', 'shipped', 'delivered_to_seller', 'completed'].includes(currentStatus) ? 'completed' : 'pending',
+      status: ['pending', 'approved', 'processing', 'picked_up', 'delivered_to_seller', 'completed', 'refunded'].includes(currentStatus) ? 'completed' : 'pending',
     },
     {
       id: 'approved',
-      label: 'Seller Approved',
+      label: 'Approved',
       icon: FiCheck,
-      status: currentStatus === 'rejected' ? 'rejected' : ['approved', 'processing', 'picked_up', 'shipped', 'delivered_to_seller', 'completed'].includes(currentStatus) ? 'completed' : 'pending',
+      status: currentStatus === 'rejected' ? 'rejected' : ['approved', 'processing', 'picked_up', 'delivered_to_seller', 'completed', 'refunded'].includes(currentStatus) ? 'completed' : 'pending',
     },
     {
-      id: 'pickup_assigned',
-      label: 'Pickup Assigned',
-      icon: FiTruck,
-      status: ['processing', 'picked_up', 'shipped', 'delivered_to_seller', 'completed'].includes(currentStatus) ? 'completed' : 'pending',
-    },
-    {
-      id: 'picked_up',
-      label: 'Picked Up',
+      id: 'pickup',
+      label: 'Pickup',
       icon: FiPackage,
-      status: ['picked_up', 'shipped', 'delivered_to_seller', 'completed'].includes(currentStatus) ? 'completed' : 'pending',
+      status: ['picked_up', 'delivered_to_seller', 'completed', 'refunded'].includes(currentStatus) ? 'completed' : 'pending',
     },
     {
-      id: 'delivered_seller',
-      label: 'At Seller',
-      icon: FiArrowLeft,
-      status: ['shipped', 'delivered_to_seller', 'completed'].includes(currentStatus) ? 'completed' : 'pending',
-    },
-    {
-      id: 'refund_processed',
-      label: 'Refunded',
+      id: 'refund_completed',
+      label: 'Refund Completed',
       icon: FiCheck,
-      status: currentStatus === 'completed' ? 'completed' : 'pending',
+      status: ['completed', 'refunded'].includes(currentStatus) ? 'completed' : 'pending',
     },
   ];
 

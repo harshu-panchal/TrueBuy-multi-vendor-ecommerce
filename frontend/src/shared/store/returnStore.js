@@ -1,9 +1,85 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
+import * as vendorService from '../../modules/Vendor/services/vendorService';
 import toast from 'react-hot-toast';
 
 export const useReturnStore = create((set, get) => ({
-    returnRequests: [],
+    returnRequests: [
+        {
+            id: 'RET-8B2X1L904',
+            orderId: 'ORD-55421',
+            vendorId: 'VEND-991',
+            status: 'pending',
+            refundStatus: 'pending',
+            requestDate: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+            updatedAt: new Date().toISOString(),
+            refundAmount: 1299,
+            reason: 'Defective Product',
+            description: 'The product has a scratch on the screen and the volume button is loose.',
+            customer: {
+                name: 'Ankit Sharma',
+                email: 'ankit.s@example.com',
+                phone: '+91 98765 43210',
+                address: '123, Silver Oak Apartments, Sector 45, Gurgaon, Haryana - 122003'
+            },
+            vendor: {
+                storeName: 'Premium Electronics',
+                email: 'premium.elec@example.com'
+            },
+            items: [
+                {
+                    id: 'PROD-001',
+                    name: 'Wireless Noise Cancelling Headphones',
+                    price: 1299,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop'
+                }
+            ],
+            product: { // Compatibility for admin view
+                 name: 'Wireless Noise Cancelling Headphones',
+                 image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop'
+            },
+            images: [
+                'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=500&h=500&fit=crop',
+                'https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&h=500&fit=crop'
+            ]
+        },
+        {
+            id: 'RET-NJC77301',
+            orderId: 'ORD-99082',
+            vendorId: 'VEND-NJC99', // Placeholder ID for Naina Jewellery Collection
+            status: 'pending',
+            refundStatus: 'pending',
+            requestDate: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
+            updatedAt: new Date().toISOString(),
+            refundAmount: 4500,
+            reason: 'Wrong Color',
+            description: 'Ordered Golden finish but received Silver finish necklace set.',
+            customer: {
+                name: 'Priya Verma',
+                email: 'priya.v@example.com',
+                phone: '+91 99887 76655',
+                address: 'H-45, Lajpat Nagar, New Delhi - 110024'
+            },
+            vendor: {
+                storeName: 'Naina Jewellery Collection',
+                email: 'naina.jewels@example.com'
+            },
+            items: [
+                {
+                    id: 'PROD-JWL05',
+                    name: 'Traditional Kundan Necklace Set',
+                    price: 4500,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=200&h=200&fit=crop'
+                }
+            ],
+            product: {
+                 name: 'Traditional Kundan Necklace Set',
+                 image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=200&h=200&fit=crop'
+            }
+        }
+    ],
     isLoading: false,
     error: null,
     pagination: {
@@ -15,42 +91,51 @@ export const useReturnStore = create((set, get) => ({
 
     fetchReturnRequests: async (params = {}) => {
         set({ isLoading: true });
-        // MOCK: Filter local state if params are provided
-        const { vendorId, deliveryBoyId, search, status } = params;
-        
-        let filtered = [...get().returnRequests];
+        try {
+            const { role, ...apiParams } = params;
+            let response;
+            
+            if (role === 'admin') {
+                response = await adminService.getAllReturnRequests(apiParams);
+            } else if (role === 'vendor') {
+                response = await vendorService.getVendorReturnRequests(apiParams);
+            } else {
+                // For users/others, we still filter local state for now or call a user-specific endpoint if exists
+                // But generally, users get their return status from the order detail which calls this with orderId
+                // So we can just return what's in state if no specific API for users
+                set({ isLoading: false });
+                return;
+            }
 
-        if (vendorId) {
-            filtered = filtered.filter(req => req.vendorId === vendorId || req.items?.some(i => i.vendorId === vendorId));
+            const payload = response.data?.data || response.data || response;
+            const requests = payload.returnRequests || [];
+            
+            set({ 
+                returnRequests: requests, 
+                pagination: payload.pagination || get().pagination,
+                isLoading: false 
+            });
+        } catch (error) {
+            set({ isLoading: false, error: error.message });
+            // toast.error('Failed to fetch return requests');
         }
+    },
 
-        if (deliveryBoyId) {
-            filtered = filtered.filter(req => req.deliveryBoyId === deliveryBoyId);
-        }
-
-        if (status && status !== 'all') {
-            filtered = filtered.filter(req => req.status === status);
-        }
-
-        if (search) {
-            const lowSearch = search.toLowerCase();
-            filtered = filtered.filter(req => 
-                req.id.toLowerCase().includes(lowSearch) || 
-                req.orderId.toLowerCase().includes(lowSearch) ||
-                req.customer?.name?.toLowerCase().includes(lowSearch)
-            );
-        }
-
-        set({ isLoading: false });
-        // NOTE: We don't overwrite returnRequests here to keep local new entries
+    getReturnRequestByOrderId: (orderId) => {
+        return get().returnRequests.find(req => req.orderId === orderId || req.orderRefId === orderId);
     },
 
     fetchReturnRequestById: async (id) => {
+        // If it's a mock ID (e.g., from Naina Jewellery mock), return it from local state
+        if (id && String(id).startsWith('RET-')) {
+            return get().returnRequests.find(req => String(req.id) === String(id)) || null;
+        }
+
         set({ isLoading: true });
         try {
             const response = await adminService.getReturnRequestById(id);
             set({ isLoading: false });
-            return response.data;
+            return response.data?.data || response.data || response;
         } catch (error) {
             set({ isLoading: false });
             toast.error(error.message || 'Failed to fetch return request details');
@@ -138,6 +223,17 @@ export const useReturnStore = create((set, get) => ({
             toast.error(error.message || 'Failed to process refund');
             return false;
         }
+    },
+
+    cancelReturnRequest: async (id) => {
+        set({ isLoading: true });
+        // MOCK: Local only cancellation as requested
+        set((state) => ({
+            returnRequests: state.returnRequests.filter(req => req.id !== id),
+            isLoading: false
+        }));
+        toast.success('Return request cancelled successfully');
+        return true;
     },
 
     submitReturnRequest: async (returnRequestData) => {
