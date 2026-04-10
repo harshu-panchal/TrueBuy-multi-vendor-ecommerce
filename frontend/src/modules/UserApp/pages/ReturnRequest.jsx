@@ -22,6 +22,7 @@ const ReturnRequest = () => {
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [images, setImages] = useState([]);
   const [pickupAddress, setPickupAddress] = useState(null);
+  const [requestType, setRequestType] = useState('return'); // return or exchange
   const [refundMethod, setRefundMethod] = useState('original');
   const [bankDetails, setBankDetails] = useState({
     accountName: '',
@@ -117,7 +118,8 @@ const ReturnRequest = () => {
         email: 'john@example.com'
       },
       items: [item],
-      refundAmount: item.price
+      refundAmount: requestType === 'exchange' ? 0 : item.price,
+      type: requestType
     });
 
     setIsSubmitting(false);
@@ -145,10 +147,25 @@ const ReturnRequest = () => {
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full">
               <FiArrowLeft className="text-xl text-gray-700" />
             </button>
-            <h1 className="text-lg font-bold text-gray-800">Return Item</h1>
+            <h1 className="text-lg font-bold text-gray-800">{requestType === 'exchange' ? 'Exchange Item' : 'Return Item'}</h1>
           </div>
 
           <div className="p-4 space-y-4">
+            {/* Request Type Selector */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex gap-2">
+              <button 
+                onClick={() => setRequestType('return')}
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${requestType === 'return' ? 'bg-primary-600 text-white shadow-glow-primary' : 'bg-gray-50 text-gray-400 border border-gray-100'}`}
+              >
+                Refund
+              </button>
+              <button 
+                onClick={() => setRequestType('exchange')}
+                className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${requestType === 'exchange' ? 'bg-indigo-600 text-white shadow-glow-indigo' : 'bg-gray-50 text-gray-400 border border-gray-100'}`}
+              >
+                Exchange
+              </button>
+            </div>
             {isReRequest && (
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex items-start gap-3">
                 <FiInfo className="text-blue-600 mt-0.5 flex-shrink-0" />
@@ -261,111 +278,126 @@ const ReturnRequest = () => {
               )}
             </div>
 
-            {/* 5. Refund Method */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <h2 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider">Refund Method</h2>
-              <div className="space-y-3">
-                <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
-                  <input 
-                    type="radio" 
-                    name="refund" 
-                    value="original" 
-                    checked={refundMethod === 'original'}
-                    onChange={(e) => setRefundMethod(e.target.value)}
-                    className="w-5 h-5 text-primary-600 focus:ring-primary-500 border-gray-300"
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm text-gray-700 font-bold block">Original Payment Method</span>
-                    <span className="text-[10px] text-gray-500">Refund will be sent to your original card/account</span>
-                  </div>
-                </label>
-                <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
-                  <input 
-                    type="radio" 
-                    name="refund" 
-                    value="bank" 
-                    checked={refundMethod === 'bank'}
-                    onChange={(e) => setRefundMethod(e.target.value)}
-                    className="w-5 h-5 text-primary-600 focus:ring-primary-500 border-gray-300"
-                  />
-                  <div className="flex-1">
-                    <span className="text-sm text-gray-700 font-bold block">UPI / Bank Transfer</span>
-                    <span className="text-[10px] text-gray-500">Enter details below for direct transfer</span>
-                  </div>
-                </label>
+            {/* 5. Refund Method (Only for Return) */}
+            {requestType === 'return' && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <h2 className="text-sm font-bold text-gray-800 mb-4 uppercase tracking-wider">Refund Method</h2>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                    <input 
+                      type="radio" 
+                      name="refund" 
+                      value="original" 
+                      checked={refundMethod === 'original'}
+                      onChange={(e) => setRefundMethod(e.target.value)}
+                      className="w-5 h-5 text-primary-600 focus:ring-primary-500 border-gray-300"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm text-gray-700 font-bold block">Original Payment Method</span>
+                      <span className="text-[10px] text-gray-500">Refund will be sent to your original card/account</span>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                    <input 
+                      type="radio" 
+                      name="refund" 
+                      value="bank" 
+                      checked={refundMethod === 'bank'}
+                      onChange={(e) => setRefundMethod(e.target.value)}
+                      className="w-5 h-5 text-primary-600 focus:ring-primary-500 border-gray-300"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm text-gray-700 font-bold block">UPI / Bank Transfer</span>
+                      <span className="text-[10px] text-gray-500">Enter details below for direct transfer</span>
+                    </div>
+                  </label>
+                </div>
+
+                <AnimatePresence>
+                  {refundMethod === 'bank' && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden mt-4 pt-4 border-t border-gray-100 space-y-3"
+                    >
+                      <div className="grid grid-cols-1 gap-3">
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Account Holder Name</label>
+                          <input 
+                            type="text"
+                            value={bankDetails.accountName}
+                            onChange={(e) => setBankDetails({...bankDetails, accountName: e.target.value})}
+                            placeholder="Full name on passbook"
+                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                           <div>
+                              <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">IFSC Code</label>
+                              <input 
+                                type="text"
+                                value={bankDetails.ifscCode}
+                                onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value.toUpperCase()})}
+                                placeholder="SBIN00XXXX"
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
+                              />
+                           </div>
+                           <div>
+                              <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Bank Name</label>
+                              <input 
+                                type="text"
+                                value={bankDetails.bankName}
+                                onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
+                                placeholder="e.g. SBI, HDFC"
+                                className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
+                              />
+                           </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Account Number</label>
+                          <input 
+                            type="text"
+                            value={bankDetails.accountNumber}
+                            onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
+                            placeholder="Your account number"
+                            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 p-2 bg-amber-50 rounded-lg">
+                         <FiAlertCircle className="text-amber-600 mt-0.5" size={12} />
+                         <p className="text-[10px] text-amber-800 font-medium italic">Please double check your bank details. Incorrect details may lead to refund failure.</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
+            )}
 
-              <AnimatePresence>
-                {refundMethod === 'bank' && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden mt-4 pt-4 border-t border-gray-100 space-y-3"
-                  >
-                    <div className="grid grid-cols-1 gap-3">
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Account Holder Name</label>
-                        <input 
-                          type="text"
-                          value={bankDetails.accountName}
-                          onChange={(e) => setBankDetails({...bankDetails, accountName: e.target.value})}
-                          placeholder="Full name on passbook"
-                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                         <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">IFSC Code</label>
-                            <input 
-                              type="text"
-                              value={bankDetails.ifscCode}
-                              onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value.toUpperCase()})}
-                              placeholder="SBIN00XXXX"
-                              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
-                            />
-                         </div>
-                         <div>
-                            <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Bank Name</label>
-                            <input 
-                              type="text"
-                              value={bankDetails.bankName}
-                              onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
-                              placeholder="e.g. SBI, HDFC"
-                              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
-                            />
-                         </div>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-gray-500 uppercase ml-1">Account Number</label>
-                        <input 
-                          type="text"
-                          value={bankDetails.accountNumber}
-                          onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
-                          placeholder="Your account number"
-                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2 p-2 bg-amber-50 rounded-lg">
-                       <FiAlertCircle className="text-amber-600 mt-0.5" size={12} />
-                       <p className="text-[10px] text-amber-800 font-medium italic">Please double check your bank details. Incorrect details may lead to refund failure.</p>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* 6. Important Notes */}
-            <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100 space-y-3">
-              <div className="flex items-start gap-3">
-                <FiInfo className="text-primary-600 mt-0.5 mt-0.5 flex-shrink-0" />
-                <div className="space-y-1">
-                  <p className="text-xs text-primary-900 font-medium">Return will be picked up within 2–3 days after approval</p>
-                  <p className="text-xs text-primary-900 font-medium">Refund will be processed after successful pickup and verification</p>
+            {/* Price Difference Info (Mock) */}
+            {requestType === 'exchange' && (
+              <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex gap-3">
+                <FiInfo className="text-indigo-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-indigo-800 font-bold text-sm">Exchange Policy</p>
+                  <p className="text-indigo-700 text-xs mt-1">Exchange is possible only for the same item or same value replacement. If a price difference is found later, it will be handled as a refund/collection.</p>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* 6. Important Notes (Only for Return) */}
+            {requestType === 'return' && (
+              <div className="bg-primary-50 rounded-2xl p-4 border border-primary-100 space-y-3">
+                <div className="flex items-start gap-3">
+                  <FiInfo className="text-primary-600 mt-0.5 flex-shrink-0" />
+                  <div className="space-y-1">
+                    <p className="text-xs text-primary-900 font-medium">Return will be picked up within 2–3 days after approval</p>
+                    <p className="text-xs text-primary-900 font-medium">Refund will be processed after successful pickup and verification</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {!isReturnWindowValid && (
               <div className="flex items-center gap-2 p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold animate-pulse">
@@ -378,9 +410,15 @@ const ReturnRequest = () => {
             <button 
               onClick={handleSubmit}
               disabled={!returnReason || images.length < 1 || isSubmitting || !isReturnWindowValid}
-              className="w-full py-4 gradient-green text-white rounded-2xl font-bold shadow-glow-green disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98]"
+              className={`w-full py-4 text-white rounded-2xl font-bold transition-all active:scale-[0.98] ${
+                requestType === 'exchange' 
+                  ? 'bg-indigo-600 shadow-glow-indigo disabled:opacity-50' 
+                  : 'gradient-green shadow-glow-green disabled:opacity-50'
+              }`}
             >
-              {isSubmitting ? 'Submitting Request...' : 'Submit Return Request'}
+              {isSubmitting 
+                ? 'Submitting...' 
+                : requestType === 'exchange' ? 'Submit Exchange Request' : 'Submit Return Request'}
             </button>
           </div>
         </div>

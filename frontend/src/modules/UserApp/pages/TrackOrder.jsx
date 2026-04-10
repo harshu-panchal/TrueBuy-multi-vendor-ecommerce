@@ -191,7 +191,11 @@ const MobileTrackOrder = () => {
                 
                 {returnRequest ? (
                   <>
-                    <ReturnTimeline currentStatus={returnRequest.status} />
+                    <ReturnTimeline 
+                      currentStatus={returnRequest.status} 
+                      requestType={returnRequest.type || 'return'} 
+                      role="customer"
+                    />
                     {returnRequest.status === 'pending' && (
                       <button
                         onClick={() => handleCancelReturn(returnRequest.id)}

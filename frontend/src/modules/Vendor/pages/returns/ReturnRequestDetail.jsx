@@ -19,6 +19,7 @@ import {
   FiImage,
   FiCheckCircle,
   FiTruck,
+  FiClock,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import StatusBadge from "../../../../shared/components/Badge";
@@ -30,11 +31,17 @@ import {
 } from "../../services/vendorService";
 import { useReturnStore } from "../../../../shared/store/returnStore";
 import toast from "react-hot-toast";
+import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 
 const statusTransitions = {
   pending: ["approved", "rejected"],
-  approved: ["processing", "completed"],
-  processing: ["completed"],
+  approved: ["processing", "completed", "inspection_pending"],
+  processing: ["completed", "picked_up"],
+  picked_up: ["delivered_to_seller", "inspection_pending"],
+  delivered_to_seller: ["inspection_pending", "completed"],
+  inspection_pending: ["approved", "inspection_rejected"],
+  inspection_rejected: [],
+  replacement_shipped: ["completed"],
   rejected: [],
   completed: [],
 };
@@ -44,10 +51,11 @@ const ReturnRequestDetail = () => {
   const { id } = useParams();
   const { vendor } = useVendorAuthStore();
   const [isEditing, setIsEditing] = useState(false);
-  const { returnRequests, fetchReturnRequestById, updateReturnStatus } = useReturnStore();
+  const { returnRequests, fetchReturnRequestById, updateReturnStatus, inspectExchangeItem, shipReplacement } = useReturnStore();
   const [returnRequest, setReturnRequest] = useState(null);
   const [status, setStatus] = useState("");
   const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const vendorId = vendor?.id;
 
@@ -129,20 +137,42 @@ const ReturnRequestDetail = () => {
     const statusMap = {
       pending: "warning",
       approved: "success",
+      inspection_pending: "warning",
+      inspection_rejected: "error",
+      replacement_shipped: "info",
       rejected: "error",
       processing: "info",
       completed: "success",
+      picked_up: "info",
+      delivered_to_seller: "success",
     };
     return statusMap[status] || "warning";
   };
 
-  if (!returnRequest || !vendorId) {
+  if (!returnRequest) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Loading...</p>
       </div>
     );
   }
+
+  // Calculate SLA for inspection
+  const getSLAInfo = () => {
+    if (returnRequest.status !== 'inspection_pending' || !returnRequest.receivedAt) return null;
+    
+    const receivedDate = new Date(returnRequest.receivedAt);
+    const now = new Date();
+    const diffMs = now - receivedDate;
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    
+    if (diffHours >= 24) {
+        return { isOverdue: true, text: `SLA OVERDUE (${diffHours}h since receipt) - Admin Notified` };
+    }
+    return { isOverdue: false, text: `${24 - diffHours}h Remaining for Quality Check` };
+  };
+
+  const sla = getSLAInfo();
 
   const allowedNextStatuses = statusTransitions[returnRequest.status] || [];
   const editableStatusOptions = [returnRequest.status, ...allowedNextStatuses]
@@ -166,9 +196,14 @@ const ReturnRequestDetail = () => {
             <FiArrowLeft className="text-lg text-gray-600" />
           </button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-              {returnRequest.id}
-            </h1>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{returnRequest.id}</h1>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
+                returnRequest.type === 'exchange' ? 'bg-indigo-100 text-indigo-700' : 'bg-primary-100 text-primary-700'
+              }`}>
+                {returnRequest.type === 'exchange' ? 'Exchange' : 'Return'}
+              </span>
+            </div>
             <p className="text-xs text-gray-500">
               Requested on{" "}
               {new Date(returnRequest.requestDate).toLocaleDateString()}
@@ -216,11 +251,7 @@ const ReturnRequestDetail = () => {
                 <>
                   <button
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to approve this return request?"
-                        )
-                      ) {
+                      if (window.confirm(`Are you sure you want to approve this ${returnRequest.type} request?`)) {
                         handleStatusUpdate("approved", "approve");
                       }
                     }}
@@ -230,18 +261,9 @@ const ReturnRequestDetail = () => {
                   </button>
                   <button
                     onClick={() => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to reject this return request?"
-                        )
-                      ) {
-                        const reason = window.prompt(
-                          "Optional rejection reason (visible in return details):",
-                          returnRequest?.rejectionReason || ""
-                        );
-                        handleStatusUpdate("rejected", "reject", {
-                          rejectionReason: reason || "",
-                        });
+                      if (window.confirm(`Are you sure you want to reject this ${returnRequest.type} request?`)) {
+                        const reason = window.prompt("Optional rejection reason:", returnRequest?.rejectionReason || "");
+                        handleStatusUpdate("rejected", "reject", { rejectionReason: reason || "" });
                       }
                     }}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold">
@@ -254,19 +276,71 @@ const ReturnRequestDetail = () => {
                 returnRequest.refundStatus === "pending" && (
                   <div className="flex items-center gap-2 px-4 py-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 text-xs font-bold font-mono tracking-tighter shadow-sm animate-pulse">
                     <FiClock />
-                    AWAITING PICKUP
+                    AWAITING CUSTOMER PICKUP
                   </div>
                 )}
+              {returnRequest.status === "inspection_rejected" && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white rounded-lg border border-red-700 text-xs font-bold shadow-lg">
+                  <FiAlertCircle />
+                  INSPECTION REJECTED - AWAITING ADMIN RESOLUTION
+                </div>
+              )}
+              {returnRequest.status === "inspection_pending" && (
+                <div className="flex flex-col gap-2">
+                    {/* SLA Timer */}
+                    <div className={`px-3 py-1 rounded-md border flex items-center gap-2 mb-1 ${sla?.isOverdue ? 'bg-red-600 text-white border-red-700 animate-bounce' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                        <FiClock className={sla?.isOverdue ? '' : 'animate-pulse'} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">
+                            {sla?.text}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={async () => {
+                            if (window.confirm("Approve Item Inspection? This will allow you to ship the replacement.")) {
+                                await inspectExchangeItem(id, "approved", "Seller verified: Item in good condition.");
+                            }
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-bold text-sm shadow-md shadow-green-100"
+                        >
+                            <FiCheck />
+                            Approve Inspection
+                        </button>
+                        <button
+                            onClick={() => {
+                            const reason = window.prompt("Reason for rejecting the item condition:");
+                            if (reason) inspectExchangeItem(id, "rejected", reason);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-all font-bold text-sm"
+                        >
+                            <FiX />
+                            Reject Condition
+                        </button>
+                    </div>
+                </div>
+              )}
+              {returnRequest.status === "approved" && returnRequest.type === "exchange" && (
+                <button
+                  onClick={() => {
+                     const trk = window.prompt("Enter Replacement Tracking Number:", `TRK-EXC-${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
+                     if (trk) shipReplacement(id, trk);
+                  }}
+                  className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 font-bold text-sm"
+                >
+                  <FiTruck />
+                  Ship Replacement
+                </button>
+              )}
               {(returnRequest.status === "picked_up" || returnRequest.status === "shipped") && (
                 <button
                   onClick={async () => {
-                    if (window.confirm("CONFIRM RECEIPT: Have you physically received the returned item and verified its condition?")) {
+                    if (window.confirm("CONFIRM RECEIPT: Have you physically received the returned item? Status will move to 'Quality Check' for Exchanges.")) {
                       const success = await updateReturnStatus(id, { 
-                        status: 'delivered_to_seller', 
+                        status: returnRequest.type === 'exchange' ? 'inspection_pending' : 'delivered_to_seller', 
                         receivedAt: new Date().toISOString() 
                       });
                       if (success) {
-                        toast.success("Receipt confirmed! Admin notified for refund processing.");
+                        toast.success("Receipt confirmed!");
                       }
                     }
                   }}
@@ -333,6 +407,26 @@ const ReturnRequestDetail = () => {
               <FiArrowLeft className="rotate-180 text-xs" />
             </Link>
           </div>
+
+          {/* Replacement Order Details (Exchange Only) */}
+          {returnRequest.type === 'exchange' && returnRequest.replacementOrderId && (
+            <div className="bg-indigo-50 rounded-2xl p-5 shadow-sm border border-indigo-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-indigo-900 mb-1 flex items-center gap-2">
+                  <FiRefreshCw className="animate-spin-slow" />
+                  Replacement Order Linked
+                </h3>
+                <p className="text-xs text-indigo-600 font-medium">New Order generated for this exchange</p>
+                <p className="text-xl font-black text-indigo-900 mt-2 tracking-tight">{returnRequest.replacementOrderId}</p>
+              </div>
+              <Link 
+                to={`/vendor/orders/${returnRequest.replacementOrderId}`}
+                className="px-5 py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
+              >
+                Track Shipment
+              </Link>
+            </div>
+          )}
 
           {/* Return Items */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
@@ -465,6 +559,25 @@ const ReturnRequestDetail = () => {
                 ))}
               </div>
               <p className="text-[10px] text-gray-400 mt-3 italic">These photos were taken by the delivery boy during pickup.</p>
+            </div>
+          )}
+
+          {/* Forward Tracking (Replacement) */}
+          {returnRequest.type === 'exchange' && returnRequest.forwardTrackingNumber && (
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-indigo-500">
+              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                <FiTruck className="text-indigo-600 text-base" />
+                Forward Tracking
+              </h2>
+              <div className="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-indigo-400 font-bold uppercase mb-1">Replacement Courier</p>
+                  <p className="font-mono font-bold text-gray-800">{returnRequest.forwardTrackingNumber}</p>
+                </div>
+                <div className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-[10px] font-black uppercase">
+                  Shipped
+                </div>
+              </div>
             </div>
           )}
 
@@ -611,7 +724,7 @@ const ReturnRequestDetail = () => {
               Return Journey
             </h2>
             <div className="py-2">
-              <ReturnTimeline currentStatus={returnRequest.status} role="seller" />
+              <ReturnTimeline currentStatus={returnRequest.status} requestType={returnRequest.type || 'return'} role="seller" />
             </div>
             
             <div className="mt-6 p-3 bg-blue-50 rounded-xl border border-blue-100 italic">

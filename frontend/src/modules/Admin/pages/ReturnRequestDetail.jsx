@@ -8,13 +8,21 @@ import { useReturnStore } from '../../../shared/store/returnStore';
 import { 
   FiArrowLeft, FiCheck, FiX, FiPhone, FiMail, FiPackage, 
   FiCalendar, FiRefreshCw, FiShoppingBag, FiDollarSign, 
-  FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser, FiCamera, FiImage 
+  FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser, FiCamera, FiImage, FiCheckCircle 
 } from 'react-icons/fi';
 
 const ReturnRequestDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { fetchReturnRequestById, updateReturnStatus, assignDeliveryToReturn, processReturnRefund } = useReturnStore();
+  const { 
+    fetchReturnRequestById, 
+    updateReturnStatus, 
+    assignDeliveryToReturn, 
+    processReturnRefund,
+    inspectExchangeItem,
+    shipReplacement,
+    resolveInspectionFailure
+  } = useReturnStore();
   const [returnRequest, setReturnRequest] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState('');
@@ -22,8 +30,13 @@ const ReturnRequestDetail = () => {
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
   const statusTransitions = {
     pending: ['approved', 'rejected'],
-    approved: ['processing', 'completed'],
-    processing: ['completed'],
+    approved: ['processing', 'completed', 'inspection_pending'],
+    processing: ['completed', 'picked_up'],
+    picked_up: ['delivered_to_seller', 'inspection_pending'],
+    delivered_to_seller: ['inspection_pending', 'completed'],
+    inspection_pending: ['approved', 'inspection_rejected'],
+    inspection_rejected: [],
+    replacement_shipped: ['completed'],
     rejected: [],
     completed: [],
   };
@@ -98,9 +111,14 @@ const ReturnRequestDetail = () => {
     const statusMap = {
       pending: 'pending',
       approved: 'approved',
+      inspection_pending: 'warning',
+      inspection_rejected: 'error',
+      replacement_shipped: 'processing',
       rejected: 'rejected',
       processing: 'processing',
       completed: 'completed',
+      picked_up: 'processing',
+      delivered_to_seller: 'success',
     };
     return statusMap[status] || 'pending';
   };
@@ -135,7 +153,14 @@ const ReturnRequestDetail = () => {
             <FiArrowLeft className="text-lg text-gray-600" />
           </button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{returnRequest.id}</h1>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">{returnRequest.id}</h1>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest ${
+                returnRequest.type === 'exchange' ? 'bg-indigo-100 text-indigo-700' : 'bg-primary-100 text-primary-700'
+              }`}>
+                {returnRequest.type === 'exchange' ? 'Exchange' : 'Return'}
+              </span>
+            </div>
             <p className="text-xs text-gray-500">Requested on {formatDateTime(returnRequest.requestDate)}</p>
           </div>
         </div>
@@ -192,7 +217,7 @@ const ReturnRequestDetail = () => {
                   Assign Pickup
                 </button>
               )}
-              {returnRequest.status === 'delivered_to_seller' && returnRequest.refundStatus === 'pending' && (
+              {returnRequest.status === 'delivered_to_seller' && returnRequest.refundStatus === 'pending' && returnRequest.type !== 'exchange' && (
                 <button
                   onClick={() => {
                     if (window.confirm('Process refund for this return request?')) {
@@ -203,6 +228,30 @@ const ReturnRequestDetail = () => {
                 >
                   <FiRefreshCw className="text-sm" />
                   Process Refund
+                </button>
+              )}
+              {returnRequest.status === 'inspection_pending' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 text-xs font-bold font-mono tracking-tighter shadow-sm">
+                  <FiSearch className="animate-pulse" />
+                  AWAITING SELLER QUALITY CHECK
+                </div>
+              )}
+              {returnRequest.status === 'inspection_rejected' && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg border border-red-200 text-xs font-bold">
+                  <FiAlertCircle />
+                  INSPECTION FAILED (PENDING RESOLUTION)
+                </div>
+              )}
+              {returnRequest.status === 'approved' && returnRequest.type === 'exchange' && (
+                <button
+                  onClick={() => {
+                    const trk = window.prompt('Enter Forward Tracking Number:', `TRK-EXC-${Math.random().toString(36).substr(2, 6).toUpperCase()}`);
+                    if (trk) shipReplacement(id, trk);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold shadow-md"
+                >
+                  <FiTruck className="text-sm" />
+                  Ship Replacement
                 </button>
               )}
             </>
@@ -252,6 +301,28 @@ const ReturnRequestDetail = () => {
             </Link>
           </div>
 
+          {/* Replacement Order Link */}
+          {returnRequest.replacementOrderId && (
+            <div className="bg-indigo-50 rounded-lg p-4 shadow-sm border border-indigo-200">
+              <h2 className="text-sm font-bold text-indigo-800 mb-3 flex items-center gap-2">
+                <FiRefreshCw className="text-indigo-600 text-base" />
+                Replacement Order Generated
+              </h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-indigo-600 font-bold uppercase tracking-wider mb-1">New Order ID</p>
+                  <p className="text-lg font-black text-indigo-900">{returnRequest.replacementOrderId}</p>
+                </div>
+                <Link
+                  to={`/admin/orders/${returnRequest.replacementOrderId}`}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all shadow-md"
+                >
+                  Manage Shipment
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Return Items */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
@@ -296,23 +367,43 @@ const ReturnRequestDetail = () => {
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
               <FiAlertCircle className="text-primary-600 text-base" />
-              Return Reason
+              Return Overview & Governance
             </h2>
-            <div className="space-y-2">
+            <div className="space-y-4">
               <div>
-                <p className="text-xs text-gray-500 mb-1">Reason</p>
+                <p className="text-xs text-gray-500 mb-1">Reason for Return</p>
                 <p className="font-semibold text-sm text-gray-800">{returnRequest.reason}</p>
+                {returnRequest.description && (
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg mt-2">{returnRequest.description}</p>
+                )}
               </div>
-              {returnRequest.description && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">Description</p>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">{returnRequest.description}</p>
-                </div>
-              )}
-              {returnRequest.rejectionReason && (
-                <div>
-                  <p className="text-xs text-red-500 mb-1">Rejection Reason</p>
-                  <p className="text-sm text-red-700 bg-red-50 p-3 rounded-lg">{returnRequest.rejectionReason}</p>
+
+              {/* Inspection Failure Resolution UI */}
+              {returnRequest.status === 'inspection_rejected' && (
+                <div className="bg-red-50 p-4 rounded-xl border border-red-100 space-y-3">
+                    <div className="flex items-center gap-2 text-red-700 font-bold text-sm">
+                        <FiAlertCircle />
+                        <span>INSPECTION FAILED BY SELLER</span>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-red-200">
+                        <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Seller's Notes:</p>
+                        <p className="text-sm italic text-gray-700">"{returnRequest.inspectionNotes || 'No specific notes provided.'}"</p>
+                    </div>
+                    <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                        <button 
+                            onClick={() => resolveInspectionFailure(id, 'refund')}
+                            className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold text-xs hover:bg-red-700 shadow-lg shadow-red-100"
+                        >
+                            Convert to Refund
+                        </button>
+                        <button 
+                            onClick={() => resolveInspectionFailure(id, 'return')}
+                            className="flex-1 px-4 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl font-bold text-xs hover:bg-gray-50"
+                        >
+                            Return Item to Customer
+                        </button>
+                    </div>
+                    <p className="text-[10px] text-gray-400 italic">Select a resolution to settle this exchange request.</p>
                 </div>
               )}
             </div>
@@ -409,11 +500,11 @@ const ReturnRequestDetail = () => {
                   </a>
                 </div>
               )}
-              </div>
             </div>
           </div>
+        </div>
 
-          {/* Sidebar */}
+        {/* Sidebar */}
         <div className="space-y-4">
           {/* Logistics Information */}
           {returnRequest.deliveryBoyId && (
@@ -427,13 +518,53 @@ const ReturnRequestDetail = () => {
                   <FiUser size={20} />
                 </div>
                 <div>
-                  <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest leading-none mb-1">Assigned Rider</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest leading-none">Assigned Rider</p>
+                  </div>
                   <p className="text-sm font-bold text-gray-800">
                     {typeof returnRequest.deliveryBoyId === 'object' 
                       ? returnRequest.deliveryBoyId.name 
                       : returnRequest.deliveryBoyId === 'DB-001' ? 'Rahul Singh' : "Rider ID: " + returnRequest.deliveryBoyId}
                   </p>
                   <p className="text-[10px] text-gray-500 font-medium">ID: {typeof returnRequest.deliveryBoyId === 'object' ? returnRequest.deliveryBoyId.id : returnRequest.deliveryBoyId}</p>
+                </div>
+              </div>
+
+              {/* Vendor Monitoring Flag */}
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Seller Performance Audit</p>
+                 <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] text-amber-700 font-bold">Inspection Rejection Rate</span>
+                        <span className="px-1.5 py-0.5 bg-amber-200 text-amber-800 rounded text-[10px] font-black">12%</span>
+                    </div>
+                    <div className="w-full bg-amber-100 h-1 rounded-full overflow-hidden">
+                        <div className="bg-amber-500 h-full w-[12%]" />
+                    </div>
+                    <p className="text-[9px] text-amber-600 mt-2 font-medium">
+                        <FiAlertCircle className="inline mr-1" />
+                        Within normal range. No abuse flagged.
+                    </p>
+                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Forward Logistics (For Exchange) */}
+          {returnRequest.type === 'exchange' && returnRequest.forwardTrackingNumber && (
+             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-indigo-500">
+              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                <FiTruck className="text-indigo-600 text-base" />
+                Forward Shipment (Replacement)
+              </h2>
+              <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest leading-none mb-1">Tracking Number</p>
+                  <p className="font-mono font-bold text-gray-800">{returnRequest.forwardTrackingNumber}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Status</p>
+                  <span className="px-2 py-0.5 bg-indigo-200 text-indigo-800 rounded text-[10px] font-bold">IN TRANSIT</span>
                 </div>
               </div>
             </div>
@@ -513,6 +644,15 @@ const ReturnRequestDetail = () => {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-800">Rejected</p>
                     <p className="text-xs text-gray-500">{formatDateTime(returnRequest.updatedAt)}</p>
+                  </div>
+                </div>
+              )}
+              {returnRequest.status === 'inspection_rejected' && (
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-600 mt-1.5 flex-shrink-0"></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-red-700">Inspection Failed</p>
+                    <p className="text-xs text-gray-500">Awaiting Admin Resolution</p>
                   </div>
                 </div>
               )}

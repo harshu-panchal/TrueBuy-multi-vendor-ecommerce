@@ -63,7 +63,49 @@ const buildIdempotencyKey = (payload, userId = null) => {
 export const useOrderStore = create(
   persist(
     (set, get) => ({
-      orders: [],
+      orders: [
+        {
+          id: 'REP-XJ990L',
+          orderId: 'REP-XJ990L',
+          status: 'shipped',
+          date: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+          totalAmount: 4999,
+          paymentMethod: 'exchange',
+          shippingAddress: {
+            name: 'Priya Verma',
+            address: 'Sector 5, Salt Lake',
+            city: 'Kolkata',
+            state: 'West Bengal',
+            zipCode: '700091'
+          },
+          trackingNumber: 'TRK-FWD-88229X-IN',
+          items: [
+            {
+              id: 'PROD-SHOE-01-BLACK',
+              name: 'Men Run Swift 2 Shoes (Black)',
+              price: 4999,
+              quantity: 1,
+              image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop'
+            }
+          ],
+          vendorItems: [
+            {
+              vendorId: 'VEND-991',
+              vendorName: 'Premium Electronics',
+              status: 'shipped',
+              items: [
+                {
+                  id: 'PROD-SHOE-01-BLACK',
+                  name: 'Men Run Swift 2 Shoes (Black)',
+                  price: 4999,
+                  quantity: 1,
+                  image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop'
+                }
+              ]
+            }
+          ]
+        }
+      ],
       isLoading: false,
       hasFetched: false,
       lastError: null,

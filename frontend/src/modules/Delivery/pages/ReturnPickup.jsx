@@ -16,6 +16,12 @@ const ReturnPickup = () => {
   const [images, setImages] = useState([]);
   const [sellerOtp, setSellerOtp] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checklist, setChecklist] = useState({
+    correctProduct: false,
+    nameMatch: false,
+    conditionMatch: false,
+    noMissingParts: false
+  });
 
   React.useEffect(() => {
     const loadRequest = async () => {
@@ -51,6 +57,10 @@ const ReturnPickup = () => {
   };
 
   const handleStep1Complete = async () => {
+    if (Object.values(checklist).some(val => !val)) {
+      toast.error('Please verify all checklist items before pickup');
+      return;
+    }
     if (images.length === 0) {
       toast.error('Please upload at least one image of the item');
       return;
@@ -62,6 +72,30 @@ const ReturnPickup = () => {
     if (success) {
       setStep(2);
       toast.success('Pickup proof recorded. Head to the seller.');
+    }
+  };
+
+  const handleRejectPickup = async () => {
+    const reason = window.prompt("Reason for Rejecting Pickup:");
+    if (!reason) return;
+    
+    setIsSubmitting(true);
+    // - [x] **Logistics & Delivery**
+    // - [x] Update `ReturnPickup.jsx` with a "Condition Verification" checklist
+    // - [x] Implement "Pickup Failed" handling
+    // - [/] **Verification & Mock Data**
+    // - [ ] Seed `returnStore.js` with an active exchange example
+    // - [ ] End-to-end verification of the full lifecycle
+    const success = await updateReturnStatus(id, { 
+      status: 'pickup_failed',
+      rejectionReason: reason,
+      updatedAt: new Date().toISOString()
+    });
+    setIsSubmitting(false);
+    
+    if (success) {
+      toast.error('Pickup data updated as REJECTED');
+      navigate('/delivery/dashboard');
     }
   };
 
@@ -229,12 +263,47 @@ const ReturnPickup = () => {
                   <p className="text-[10px] text-gray-400 mt-3 font-medium italic">Upload clear photos showing the item condition and serial number if applicable.</p>
                 </div>
 
-                <button 
-                  onClick={handleStep1Complete}
-                  className="w-full py-4 gradient-green text-white rounded-2xl font-bold shadow-glow-success active:scale-[0.98] transition-all"
-                >
-                  Confirm Pickup from Customer
-                </button>
+                {/* On-Site Verification Checklist */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                  <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2 uppercase tracking-wider">
+                    <FiCheckCircle className="text-primary-600" />
+                    Verification Checklist
+                  </h2>
+                  <div className="space-y-3">
+                    {Object.entries({
+                      correctProduct: 'Item matches customer images',
+                      nameMatch: 'Product name & model match',
+                      conditionMatch: 'No extra physical damage',
+                      noMissingParts: 'All box contents present'
+                    }).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-3 p-3 rounded-xl border border-gray-50 bg-gray-50/30 cursor-pointer hover:bg-gray-50 transition-colors">
+                        <input 
+                          type="checkbox"
+                          checked={checklist[key]}
+                          onChange={(e) => setChecklist({...checklist, [key]: e.target.checked})}
+                          className="w-5 h-5 rounded text-primary-600 focus:ring-primary-500 border-gray-300"
+                        />
+                        <span className="text-xs text-gray-700 font-semibold">{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button 
+                    onClick={handleStep1Complete}
+                    disabled={Object.values(checklist).some(v => !v) || images.length === 0 || isSubmitting}
+                    className="w-full py-4 gradient-green text-white rounded-2xl font-bold shadow-glow-success active:scale-[0.98] transition-all disabled:opacity-50 disabled:shadow-none"
+                  >
+                    Confirm Pickup
+                  </button>
+                  <button 
+                    onClick={handleRejectPickup}
+                    className="w-full py-4 bg-red-50 text-red-600 border border-red-100 rounded-2xl font-bold active:scale-[0.98] transition-all"
+                  >
+                    Reject Pickup
+                  </button>
+                </div>
               </motion.div>
             ) : (
               <motion.div 
