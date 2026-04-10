@@ -15,15 +15,11 @@ import { motion } from 'framer-motion';
 
 const RevenueVsOrdersChart = ({ data, period = 'month' }) => {
   const filteredData = useMemo(() => {
-    const range = getDateRange(period);
-    const filtered = filterByDateRange(data, range.start, range.end);
-    // Show last 7 days for better visibility
-    const daysToShow = 7;
-    return filtered.slice(-daysToShow).map((item) => ({
+    return (data || []).map((item) => ({
       ...item,
       dateLabel: formatDate(item.date, { month: 'short', day: 'numeric' }),
     }));
-  }, [data, period]);
+  }, [data]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {

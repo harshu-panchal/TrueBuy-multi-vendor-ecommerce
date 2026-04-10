@@ -16,13 +16,11 @@ import { motion } from 'framer-motion';
 
 const RevenueLineChart = ({ data, period = 'month' }) => {
   const filteredData = useMemo(() => {
-    const range = getDateRange(period);
-    const filtered = filterByDateRange(data, range.start, range.end);
-    return filtered.map((item) => ({
+    return (data || []).map((item) => ({
       ...item,
       dateLabel: formatDate(item.date, { month: 'short', day: 'numeric' }),
     }));
-  }, [data, period]);
+  }, [data]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {

@@ -112,6 +112,10 @@ const Dashboard = () => {
           totalCustomers: d.totalUsers || 0,
           totalVendors: d.totalVendors || 0,
           pendingOrders: d.pendingOrders || 0,
+          ordersChange: d.ordersChange || 0,
+          customersChange: d.customersChange || 0,
+          productsChange: d.productsChange || 0,
+          revenueChange: d.revenueChange || 0,
         });
       } else {
         setStats({

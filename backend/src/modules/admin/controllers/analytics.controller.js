@@ -8,14 +8,51 @@ import Product from '../../../models/Product.model.js';
 // GET /api/admin/analytics/dashboard
 export const getDashboardStats = asyncHandler(async (req, res) => {
     const activeOrderFilter = { isDeleted: { $ne: true } };
-    const [totalOrders, totalUsers, totalVendors, totalProducts, revenueAgg, pendingOrders] = await Promise.all([
+    
+    // For calculating month-over-month changes
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+    const [
+        totalOrders, totalUsers, totalVendors, totalProducts, revenueAgg, pendingOrders,
+        currMonthOrders, lastMonthOrders,
+        currMonthUsers, lastMonthUsers,
+        currMonthProducts, lastMonthProducts,
+        currMonthRevenueAgg, lastMonthRevenueAgg
+    ] = await Promise.all([
         Order.countDocuments(activeOrderFilter),
         User.countDocuments({ role: 'customer' }),
         Vendor.countDocuments({ status: 'approved' }),
         Product.countDocuments({ isActive: true }),
         Order.aggregate([{ $match: { ...activeOrderFilter, status: { $ne: 'cancelled' } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
         Order.countDocuments({ ...activeOrderFilter, status: 'pending' }),
+        
+        // Current Month stats
+        Order.countDocuments({ ...activeOrderFilter, createdAt: { $gte: currentMonthStart } }),
+        Order.countDocuments({ ...activeOrderFilter, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }),
+        User.countDocuments({ role: 'customer', createdAt: { $gte: currentMonthStart } }),
+        User.countDocuments({ role: 'customer', createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }),
+        Product.countDocuments({ isActive: true, createdAt: { $gte: currentMonthStart } }),
+        Product.countDocuments({ isActive: true, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }),
+        Order.aggregate([
+            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: { $gte: currentMonthStart } } },
+            { $group: { _id: null, total: { $sum: '$total' } } }
+        ]),
+        Order.aggregate([
+            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } } },
+            { $group: { _id: null, total: { $sum: '$total' } } }
+        ]),
     ]);
+
+    const calculateChange = (current, previous) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return Number((((current - previous) / previous) * 100).toFixed(1));
+    };
+
+    const currRev = currMonthRevenueAgg[0]?.total || 0;
+    const lastRev = lastMonthRevenueAgg[0]?.total || 0;
 
     res.status(200).json(new ApiResponse(200, {
         totalOrders,
@@ -24,6 +61,10 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         totalProducts,
         totalRevenue: revenueAgg[0]?.total || 0,
         pendingOrders,
+        ordersChange: calculateChange(currMonthOrders, lastMonthOrders),
+        customersChange: calculateChange(currMonthUsers, lastMonthUsers),
+        productsChange: calculateChange(currMonthProducts, lastMonthProducts),
+        revenueChange: calculateChange(currRev, lastRev)
     }, 'Dashboard stats fetched.'));
 });
 
