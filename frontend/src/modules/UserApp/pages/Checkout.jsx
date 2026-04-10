@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiMapPin,
@@ -25,6 +25,29 @@ import MobileCheckoutSteps from "../components/Mobile/MobileCheckoutSteps";
 import PageTransition from "../../../shared/components/PageTransition";
 import OrderSummary from "../components/Mobile/CheckoutOrderSummary";
 
+const RAZORPAY_SCRIPT_URL = "https://checkout.razorpay.com/v1/checkout.js";
+const CHECKOUT_AUTOFILL_STORAGE_PREFIX = "truebuy:checkout:shippingAutofill:v1:";
+
+const getCheckoutAutofillKey = (user) => {
+  const id = user?.id || user?._id || user?.email || "guest";
+  return `${CHECKOUT_AUTOFILL_STORAGE_PREFIX}${String(id)}`;
+};
+
+const sanitizeAutofillFormData = (value) => {
+  const source = value && typeof value === "object" ? value : {};
+  const safeText = (v) => String(v ?? "");
+  return {
+    name: safeText(source.name),
+    email: safeText(source.email),
+    phone: safeText(source.phone),
+    address: safeText(source.address),
+    city: safeText(source.city),
+    zipCode: safeText(source.zipCode),
+    state: safeText(source.state),
+    country: safeText(source.country),
+    paymentMethod: safeText(source.paymentMethod || "online") || "online",
+  };
+};
 
 const MobileCheckout = () => {
   const navigate = useNavigate();
@@ -60,8 +83,82 @@ const MobileCheckout = () => {
     zipCode: "",
     state: "",
     country: "",
-    paymentMethod: "card",
+    paymentMethod: "online",
   });
+
+  const checkoutAutofillKey = useMemo(() => getCheckoutAutofillKey(user), [user]);
+  const autofillLoadedKeyRef = useRef(null);
+
+  useEffect(() => {
+    autofillLoadedKeyRef.current = null;
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(checkoutAutofillKey);
+      if (!raw) {
+        autofillLoadedKeyRef.current = checkoutAutofillKey;
+        return;
+      }
+
+      const payload = JSON.parse(raw);
+      const nextFormData = sanitizeAutofillFormData(payload?.formData);
+      setFormData((prev) => ({ ...prev, ...nextFormData }));
+
+      const nextShippingOption = payload?.shippingOption;
+      if (typeof nextShippingOption === "string" && nextShippingOption.trim()) {
+        setShippingOption(nextShippingOption);
+      }
+    } catch {
+      // Ignore storage issues and keep default behavior.
+    } finally {
+      autofillLoadedKeyRef.current = checkoutAutofillKey;
+    }
+  }, [checkoutAutofillKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (autofillLoadedKeyRef.current !== checkoutAutofillKey) {
+      return;
+    }
+
+    try {
+      const payload = {
+        v: 1,
+        updatedAt: new Date().toISOString(),
+        formData: sanitizeAutofillFormData(formData),
+        shippingOption,
+      };
+      localStorage.setItem(checkoutAutofillKey, JSON.stringify(payload));
+    } catch {
+      // Ignore quota/private mode errors.
+    }
+  }, [checkoutAutofillKey, formData, shippingOption]);
+
+  const loadRazorpayScript = () =>
+    new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const existing = document.querySelector(`script[src="${RAZORPAY_SCRIPT_URL}"]`);
+      if (existing) {
+        existing.addEventListener("load", () => resolve(true), { once: true });
+        existing.addEventListener("error", () => resolve(false), { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = RAZORPAY_SCRIPT_URL;
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -233,8 +330,8 @@ const MobileCheckout = () => {
 
   const handleSelectAddress = (address) => {
     setSelectedAddressId(address.id);
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       name: address.fullName,
       phone: address.phone,
       address: address.address,
@@ -242,7 +339,7 @@ const MobileCheckout = () => {
       zipCode: address.zipCode,
       state: address.state,
       country: address.country,
-    });
+    }));
   };
 
   const handleNewAddress = async (addressData) => {
@@ -278,7 +375,8 @@ const MobileCheckout = () => {
   }
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -319,11 +417,12 @@ const MobileCheckout = () => {
     } else if (step === 2) {
       setIsPlacingOrder(true);
       try {
+        const isOnlinePayment = formData.paymentMethod === "online";
         const order = await createOrder({
           userId: isAuthenticated ? user?.id : null,
           items: items,
           shippingAddress: normalizedShipping,
-          paymentMethod: formData.paymentMethod,
+          paymentMethod: isOnlinePayment ? "card" : "cod",
           subtotal: total,
           shipping: shipping,
           tax: tax,
@@ -332,6 +431,65 @@ const MobileCheckout = () => {
           couponCode: appliedCoupon ? (appliedCoupon.code || couponCode.trim().toUpperCase()) : null,
           shippingOption,
         });
+
+        if (isOnlinePayment) {
+          const loaded = await loadRazorpayScript();
+          if (!loaded || !window.Razorpay) {
+            throw new Error("Unable to load Razorpay checkout.");
+          }
+
+          const [keyResponse, razorpayOrderResponse] = await Promise.all([
+            api.get("/user/payments/razorpay/key"),
+            api.post(`/user/orders/${order.id}/payments/razorpay/order`),
+          ]);
+
+          const keyPayload = keyResponse?.data ?? keyResponse;
+          const rzpPayload = razorpayOrderResponse?.data ?? razorpayOrderResponse;
+          const key = keyPayload?.key;
+          const razorpayOrderId = rzpPayload?.razorpayOrderId;
+          const amount = Number(rzpPayload?.amount || 0);
+          const currency = rzpPayload?.currency || "INR";
+
+          if (!key || !razorpayOrderId || amount <= 0) {
+            throw new Error("Unable to initialize Razorpay payment.");
+          }
+
+          await new Promise((resolve, reject) => {
+            const razorpay = new window.Razorpay({
+              key,
+              amount,
+              currency,
+              name: "Tru Buy",
+              description: `Order #${order.id}`,
+              order_id: razorpayOrderId,
+              prefill: {
+                name: normalizedShipping.name,
+                email: normalizedShipping.email,
+                contact: normalizedShipping.phone,
+              },
+              notes: {
+                appOrderId: String(order.id),
+              },
+              theme: {
+                color: "#10B981",
+              },
+              handler: async (response) => {
+                try {
+                  await api.post(`/user/orders/${order.id}/payments/razorpay/verify`, response);
+                  resolve(true);
+                } catch (verifyError) {
+                  reject(verifyError);
+                }
+              },
+              modal: {
+                ondismiss: () => {
+                  reject(new Error("Payment was cancelled."));
+                },
+              },
+            });
+            razorpay.open();
+          });
+        }
 
         clearCart();
         toast.success("Order placed successfully!");
@@ -558,7 +716,7 @@ const MobileCheckout = () => {
                       Payment Method
                     </h2>
                     <div className="space-y-3 mb-6">
-                      {["card", "cash", "bank"].map((method) => (
+                      {["online", "cod"].map((method) => (
                         <label
                           key={method}
                           className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
@@ -574,11 +732,7 @@ const MobileCheckout = () => {
                             className="w-5 h-5 text-primary-500"
                           />
                           <span className="font-semibold text-gray-800 capitalize text-base">
-                            {method === "card"
-                              ? "Credit/Debit Card"
-                              : method === "cash"
-                                ? "Cash on Delivery"
-                                : "Bank Transfer"}
+                            {method === "online" ? "Online Payment" : "Cash On Delivery"}
                           </span>
                         </label>
                       ))}
@@ -837,7 +991,8 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
   });
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {

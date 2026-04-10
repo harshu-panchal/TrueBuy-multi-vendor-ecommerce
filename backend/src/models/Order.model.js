@@ -49,6 +49,14 @@ const orderSchema = new mongoose.Schema(
             enum: ['pending', 'paid', 'failed', 'refunded'],
             default: 'pending',
         },
+        paymentGateway: {
+            type: String,
+            enum: ['razorpay'],
+        },
+        razorpayOrderId: { type: String, index: true, sparse: true },
+        razorpayPaymentId: { type: String, index: true, sparse: true },
+        razorpaySignature: { type: String },
+        paidAt: Date,
         status: {
             type: String,
             enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
