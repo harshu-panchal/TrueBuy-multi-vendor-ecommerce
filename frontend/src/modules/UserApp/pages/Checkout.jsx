@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiMapPin,
@@ -26,6 +26,28 @@ import PageTransition from "../../../shared/components/PageTransition";
 import OrderSummary from "../components/Mobile/CheckoutOrderSummary";
 
 const RAZORPAY_SCRIPT_URL = "https://checkout.razorpay.com/v1/checkout.js";
+const CHECKOUT_AUTOFILL_STORAGE_PREFIX = "truebuy:checkout:shippingAutofill:v1:";
+
+const getCheckoutAutofillKey = (user) => {
+  const id = user?.id || user?._id || user?.email || "guest";
+  return `${CHECKOUT_AUTOFILL_STORAGE_PREFIX}${String(id)}`;
+};
+
+const sanitizeAutofillFormData = (value) => {
+  const source = value && typeof value === "object" ? value : {};
+  const safeText = (v) => String(v ?? "");
+  return {
+    name: safeText(source.name),
+    email: safeText(source.email),
+    phone: safeText(source.phone),
+    address: safeText(source.address),
+    city: safeText(source.city),
+    zipCode: safeText(source.zipCode),
+    state: safeText(source.state),
+    country: safeText(source.country),
+    paymentMethod: safeText(source.paymentMethod || "online") || "online",
+  };
+};
 
 const MobileCheckout = () => {
   const navigate = useNavigate();
@@ -63,6 +85,60 @@ const MobileCheckout = () => {
     country: "",
     paymentMethod: "online",
   });
+
+  const checkoutAutofillKey = useMemo(() => getCheckoutAutofillKey(user), [user]);
+  const autofillLoadedKeyRef = useRef(null);
+
+  useEffect(() => {
+    autofillLoadedKeyRef.current = null;
+
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const raw = localStorage.getItem(checkoutAutofillKey);
+      if (!raw) {
+        autofillLoadedKeyRef.current = checkoutAutofillKey;
+        return;
+      }
+
+      const payload = JSON.parse(raw);
+      const nextFormData = sanitizeAutofillFormData(payload?.formData);
+      setFormData((prev) => ({ ...prev, ...nextFormData }));
+
+      const nextShippingOption = payload?.shippingOption;
+      if (typeof nextShippingOption === "string" && nextShippingOption.trim()) {
+        setShippingOption(nextShippingOption);
+      }
+    } catch {
+      // Ignore storage issues and keep default behavior.
+    } finally {
+      autofillLoadedKeyRef.current = checkoutAutofillKey;
+    }
+  }, [checkoutAutofillKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (autofillLoadedKeyRef.current !== checkoutAutofillKey) {
+      return;
+    }
+
+    try {
+      const payload = {
+        v: 1,
+        updatedAt: new Date().toISOString(),
+        formData: sanitizeAutofillFormData(formData),
+        shippingOption,
+      };
+      localStorage.setItem(checkoutAutofillKey, JSON.stringify(payload));
+    } catch {
+      // Ignore quota/private mode errors.
+    }
+  }, [checkoutAutofillKey, formData, shippingOption]);
 
   const loadRazorpayScript = () =>
     new Promise((resolve) => {
@@ -254,8 +330,8 @@ const MobileCheckout = () => {
 
   const handleSelectAddress = (address) => {
     setSelectedAddressId(address.id);
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       name: address.fullName,
       phone: address.phone,
       address: address.address,
@@ -263,7 +339,7 @@ const MobileCheckout = () => {
       zipCode: address.zipCode,
       state: address.state,
       country: address.country,
-    });
+    }));
   };
 
   const handleNewAddress = async (addressData) => {
@@ -299,7 +375,8 @@ const MobileCheckout = () => {
   }
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -914,7 +991,8 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
   });
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
