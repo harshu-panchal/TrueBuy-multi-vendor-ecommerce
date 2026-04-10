@@ -5,8 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../../../shared/components/PageTransition';
 import { formatPrice } from '../../../shared/utils/helpers';
 import toast from 'react-hot-toast';
-
-import toast from 'react-hot-toast';
 import { useReturnStore } from '../../../shared/store/returnStore';
 
 const ReturnPickup = () => {
