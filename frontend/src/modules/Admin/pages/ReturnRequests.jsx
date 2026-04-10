@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiSearch, FiEye, FiCheck, FiX, FiRefreshCw, FiAlertCircle, FiUser, FiShoppingBag, FiInfo, FiClock, FiTruck, FiDollarSign } from 'react-icons/fi';
+import { FiSearch, FiEye, FiCheck, FiX, FiRefreshCw, FiAlertCircle, FiUser, FiShoppingBag, FiInfo, FiClock, FiTruck, FiDollarSign, FiImage } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import DataTable from '../components/DataTable';
 import ExportButton from '../components/ExportButton';
@@ -213,8 +213,12 @@ const ReturnRequests = () => {
                     <div className="mt-2 grid grid-cols-2 gap-y-1 gap-x-4">
                       <p className="text-xs text-gray-500 font-medium tracking-tight">ORDER ID</p>
                       <p className="text-xs text-blue-600 font-bold hover:underline cursor-pointer" onClick={() => navigate(`/admin/orders/${req.orderId}`)}>#{req.orderId}</p>
-                      <p className="text-xs text-gray-500 font-medium tracking-tight">PRICE</p>
-                      <p className="text-xs text-gray-800 font-bold">{formatCurrency(req.refundAmount)}</p>
+                      <p className="text-xs text-gray-500 font-medium tracking-tight">{req.type === 'exchange' ? 'VALUE' : 'REFUND'}</p>
+                      <p className="text-xs text-gray-800 font-bold">
+                        {req.type === 'exchange' 
+                          ? formatCurrency(req.items?.[0]?.price || 0) 
+                          : formatCurrency(req.refundAmount)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -253,15 +257,19 @@ const ReturnRequests = () => {
                   
                   {/* Evidence Images */}
                   <div className="flex gap-2">
-                    {[1, 2, 3].map((i) => (
+                    {(req.images || []).length > 0 ? req.images.slice(0, 3).map((img, idx) => (
                       <div 
-                        key={i} 
+                        key={idx} 
                         className="w-10 h-10 rounded-lg bg-gray-100 border border-gray-200 cursor-zoom-in hover:scale-105 transition-transform overflow-hidden"
-                        onClick={() => setPreviewImage('https://via.placeholder.com/300')}
+                        onClick={() => setPreviewImage(img)}
                       >
-                         <img src="https://via.placeholder.com/50" className="w-full h-full object-cover" />
+                         <img src={img} className="w-full h-full object-cover" />
                       </div>
-                    ))}
+                    )) : (
+                      <div className="w-10 h-10 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-300">
+                        <FiImage size={20} />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

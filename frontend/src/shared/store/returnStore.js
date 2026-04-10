@@ -160,6 +160,192 @@ export const useReturnStore = create((set, get) => ({
                     image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop'
                 }
             ]
+        },
+        {
+            id: 'EXC-99X-221',
+            orderId: 'ORD-11223',
+            vendorId: 'VEND-991',
+            type: 'exchange',
+            status: 'picked_up',
+            refundStatus: 'not_applicable',
+            deliveryBoyId: 'DB-001',
+            requestDate: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+            updatedAt: new Date().toISOString(),
+            refundAmount: 0,
+            reason: 'Size Issue',
+            description: 'The Large size is too tight. Need an Extra Large instead.',
+            customer: {
+                name: 'Rahul Khanna',
+                email: 'rahul.k@example.com',
+                phone: '+91 99999 88888',
+                address: 'Flat 101, Sunshine Heights, Mumbai - 400001'
+            },
+            vendor: {
+                storeName: 'Premium Electronics',
+                phone: '+91 98XXX XXX99',
+                address: 'Plot 45, Okhla Phase III, New Delhi - 110020',
+                email: 'premium.elec@example.com'
+            },
+            images: [
+                'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&h=500&fit=crop'
+            ],
+            pickupImages: [
+                'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=500&h=500&fit=crop'
+            ],
+            items: [
+                {
+                    id: 'PROD-TSHIRT-01',
+                    name: 'Essential Cotton T-Shirt (White)',
+                    price: 999,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200&h=200&fit=crop'
+                }
+            ]
+        },
+        {
+            id: 'EXC-NEW-442',
+            orderId: 'ORD-99001',
+            vendorId: 'VEND-991',
+            type: 'exchange',
+            status: 'pending',
+            refundStatus: 'not_applicable',
+            requestDate: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+            updatedAt: new Date().toISOString(),
+            refundAmount: 0,
+            reason: 'Color Mismatch',
+            description: 'The blue looks much darker than in the pictures. I want the Navy Blue instead.',
+            customer: {
+                name: 'Anjali Sharma',
+                email: 'anjali.s@example.com',
+                phone: '+91 98XXX XXX55',
+                address: 'C-42, Sector 62, Noida - 201301'
+            },
+            vendor: {
+                storeName: 'Premium Electronics',
+                phone: '+91 98XXX XXX99',
+                address: 'Plot 45, Okhla Phase III, New Delhi - 110020',
+                email: 'premium.elec@example.com'
+            },
+            images: [
+                'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&h=500&fit=crop'
+            ],
+            items: [
+                {
+                    id: 'PROD-WATCH-01',
+                    name: 'Smart Watch Series 7 (Blue)',
+                    price: 2499,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop'
+                }
+            ]
+        },
+        {
+            id: 'EXC-INSP-771',
+            orderId: 'ORD-88221',
+            vendorId: 'VEND-991',
+            type: 'exchange',
+            status: 'inspection_pending',
+            receivedAt: new Date(Date.now() - 3600000).toISOString(), // Received 1 hour ago (SLA active)
+            items: [
+                {
+                    id: 'PROD-AUDIO-99',
+                    name: 'Wireless Noise Cancelling Headphones',
+                    price: 12999,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=200&h=200&fit=crop'
+                }
+            ]
+        },
+        {
+            id: 'EXC-OVERDUE-911',
+            orderId: 'ORD-99112',
+            vendorId: 'VEND-991',
+            type: 'exchange',
+            status: 'inspection_pending',
+            receivedAt: new Date(Date.now() - 172800000).toISOString(), // 48 hours ago (OVERDUE)
+            requestDate: new Date(Date.now() - 432000000).toISOString(),
+            updatedAt: new Date().toISOString(),
+            customer: {
+                name: 'Deepak Patel',
+                email: 'patel.d@example.com',
+                phone: '+91 91XXX XXX11',
+                address: 'Sector 21, Gandhinagar, Gujarat - 382021'
+            },
+            items: [
+                {
+                    id: 'PROD-TAB-02',
+                    name: 'iPad Air (M2 Chip, 256GB)',
+                    price: 59900,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=200&h=200&fit=crop'
+                }
+            ]
+        },
+        {
+            id: 'EXC-FAILED-404',
+            orderId: 'ORD-55001',
+            vendorId: 'VEND-991',
+            type: 'exchange',
+            status: 'inspection_rejected',
+            refundStatus: 'not_applicable',
+            inspectionNotes: 'Item has deep scratches and water damage. Not eligible for exchange.',
+            inspectionDate: new Date(Date.now() - 86400000).toISOString(),
+            requestDate: new Date(Date.now() - 432000000).toISOString(),
+            updatedAt: new Date().toISOString(),
+            customer: {
+                name: 'Sumit Goyal',
+                email: 'sumit.g@example.com',
+                phone: '+91 99XXX XXX44',
+                address: 'Flat 404, Orchid residency, Pune - 411001'
+            },
+            items: [
+                {
+                    id: 'PROD-MOBILE-88',
+                    name: 'iPhone 15 Pro (Natural Titanium)',
+                    price: 134900,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1695048133142-1a20484d256e?w=200&h=200&fit=crop'
+                }
+            ]
+        },
+        {
+            id: 'EXC-SHIP-101',
+            orderId: 'ORD-77665',
+            vendorId: 'VEND-991',
+            type: 'exchange',
+            status: 'replacement_shipped',
+            refundStatus: 'not_applicable',
+            replacementOrderId: 'REP-XJ990L',
+            forwardTrackingNumber: 'TRK-FWD-88229X-IN',
+            requestDate: new Date(Date.now() - 604800000).toISOString(), // 7 days ago
+            updatedAt: new Date().toISOString(),
+            refundAmount: 0,
+            reason: 'Wrong Color',
+            description: 'Sent Red instead of Black.',
+            customer: {
+                name: 'Priya Verma',
+                email: 'priya@example.com',
+                phone: '+91 95XXX XXX00',
+                address: 'Sector 5, Salt Lake, Kolkata - 700091'
+            },
+            vendor: {
+                storeName: 'Premium Electronics',
+                phone: '+91 98XXX XXX99',
+                address: 'Plot 45, Okhla Phase III, New Delhi - 110020',
+                email: 'premium.elec@example.com'
+            },
+            images: [
+                'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&h=500&fit=crop'
+            ],
+            items: [
+                {
+                    id: 'PROD-SHOE-01',
+                    name: 'Men Run Swift 2 Shoes (Red)',
+                    price: 4999,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=200&h=200&fit=crop'
+                }
+            ]
         }
     ],
     isLoading: false,
@@ -208,10 +394,9 @@ export const useReturnStore = create((set, get) => ({
     },
 
     fetchReturnRequestById: async (id) => {
-        // If it's a mock ID (e.g., from Naina Jewellery mock), return it from local state
-        if (id && String(id).startsWith('RET-')) {
-            return get().returnRequests.find(req => String(req.id) === String(id)) || null;
-        }
+        // Check local state first (covers mock IDs like RET- or EXC-)
+        const localMatch = get().returnRequests.find(req => String(req.id) === String(id));
+        if (localMatch) return localMatch;
 
         set({ isLoading: true });
         try {
@@ -248,10 +433,89 @@ export const useReturnStore = create((set, get) => ({
     },
 
     confirmSellerReceipt: async (id) => {
+        const req = get().returnRequests.find(r => r.id === id);
+        const nextStatus = req?.type === 'exchange' ? 'inspection_pending' : 'delivered_to_seller';
+        
         return await get().updateReturnStatus(id, { 
-            status: 'delivered_to_seller', 
+            status: nextStatus, 
             receivedAt: new Date().toISOString() 
         });
+    },
+
+    inspectExchangeItem: async (id, result, notes) => {
+        set({ isLoading: true });
+        const { returnRequests } = get();
+        const nextStatus = result === 'approved' ? 'approved' : 'inspection_rejected';
+        
+        const updatedRequests = returnRequests.map((req) =>
+            req.id === id ? { 
+                ...req, 
+                status: nextStatus, 
+                inspectionNotes: notes,
+                inspectionDate: new Date().toISOString(),
+                updatedAt: new Date().toISOString() 
+            } : req
+        );
+
+        set({ returnRequests: updatedRequests, isLoading: false });
+        toast.success(result === 'approved' ? 'Inspection approved' : 'Inspection rejected');
+        return true;
+    },
+
+    resolveInspectionFailure: async (id, resolution) => {
+        set({ isLoading: true });
+        const statusData = {
+            status: resolution === 'refund' ? 'completed' : 'rejected', // Return to customer = rejected
+            refundStatus: resolution === 'refund' ? 'pending' : 'not_applicable',
+            resolutionType: resolution,
+            updatedAt: new Date().toISOString()
+        };
+
+        const success = await get().updateReturnStatus(id, statusData);
+        if (success) {
+            toast.success(`Resolution set to: ${resolution === 'refund' ? 'Refund Process' : 'Return to Customer'}`);
+        }
+        set({ isLoading: false });
+        return success;
+    },
+
+    shipReplacement: async (id, trackingNumber) => {
+        set({ isLoading: true });
+        
+        // Generate a mock replacement order
+        const req = get().returnRequests.find(r => r.id === id);
+        const replacementOrderId = `REP-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+
+        // Update the return request
+        const statusData = { 
+            status: 'replacement_shipped',
+            replacementOrderId,
+            forwardTrackingNumber: trackingNumber || `TRK-FWD-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
+            shippedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+
+        const success = await get().updateReturnStatus(id, statusData);
+        if (success) {
+            toast.success('Replacement item shipped!');
+        }
+        set({ isLoading: false });
+        return success;
+    },
+
+    confirmReplacementDelivery: async (id) => {
+        set({ isLoading: true });
+        const statusData = {
+            status: 'completed',
+            deliveredAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        const success = await get().updateReturnStatus(id, statusData);
+        if (success) {
+            toast.success('Exchange completed successfully!');
+        }
+        set({ isLoading: false });
+        return success;
     },
 
     assignDeliveryToReturn: async (id, deliveryBoyId) => {
@@ -346,8 +610,9 @@ export const useReturnStore = create((set, get) => ({
                 const newRequest = {
                     id: `RET-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
                     ...returnRequestData,
+                    type: returnRequestData.type || 'return',
                     status: 'pending',
-                    refundStatus: 'pending',
+                    refundStatus: returnRequestData.type === 'exchange' ? 'not_applicable' : 'pending',
                     requestDate: new Date().toISOString(),
                     updatedAt: new Date().toISOString()
                 };

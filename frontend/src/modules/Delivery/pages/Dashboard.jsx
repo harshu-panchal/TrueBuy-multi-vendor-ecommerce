@@ -364,7 +364,7 @@ const DeliveryDashboard = () => {
                   </div>
                   
                   <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{req.status.replace('_', ' ')}</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{(req.status || 'pending').replace('_', ' ')}</span>
                     <button className="text-xs font-bold text-primary-600 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                       START PICKUP →
                     </button>
