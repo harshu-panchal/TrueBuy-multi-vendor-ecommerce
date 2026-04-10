@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCamera, FiCheckCircle, FiShield, FiUploadCloud, FiTrash2, FiMapPin, FiPhone, FiShoppingBag } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiCheckCircle, FiShield, FiUploadCloud, FiTrash2, FiMapPin, FiPhone, FiShoppingBag, FiImage, FiArrowRight } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../../../shared/components/PageTransition';
 import { formatPrice } from '../../../shared/utils/helpers';
@@ -134,28 +134,75 @@ const ReturnPickup = () => {
                 exit={{ opacity: 0, x: 20 }}
                 className="space-y-4"
               >
-                {/* Customer Details */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-                    <FiMapPin className="text-primary-600" />
-                    Pickup From
-                  </h2>
-                  <p className="font-bold text-gray-800">{returnReq.customer?.name || returnReq.customerName}</p>
-                  <p className="text-xs text-gray-600 mt-1">{returnReq.pickupAddress?.address || returnReq.customerAddress}</p>
-                  <button onClick={() => window.open(`tel:${returnReq.customer?.phone || returnReq.customerPhone}`)} className="mt-3 flex items-center gap-2 text-primary-600 text-xs font-bold bg-primary-50 px-3 py-2 rounded-lg">
-                    <FiPhone /> Call Customer
-                  </button>
+                {/* Pickup & Delivery Overview */}
+                <div className="grid grid-cols-1 gap-3">
+                  {/* Pickup From */}
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+                      <FiMapPin className="text-primary-600" />
+                      Pickup From
+                    </h2>
+                    <p className="font-bold text-gray-800">{returnReq.customer?.name || returnReq.customerName}</p>
+                    <p className="text-xs text-gray-600 mt-1">{returnReq.pickupAddress?.address || returnReq.customerAddress}</p>
+                    <button onClick={() => window.open(`tel:${returnReq.customer?.phone || returnReq.customerPhone}`)} className="mt-3 flex items-center gap-2 text-primary-600 text-xs font-bold bg-primary-50 px-3 py-2 rounded-lg">
+                      <FiPhone /> Call Customer
+                    </button>
+                  </div>
+
+                  {/* Return To (Destination Summary) */}
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 border-l-4 border-l-amber-400">
+                    <h2 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <FiArrowRight className="text-amber-500" />
+                      Deliver To (Seller)
+                    </h2>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="font-bold text-gray-800 text-sm">{returnReq.vendor?.storeName || returnReq.sellerName}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{returnReq.vendor?.address || returnReq.sellerAddress}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => window.open(`tel:${returnReq.vendor?.phone || returnReq.sellerPhone}`)} 
+                          className="flex items-center gap-2 text-amber-600 text-[10px] font-bold bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-100 transition-colors hover:bg-amber-100"
+                        >
+                          <FiPhone size={10} /> Call Seller
+                        </button>
+                        <span className="text-[10px] font-bold text-gray-400">{returnReq.vendor?.phone || returnReq.sellerPhone}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Product Detail */}
+                {/* Product Detail & Customer Images */}
                 <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 mb-4">
                     <img src={returnReq.product?.image || returnReq.items?.[0]?.image} className="w-16 h-16 object-cover rounded-xl border border-gray-100" />
                     <div>
                       <h3 className="font-bold text-gray-800 text-sm line-clamp-2">{returnReq.product?.name || returnReq.items?.[0]?.name}</h3>
                       <p className="text-xs text-gray-500 mt-1">Value: {formatPrice(returnReq.refundAmount)}</p>
                     </div>
                   </div>
+
+                  {/* Customer Evidence */}
+                  {returnReq.images && returnReq.images.length > 0 && (
+                    <div className="pt-4 border-t border-gray-50">
+                      <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <FiImage size={12} /> Images from Customer
+                      </h4>
+                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                        {returnReq.images.map((img, idx) => (
+                          <div 
+                            key={idx} 
+                            className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0 border border-gray-100"
+                            onClick={() => window.open(img, '_blank')}
+                          >
+                            <img src={img} alt="customer proof" className="w-full h-full object-cover" />
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[9px] text-amber-600 font-bold mt-1 italic leading-tight">Match the physical item condition with these photos before picking up.</p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Proof Upload */}

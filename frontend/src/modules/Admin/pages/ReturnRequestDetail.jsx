@@ -323,7 +323,7 @@ const ReturnRequestDetail = () => {
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
                 <FiCamera className="text-primary-600 text-base" />
-                Return Images ({returnRequest.images.length})
+                Return Images from Customer ({returnRequest.images.length})
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
                 {returnRequest.images.map((img, idx) => (
@@ -343,7 +343,35 @@ const ReturnRequestDetail = () => {
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-gray-400 mt-3 italic">Click an image to view it full size.</p>
+            </div>
+          )}
+
+          {/* Pickup Proof (from Rider) */}
+          {returnRequest.pickupImages && returnRequest.pickupImages.length > 0 && (
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-green-500">
+              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                <FiCheckCircle className="text-green-600 text-base" />
+                Pickup Proof from Rider ({returnRequest.pickupImages.length})
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {returnRequest.pickupImages.map((img, idx) => (
+                  <div 
+                    key={idx} 
+                    className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 group cursor-pointer"
+                    onClick={() => window.open(img, '_blank')}
+                  >
+                    <img 
+                      src={img} 
+                      alt={`Pickup Proof ${idx + 1}`} 
+                      className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <FiImage className="text-white text-xl" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-3 italic">These photos were taken by the delivery partner during pickup.</p>
             </div>
           )}
 
@@ -381,12 +409,35 @@ const ReturnRequestDetail = () => {
                   </a>
                 </div>
               )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Sidebar */}
+          {/* Sidebar */}
         <div className="space-y-4">
+          {/* Logistics Information */}
+          {returnRequest.deliveryBoyId && (
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <FiTruck className="text-primary-600 text-base" />
+                Logistics Partner
+              </h2>
+              <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                  <FiUser size={20} />
+                </div>
+                <div>
+                  <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest leading-none mb-1">Assigned Rider</p>
+                  <p className="text-sm font-bold text-gray-800">
+                    {typeof returnRequest.deliveryBoyId === 'object' 
+                      ? returnRequest.deliveryBoyId.name 
+                      : returnRequest.deliveryBoyId === 'DB-001' ? 'Rahul Singh' : "Rider ID: " + returnRequest.deliveryBoyId}
+                  </p>
+                  <p className="text-[10px] text-gray-500 font-medium">ID: {typeof returnRequest.deliveryBoyId === 'object' ? returnRequest.deliveryBoyId.id : returnRequest.deliveryBoyId}</p>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Refund Summary */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">

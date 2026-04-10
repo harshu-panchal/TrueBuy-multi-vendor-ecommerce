@@ -16,7 +16,9 @@ import {
   FiUser,
   FiInfo,
   FiCamera,
-  FiImage
+  FiImage,
+  FiCheckCircle,
+  FiTruck,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import StatusBadge from "../../../../shared/components/Badge";
@@ -414,7 +416,7 @@ const ReturnRequestDetail = () => {
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
                 <FiCamera className="text-primary-600 text-base" />
-                Return Images ({returnRequest.images.length})
+                Return Images from Customer ({returnRequest.images.length})
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
                 {returnRequest.images.map((img, idx) => (
@@ -434,7 +436,35 @@ const ReturnRequestDetail = () => {
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-gray-400 mt-3 italic">Click an image to view it full size.</p>
+            </div>
+          )}
+
+          {/* Pickup Proof (from Rider) */}
+          {returnRequest.pickupImages && returnRequest.pickupImages.length > 0 && (
+            <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-green-500">
+              <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
+                <FiCheckCircle className="text-green-600 text-base" />
+                Pickup Proof from Rider ({returnRequest.pickupImages.length})
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                {returnRequest.pickupImages.map((img, idx) => (
+                  <div 
+                    key={idx} 
+                    className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 group cursor-pointer shadow-sm hover:shadow-md transition-shadow"
+                    onClick={() => window.open(img, '_blank')}
+                  >
+                    <img 
+                      src={img} 
+                      alt={`Pickup Proof ${idx + 1}`} 
+                      className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <FiImage className="text-white text-xl" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-3 italic">These photos were taken by the delivery boy during pickup.</p>
             </div>
           )}
 
@@ -490,7 +520,7 @@ const ReturnRequestDetail = () => {
           {/* Logistics Information */}
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
-              <FiRefreshCw className="text-primary-600 text-base" />
+              <FiTruck className="text-primary-600 text-base" />
               Logistics Information
             </h2>
             {returnRequest.deliveryBoyId ? (
@@ -500,11 +530,11 @@ const ReturnRequestDetail = () => {
                     <FiUser size={20} />
                   </div>
                   <div>
-                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest">Assigned Partner</p>
+                    <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest leading-none mb-1">Assigned Partner</p>
                     <p className="text-sm font-bold text-gray-800">
                       {typeof returnRequest.deliveryBoyId === 'object' 
                         ? returnRequest.deliveryBoyId.name 
-                        : "Rider ID: " + returnRequest.deliveryBoyId}
+                        : returnRequest.deliveryBoyId === 'DB-001' ? 'Rahul Singh' : "Rider ID: " + returnRequest.deliveryBoyId}
                     </p>
                     {typeof returnRequest.deliveryBoyId === 'object' && returnRequest.deliveryBoyId.phone && (
                       <a href={`tel:${returnRequest.deliveryBoyId.phone}`} className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1 mt-0.5">

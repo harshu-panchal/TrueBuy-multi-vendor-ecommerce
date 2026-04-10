@@ -78,6 +78,88 @@ export const useReturnStore = create((set, get) => ({
                  name: 'Traditional Kundan Necklace Set',
                  image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=200&h=200&fit=crop'
             }
+        },
+        {
+            id: 'RET-DB-PICKUP-TEST',
+            orderId: 'ORD-77221',
+            vendorId: 'VEND-991',
+            status: 'approved',
+            refundStatus: 'pending',
+            deliveryBoyId: 'DB-001',
+            requestDate: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+            updatedAt: new Date().toISOString(),
+            refundAmount: 24999,
+            reason: 'Performance Issues',
+            description: 'The phone freezes frequently during normal use.',
+            customer: {
+                name: 'Karan Malhotra',
+                email: 'karan.m@example.com',
+                phone: '+91 98888 77777',
+                address: 'C-12, Green Park Extension, New Delhi - 110016'
+            },
+            pickupAddress: {
+                name: 'Karan Malhotra',
+                phone: '+91 98888 77777',
+                address: 'C-12, Green Park Extension',
+                city: 'New Delhi',
+                state: 'Delhi',
+                zipCode: '110016'
+            },
+            images: [
+                'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&h=500&fit=crop'
+            ],
+            vendor: {
+                storeName: 'Premium Electronics',
+                phone: '+91 98XXX XXX99',
+                address: 'Plot 45, Okhla Phase III, New Delhi - 110020',
+                email: 'premium.elec@example.com'
+            },
+            items: [
+                {
+                    id: 'PROD-SMART-01',
+                    name: 'Samsung Galaxy S23 FE',
+                    price: 24999,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=200&h=200&fit=crop'
+                }
+            ]
+        },
+        {
+            id: 'RET-COMPLETED-99',
+            orderId: 'ORD-88122',
+            vendorId: 'VEND-991',
+            status: 'completed',
+            refundStatus: 'processed',
+            deliveryBoyId: 'DB-001',
+            requestDate: new Date(Date.now() - 604800000).toISOString(), // 7 days ago
+            updatedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+            refundAmount: 2999,
+            reason: 'Quality Issues',
+            description: 'The touch screen stops responding after 30 minutes of use.',
+            customer: {
+                name: 'Neha Gupta',
+                email: 'neha.g@example.com',
+                phone: '+91 97777 66666',
+                address: 'Unit 402, Lotus towers, BKC, Mumbai - 400051'
+            },
+            vendor: {
+                storeName: 'Premium Electronics',
+                phone: '+91 98XXX XXX99',
+                address: 'Plot 45, Okhla Phase III, New Delhi - 110020',
+                email: 'premium.elec@example.com'
+            },
+            images: [
+                'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=500&h=500&fit=crop'
+            ],
+            items: [
+                {
+                    id: 'PROD-WATCH-01',
+                    name: 'Boat Wave Smartwatch (Black)',
+                    price: 2999,
+                    quantity: 1,
+                    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&h=200&fit=crop'
+                }
+            ]
         }
     ],
     isLoading: false,
