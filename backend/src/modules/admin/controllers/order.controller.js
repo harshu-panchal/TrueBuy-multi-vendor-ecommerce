@@ -7,6 +7,7 @@ import User from '../../../models/User.model.js';
 import Commission from '../../../models/Commission.model.js';
 import Product from '../../../models/Product.model.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { completeExchangeAfterDelivery } from '../../exchange/services/exchange.service.js';
 
 // GET /api/admin/orders
 export const getAllOrders = asyncHandler(async (req, res) => {
@@ -170,6 +171,14 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 
     await order.save();
+
+    if (nextStatus === 'delivered' && String(order.sourceType || '') === 'exchange_replacement') {
+        await completeExchangeAfterDelivery({
+            replacementOrderId: order._id,
+            actorId: req.user.id,
+            note: 'Replacement delivered via admin workflow.',
+        });
+    }
 
     if (nextStatus === 'cancelled') {
         // Reverse vendor earnings visibility for this order.

@@ -6,6 +6,7 @@ import Commission from '../../../models/Commission.model.js';
 import Settlement from '../../../models/Settlement.model.js';
 import mongoose from 'mongoose';
 import { createNotification } from '../../../services/notification.service.js';
+import { completeExchangeAfterDelivery } from '../../exchange/services/exchange.service.js';
 
 const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
     const statuses = (vendorItems || [])
@@ -95,6 +96,14 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     );
     order.status = deriveTopLevelOrderStatus(order.vendorItems, order.status);
     await order.save();
+
+    if (status === 'delivered' && String(order.sourceType || '') === 'exchange_replacement') {
+        await completeExchangeAfterDelivery({
+            replacementOrderId: order._id,
+            actorId: req.user.id,
+            note: 'Replacement delivered via vendor workflow.',
+        });
+    }
 
     const notificationTasks = [];
     if (order.userId) {

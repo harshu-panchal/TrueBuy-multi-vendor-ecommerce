@@ -685,14 +685,15 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 export const getUserOrders = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
-    const orders = await Order.find({ userId: req.user.id }).sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
-    const total = await Order.countDocuments({ userId: req.user.id });
+    const filter = { userId: req.user.id, sourceType: { $ne: 'exchange_replacement' } };
+    const orders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
+    const total = await Order.countDocuments(filter);
     res.status(200).json(new ApiResponse(200, { orders, total, page: Number(page), pages: Math.ceil(total / limit) }, 'Orders fetched.'));
 });
 
 // GET /api/user/orders/:id
 export const getOrderDetail = asyncHandler(async (req, res) => {
-    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id });
+    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id, sourceType: { $ne: 'exchange_replacement' } });
     if (!order) throw new ApiError(404, 'Order not found.');
     res.status(200).json(new ApiResponse(200, order, 'Order detail fetched.'));
 });

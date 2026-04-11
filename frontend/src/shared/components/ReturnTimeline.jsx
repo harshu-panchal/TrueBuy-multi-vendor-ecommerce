@@ -8,6 +8,32 @@ import {
 const ReturnTimeline = ({ currentStatus, requestType = 'return', role = 'customer' }) => {
   const isExchange = requestType === 'exchange';
   const isSimplified = (role === 'customer' || role === 'user') && isExchange;
+  const normalizedStatus = String(currentStatus || '').trim().toLowerCase();
+  const exchangeStatusAlias = {
+    requested: 'pending',
+    approved: 'approved',
+    rejected: 'rejected',
+    pickup: 'picked_up',
+    replacement: 'replacement_shipped',
+    completed: 'completed',
+  };
+  const canonicalStatus = isExchange ? (exchangeStatusAlias[normalizedStatus] || normalizedStatus) : normalizedStatus;
+
+  const returnSteps = [
+    { id: 'pending', label: 'Requested', icon: <FiClock /> },
+    { id: 'approved', label: 'Approved', icon: <FiCheck /> },
+    { id: 'picked_up', label: 'Picked Up', icon: <FiPackage /> },
+    { id: 'inspection_pending', label: 'Processing', icon: <FiSearch /> },
+    { id: 'completed', label: 'Completed', icon: <FiCheckCircle /> },
+  ];
+
+  const simplifiedExchangeSteps = [
+    { id: 'requested', label: 'Requested', icon: <FiClock />, matchStatuses: ['requested', 'pending'] },
+    { id: 'approved', label: 'Approved', icon: <FiCheck />, matchStatuses: ['approved'] },
+    { id: 'pickup', label: 'Pickup', icon: <FiPackage />, matchStatuses: ['pickup', 'picked_up'] },
+    { id: 'replacement', label: 'Replacement', icon: <FiTruck />, matchStatuses: ['replacement', 'replacement_shipped'] },
+    { id: 'completed', label: 'Completed', icon: <FiCheckCircle />, matchStatuses: ['completed'] },
+  ];
 
   // 1. FULL Exchange Lifecycle (Admin/Seller) - 9 Detailed Steps with Ownership
   const fullExchangeSteps = [
@@ -35,33 +61,33 @@ const ReturnTimeline = ({ currentStatus, requestType = 'return', role = 'custome
 
   const getActiveIndex = () => {
     if (isSimplified) {
-        const idx = steps.findIndex(s => s.matchStatuses.includes(currentStatus));
-        return idx === -1 ? (['replacement_shipped', 'delivered', 'completed'].includes(currentStatus) ? 2 : 0) : idx;
+        const idx = steps.findIndex(s => s.matchStatuses.includes(canonicalStatus));
+        return idx === -1 ? (['replacement_shipped', 'delivered', 'completed'].includes(canonicalStatus) ? 3 : 0) : idx;
     }
     
     // For full flow, handle specific transitions
     if (isExchange) {
-        if (currentStatus === 'pending') return 0;
-        if (currentStatus === 'approved') {
+        if (canonicalStatus === 'pending') return 0;
+        if (canonicalStatus === 'approved') {
             // If it's approved but no delivery boy, it's step 1 (Admin Approved)
             // If it's approved and has a tracking number, it's step 5 (Inspection Verified)
             // This is a common pattern for frontend-only state matching
             return 1; 
         }
-        if (currentStatus === 'picked_up') return 2;
-        if (currentStatus === 'delivered_to_seller') return 3;
-        if (currentStatus === 'inspection_pending') return 4;
+        if (canonicalStatus === 'picked_up') return 2;
+        if (canonicalStatus === 'delivered_to_seller') return 3;
+        if (canonicalStatus === 'inspection_pending') return 4;
         
         // Status 'approved' after inspection is tricky, we treat it as step 5 usually 
         // by checking if we had 'inspection_pending' before. 
         // For this mock, we'll assume index logic handles 'shipped' as the next jump.
         
-        if (currentStatus === 'replacement_shipped') return 6;
-        if (currentStatus === 'delivered') return 7;
-        if (currentStatus === 'completed') return 8;
+        if (canonicalStatus === 'replacement_shipped' || canonicalStatus === 'replacement') return 6;
+        if (canonicalStatus === 'delivered') return 7;
+        if (canonicalStatus === 'completed') return 8;
     }
     
-    const idx = steps.findIndex(s => s.id === currentStatus);
+    const idx = steps.findIndex(s => s.id === canonicalStatus);
     return idx === -1 ? 0 : idx;
   };
 

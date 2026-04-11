@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { FiArrowLeft, FiCamera, FiMapPin, FiCheck, FiInfo, FiTrash2, FiAlertCircle } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiMapPin, FiCheck, FiInfo, FiTrash2, FiAlertCircle, FiSearch, FiShoppingBag, FiRefreshCw } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import MobileLayout from "../components/Layout/MobileLayout";
 import PageTransition from '../../../shared/components/PageTransition';
@@ -8,6 +8,7 @@ import { formatPrice } from '../../../shared/utils/helpers';
 import { useAddressStore } from '../../../shared/store/addressStore';
 import toast from 'react-hot-toast';
 import { useReturnStore } from '../../../shared/store/returnStore';
+import api from '../../../shared/utils/api';
 
 const ReturnRequest = () => {
   const { orderId, productId } = useParams();
@@ -22,8 +23,11 @@ const ReturnRequest = () => {
   const [additionalDetails, setAdditionalDetails] = useState('');
   const [images, setImages] = useState([]);
   const [pickupAddress, setPickupAddress] = useState(null);
-  const [requestType, setRequestType] = useState('return'); // return or exchange
+  const [requestType, setRequestType] = useState(location.state?.requestType || 'return'); // return or exchange
   const [refundMethod, setRefundMethod] = useState('original');
+  const [replacementQuery, setReplacementQuery] = useState('');
+  const [replacementProducts, setReplacementProducts] = useState([]);
+  const [selectedReplacementProduct, setSelectedReplacementProduct] = useState(location.state?.replacementProduct || null);
   const [bankDetails, setBankDetails] = useState({
     accountName: '',
     accountNumber: '',
@@ -57,6 +61,40 @@ const ReturnRequest = () => {
       }
     }
   }, [orderDate]);
+
+  useEffect(() => {
+    const loadReplacementProducts = async () => {
+      if (requestType !== 'exchange') return;
+      try {
+        const response = await api.get('/products', {
+          params: {
+            search: replacementQuery || item?.name || '',
+            limit: 8,
+            sort: 'popular',
+          },
+        });
+        const payload = response.data?.data || response.data || response;
+        const products = Array.isArray(payload?.products) ? payload.products : [];
+        const normalized = products
+          .filter((product) => String(product?._id || '') !== String(item?.id || product?.id || ''))
+          .map((product) => ({
+            id: product._id || product.id,
+            name: product.name,
+            price: Number(product.price || 0),
+            image: product.image || product.images?.[0] || '',
+            vendorName: product.vendorId?.storeName || product.vendorId?.name || 'Vendor',
+            vendorId: product.vendorId?._id || product.vendorId || '',
+            stockQuantity: Number(product.stockQuantity || 0),
+            variant: product.variants?.defaultSelection || product.variants?.defaultVariant || {},
+          }));
+        setReplacementProducts(normalized);
+      } catch (error) {
+        setReplacementProducts([]);
+      }
+    };
+
+    loadReplacementProducts();
+  }, [requestType, replacementQuery, item]);
 
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
@@ -101,11 +139,18 @@ const ReturnRequest = () => {
       toast.error('Please select a pickup address');
       return;
     }
+
+    if (requestType === 'exchange' && !selectedReplacementProduct) {
+      toast.error('Please select a replacement product');
+      return;
+    }
     
     setIsSubmitting(true);
     const success = await submitReturnRequest({
       orderId,
       productIds: [productId],
+      oldProductId: productId,
+      newProductId: selectedReplacementProduct?.id,
       vendorId: item.vendorId || item.vendor?._id || 'VEND-DEFAULT', // Ensure vendor ID is captured
       reason: returnReason,
       description: additionalDetails,
@@ -119,7 +164,9 @@ const ReturnRequest = () => {
       },
       items: [item],
       refundAmount: requestType === 'exchange' ? 0 : item.price,
-      type: requestType
+      type: requestType,
+      oldVariant: item.variant || {},
+      newVariant: selectedReplacementProduct?.variant || {},
     });
 
     setIsSubmitting(false);
@@ -383,6 +430,75 @@ const ReturnRequest = () => {
                   <p className="text-indigo-800 font-bold text-sm">Exchange Policy</p>
                   <p className="text-indigo-700 text-xs mt-1">Exchange is possible only for the same item or same value replacement. If a price difference is found later, it will be handled as a refund/collection.</p>
                 </div>
+              </div>
+            )}
+
+            {requestType === 'exchange' && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
+                <div className="flex items-center gap-2">
+                  <FiShoppingBag className="text-indigo-600" />
+                  <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wider">Choose Replacement Product</h2>
+                </div>
+
+                <div className="relative">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={replacementQuery}
+                    onChange={(e) => setReplacementQuery(e.target.value)}
+                    placeholder="Search replacement product"
+                    className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                  />
+                </div>
+
+                {selectedReplacementProduct && (
+                  <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-3 flex gap-3 items-center">
+                    <img src={selectedReplacementProduct.image} alt={selectedReplacementProduct.name} className="w-16 h-16 rounded-xl object-cover border border-white" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-indigo-700 uppercase tracking-wider">Selected Replacement</p>
+                      <h3 className="font-bold text-gray-900 text-sm line-clamp-2">{selectedReplacementProduct.name}</h3>
+                      <p className="text-xs text-gray-600 mt-1">{selectedReplacementProduct.vendorName}</p>
+                      <p className={`text-xs font-bold mt-1 ${selectedReplacementProduct.price > Number(item.price || 0) ? 'text-amber-600' : selectedReplacementProduct.price < Number(item.price || 0) ? 'text-emerald-600' : 'text-gray-600'}`}>
+                        Price diff: {formatPrice(Math.abs(selectedReplacementProduct.price - Number(item.price || 0)))}
+                        {selectedReplacementProduct.price > Number(item.price || 0) ? ' payable' : selectedReplacementProduct.price < Number(item.price || 0) ? ' refundable' : ' even exchange'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelectedReplacementProduct(null)}
+                      className="text-xs font-bold text-red-600"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3">
+                  {replacementProducts.map((product) => (
+                    <button
+                      key={product.id}
+                      onClick={() => setSelectedReplacementProduct(product)}
+                      className={`text-left rounded-2xl border p-3 transition-all ${selectedReplacementProduct?.id === product.id ? 'border-indigo-500 bg-indigo-50 shadow-sm' : 'border-gray-100 bg-white hover:border-indigo-200'}`}
+                    >
+                      <img src={product.image} alt={product.name} className="w-full aspect-square rounded-xl object-cover bg-gray-100" />
+                      <h3 className="font-bold text-gray-800 text-xs line-clamp-2 mt-2">{product.name}</h3>
+                      <p className="text-[10px] text-gray-500 mt-1">{product.vendorName}</p>
+                      <div className="flex items-center justify-between mt-2">
+                        <span className="text-xs font-bold text-indigo-600">{formatPrice(product.price)}</span>
+                        <span className={`text-[10px] font-bold ${product.stockQuantity > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                          {product.stockQuantity > 0 ? 'In stock' : 'Out of stock'}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setReplacementQuery(item?.name || '')}
+                  className="text-xs font-bold text-indigo-600 flex items-center gap-2"
+                >
+                  <FiRefreshCw size={12} />
+                  Refresh suggestions
+                </button>
               </div>
             )}
 

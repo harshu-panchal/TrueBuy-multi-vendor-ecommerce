@@ -13,6 +13,7 @@ import adminRoutes from './modules/admin/routes/admin.routes.js';
 import vendorRoutes from './modules/vendor/routes/vendor.routes.js';
 import deliveryRoutes from './modules/delivery/routes/delivery.routes.js';
 import returnRoutes from './modules/returns/routes/return.routes.js';
+import exchangeRoutes from './modules/exchange/routes/exchange.routes.js';
 
 // Middleware imports
 import { apiLimiter } from './middlewares/rateLimiter.js';
@@ -88,6 +89,7 @@ app.use(
 );
 app.use('/api', publicRoutes);            // Public: products, categories, brands, coupons, banners
 app.use('/api', returnRoutes);            // Unified returns module: customer/vendor/admin/delivery workflows
+app.use('/api', exchangeRoutes);           // Exchange workflows layered on top of returns/order flows
 app.use('/api/user', userRoutes);         // Customer: auth, addresses, wishlist, reviews, orders
 app.use('/api/admin', adminRoutes);       // Admin: auth, vendors, orders, catalog, analytics
 app.use('/api/vendor', vendorRoutes);     // Vendor: auth, products, orders, earnings

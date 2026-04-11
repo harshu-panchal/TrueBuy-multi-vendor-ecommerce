@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as adminService from '../../modules/Admin/services/adminService';
 import * as vendorService from '../../modules/Vendor/services/vendorService';
+import api from '../utils/api';
 import toast from 'react-hot-toast';
 
 export const useReturnStore = create((set, get) => ({
@@ -362,25 +363,39 @@ export const useReturnStore = create((set, get) => ({
         try {
             const { role, ...apiParams } = params;
             let response;
+            let exchangeResponse = null;
             
             if (role === 'admin') {
                 response = await adminService.getAllReturnRequests(apiParams);
+                exchangeResponse = await api.get('/exchange/admin', { params: apiParams });
             } else if (role === 'vendor') {
                 response = await vendorService.getVendorReturnRequests(apiParams);
+                exchangeResponse = await api.get('/exchange/vendor', { params: apiParams });
             } else {
-                // For users/others, we still filter local state for now or call a user-specific endpoint if exists
-                // But generally, users get their return status from the order detail which calls this with orderId
-                // So we can just return what's in state if no specific API for users
-                set({ isLoading: false });
-                return;
+                response = await api.get('/exchange/my', { params: apiParams });
             }
 
             const payload = response.data?.data || response.data || response;
-            const requests = payload.returnRequests || [];
+            const exchangePayload = exchangeResponse?.data?.data || exchangeResponse?.data || exchangeResponse || {};
+            const returnRequests = Array.isArray(payload.returnRequests) ? payload.returnRequests : [];
+            const exchangeRequests = Array.isArray(payload.exchangeRequests)
+                ? payload.exchangeRequests
+                : Array.isArray(exchangePayload.exchangeRequests)
+                    ? exchangePayload.exchangeRequests
+                    : [];
+            const normalizedReturnRequests = returnRequests.map((request) => ({ ...request, type: request.type || 'return' }));
+            const normalizedExchangeRequests = exchangeRequests.map((request) => ({
+                ...request,
+                type: 'exchange',
+            }));
+            const normalizedRequests = [...normalizedReturnRequests, ...normalizedExchangeRequests];
+            const existingRequests = get().returnRequests;
             
             set({ 
-                returnRequests: requests, 
-                pagination: payload.pagination || get().pagination,
+                returnRequests: role === 'admin' || role === 'vendor'
+                    ? [...normalizedRequests, ...existingRequests.filter((existing) => !normalizedRequests.some((req) => String(req.id) === String(existing.id)))]
+                    : [...normalizedRequests, ...existingRequests.filter((existing) => !normalizedRequests.some((req) => String(req.id) === String(existing.id)))],
+                pagination: payload.pagination || exchangePayload.pagination || get().pagination,
                 isLoading: false 
             });
         } catch (error) {
@@ -400,9 +415,22 @@ export const useReturnStore = create((set, get) => ({
 
         set({ isLoading: true });
         try {
-            const response = await adminService.getReturnRequestById(id);
+            let response = null;
+            try {
+                response = await adminService.getReturnRequestById(id);
+            } catch (error) {
+                if (error?.response?.status === 404) {
+                    response = await api.get(`/exchange/${id}`);
+                } else {
+                    throw error;
+                }
+            }
             set({ isLoading: false });
-            return response.data?.data || response.data || response;
+            const payload = response.data?.data || response.data || response;
+            if (payload?.replacementOrderId || payload?.paymentAdjustment || payload?.inventoryReserved) {
+                return { ...payload, type: 'exchange' };
+            }
+            return payload;
         } catch (error) {
             set({ isLoading: false });
             toast.error(error.message || 'Failed to fetch return request details');
@@ -585,6 +613,27 @@ export const useReturnStore = create((set, get) => ({
     submitReturnRequest: async (returnRequestData) => {
         set({ isLoading: true });
         try {
+            if (returnRequestData?.type === 'exchange') {
+                const response = await api.post('/exchange/request', {
+                    orderId: returnRequestData.orderId,
+                    oldProductId: returnRequestData.oldProductId || returnRequestData.productId || returnRequestData.productIds?.[0],
+                    newProductId: returnRequestData.newProductId || returnRequestData.replacementProductId,
+                    reason: returnRequestData.reason,
+                    description: returnRequestData.description || returnRequestData.additionalDetails || '',
+                    images: Array.isArray(returnRequestData.images) ? returnRequestData.images : [],
+                    oldVariant: returnRequestData.oldVariant || returnRequestData.variant || {},
+                    newVariant: returnRequestData.newVariant || {},
+                    exchangeWindowDays: returnRequestData.exchangeWindowDays || 7,
+                });
+                const payload = { ...(response.data?.data || response.data || response), type: 'exchange' };
+                set((state) => ({
+                    returnRequests: [payload, ...state.returnRequests],
+                    isLoading: false,
+                }));
+                toast.success('Exchange request submitted successfully');
+                return true;
+            }
+
             // Check if there's an existing rejected request for this product in this order
             const existingRequests = get().returnRequests;
             const existingDraft = existingRequests.find(r => 

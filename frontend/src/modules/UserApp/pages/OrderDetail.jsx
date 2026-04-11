@@ -131,7 +131,7 @@ const MobileOrderDetail = () => {
     }
   };
 
-  const handleReturnNavigation = (item) => {
+  const handleReturnNavigation = (item, requestType = 'return') => {
     const existingReturn = getItemReturn(item.id);
     navigate(`/return-request/${order.id}/${item.id}`, { 
       state: { 
@@ -139,7 +139,8 @@ const MobileOrderDetail = () => {
         orderDate: order.date,
         isReRequest: existingReturn?.status === 'rejected',
         previousReason: existingReturn?.reason,
-        previousDescription: existingReturn?.description
+        previousDescription: existingReturn?.description,
+        requestType,
       } 
     });
   };
@@ -151,7 +152,16 @@ const MobileOrderDetail = () => {
   };
 
   const getItemReturn = (productId) => {
-    return returnRequests.find(r => r.orderId === order.id && r.items.some(i => i.id === productId));
+    return returnRequests.find((request) => {
+      const matchesOrder = String(request.orderId) === String(order.id) || String(request.orderRefId) === String(order.id);
+      if (!matchesOrder) return false;
+
+      if (request.type === 'exchange') {
+        return String(request.oldProductId || request.oldProduct?.productId || '') === String(productId);
+      }
+
+      return Array.isArray(request.items) && request.items.some((item) => String(item.id || item.productId || '') === String(productId));
+    });
   };
 
   const isVendorDelivered = (vendorId) => {
@@ -232,12 +242,20 @@ const MobileOrderDetail = () => {
                                   if (!itemReturn) {
                                     return (
                                       (order.status === 'delivered' || vendorGroup.status === 'delivered') && (
-                                        <button
-                                          onClick={() => handleReturnNavigation(item)}
-                                          className="mt-1 text-[10px] font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-2 py-1 rounded-md"
-                                        >
-                                          RETURN
-                                        </button>
+                                        <div className="mt-1 flex flex-col gap-1">
+                                          <button
+                                            onClick={() => handleReturnNavigation(item, 'return')}
+                                            className="text-[10px] font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-2 py-1 rounded-md"
+                                          >
+                                            RETURN
+                                          </button>
+                                          <button
+                                            onClick={() => handleReturnNavigation(item, 'exchange')}
+                                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md"
+                                          >
+                                            EXCHANGE
+                                          </button>
+                                        </div>
                                       )
                                     );
                                   }
@@ -260,7 +278,7 @@ const MobileOrderDetail = () => {
                                           </button>
                                         </div>
                                         <button
-                                          onClick={() => handleReturnNavigation(item)}
+                                          onClick={() => handleReturnNavigation(item, itemReturn.type === 'exchange' ? 'exchange' : 'return')}
                                           className="w-full text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-md"
                                         >
                                           RE-REQUEST
@@ -272,7 +290,7 @@ const MobileOrderDetail = () => {
                                   if (itemReturn.status === 'completed') {
                                     return (
                                       <div className="mt-1 text-[10px] font-bold text-success-600 bg-success-50 px-2 py-1 rounded-md text-center">
-                                        RETURN COMPLETED
+                                        {itemReturn.type === 'exchange' ? 'EXCHANGE COMPLETED' : 'RETURN COMPLETED'}
                                       </div>
                                     );
                                   }
@@ -280,7 +298,7 @@ const MobileOrderDetail = () => {
                                   return (
                                     <div className="mt-1 space-y-1">
                                       <div className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-center">
-                                        {itemReturn.status.toUpperCase()}
+                                        {(itemReturn.type === 'exchange' ? 'EXCHANGE' : 'RETURN')} {String(itemReturn.status || '').toUpperCase()}
                                       </div>
                                       {itemReturn.status === 'pending' && (
                                         <button
@@ -331,12 +349,20 @@ const MobileOrderDetail = () => {
                                   if (!itemReturn) {
                                     return (
                                       (order.status === 'delivered' || isVendorDelivered(item.vendorId)) && (
-                                        <button
-                                          onClick={() => handleReturnNavigation(item)}
-                                          className="mt-1 text-[10px] font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-2 py-1 rounded-md"
-                                        >
-                                          RETURN
-                                        </button>
+                                        <div className="mt-1 flex flex-col gap-1">
+                                          <button
+                                            onClick={() => handleReturnNavigation(item, 'return')}
+                                            className="text-[10px] font-bold text-primary-600 hover:text-primary-700 bg-primary-50 px-2 py-1 rounded-md"
+                                          >
+                                            RETURN
+                                          </button>
+                                          <button
+                                            onClick={() => handleReturnNavigation(item, 'exchange')}
+                                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md"
+                                          >
+                                            EXCHANGE
+                                          </button>
+                                        </div>
                                       )
                                     );
                                   }
@@ -359,7 +385,7 @@ const MobileOrderDetail = () => {
                                           </button>
                                         </div>
                                         <button
-                                          onClick={() => handleReturnNavigation(item)}
+                                          onClick={() => handleReturnNavigation(item, itemReturn.type === 'exchange' ? 'exchange' : 'return')}
                                           className="w-full text-[10px] font-bold text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded-md"
                                         >
                                           RE-REQUEST
@@ -371,7 +397,7 @@ const MobileOrderDetail = () => {
                                   if (itemReturn.status === 'completed') {
                                     return (
                                       <div className="mt-1 text-[10px] font-bold text-success-600 bg-success-50 px-2 py-1 rounded-md text-center">
-                                        RETURN COMPLETED
+                                        {itemReturn.type === 'exchange' ? 'EXCHANGE COMPLETED' : 'RETURN COMPLETED'}
                                       </div>
                                     );
                                   }
@@ -379,7 +405,7 @@ const MobileOrderDetail = () => {
                                   return (
                                     <div className="mt-1 space-y-1">
                                       <div className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-md text-center">
-                                        {itemReturn.status.toUpperCase()}
+                                        {(itemReturn.type === 'exchange' ? 'EXCHANGE' : 'RETURN')} {String(itemReturn.status || '').toUpperCase()}
                                       </div>
                                       {itemReturn.status === 'pending' && (
                                         <button
@@ -506,7 +532,5 @@ const MobileOrderDetail = () => {
 };
 
 export default MobileOrderDetail;
-
-
 
 

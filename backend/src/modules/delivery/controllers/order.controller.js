@@ -6,6 +6,7 @@ import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
+import { completeExchangeAfterDelivery } from '../../exchange/services/exchange.service.js';
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
 const DELIVERY_OTP_MAX_ATTEMPTS = 5;
@@ -316,6 +317,14 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
         order.deliveredAt = new Date();
     }
     await order.save();
+
+    if (status === 'delivered' && String(order.sourceType || '') === 'exchange_replacement') {
+        await completeExchangeAfterDelivery({
+            replacementOrderId: order._id,
+            actorId: req.user.id,
+            note: 'Replacement delivered via delivery workflow.',
+        });
+    }
 
     const statusNotificationTasks = [];
     if (order.userId) {
