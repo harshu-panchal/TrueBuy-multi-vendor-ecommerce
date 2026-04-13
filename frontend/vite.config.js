@@ -12,6 +12,15 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "charts-vendor": ["recharts"],
+          "animation-vendor": ["framer-motion", "gsap", "lottie-react", "@lottiefiles/dotlottie-react"],
+        },
+      },
+    },
   },
   optimizeDeps: {
     include: ["recharts"]

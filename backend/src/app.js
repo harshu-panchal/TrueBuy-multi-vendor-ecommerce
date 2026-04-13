@@ -25,8 +25,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsRoot = path.resolve(__dirname, '../uploads');
 const deliveryDocsRoot = path.resolve(uploadsRoot, 'delivery-docs');
+const jwtSecret = process.env.JWT_SECRET;
+
+const allowedOrigins = String(process.env.CORS_ORIGIN || process.env.CLIENT_URL || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
 const isValidDeliveryDocToken = (relativePath, rawToken) => {
+    if (!jwtSecret) return false;
     if (!rawToken) return false;
     const [expRaw, providedSignature] = String(rawToken).split('.');
     const exp = Number(expRaw);
@@ -34,7 +41,7 @@ const isValidDeliveryDocToken = (relativePath, rawToken) => {
 
     const payload = `${relativePath}|${exp}`;
     const expectedSignature = crypto
-        .createHmac('sha256', process.env.JWT_SECRET || 'delivery-doc-secret')
+        .createHmac('sha256', jwtSecret)
         .update(payload)
         .digest('hex');
 
@@ -45,7 +52,16 @@ const isValidDeliveryDocToken = (relativePath, rawToken) => {
 // ─── Security Middleware ─────────────────────────────────────────────────────
 app.use(helmet());
 app.use(mongoSanitize());
-app.use(cors({ origin: true, credentials: true }));
+app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : 0);
+app.use(cors({
+    origin: (origin, callback) => {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.length === 0) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+}));
 
 // ─── Body Parsing ────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));

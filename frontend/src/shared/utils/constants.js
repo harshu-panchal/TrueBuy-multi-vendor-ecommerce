@@ -1,5 +1,8 @@
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const runtimeDefaultApiBase =
+  typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api';
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || runtimeDefaultApiBase;
 
 // App Constants
 export const APP_NAME = 'Tru Buy';
@@ -21,4 +24,3 @@ export const BREAKPOINTS = {
   xl: 1280,
   '2xl': 1536,
 };
-
