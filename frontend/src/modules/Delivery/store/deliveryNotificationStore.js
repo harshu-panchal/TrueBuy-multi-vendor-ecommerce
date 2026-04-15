@@ -2,8 +2,15 @@ import { create } from "zustand";
 import toast from "react-hot-toast";
 import api from "../../../shared/utils/api";
 
+const unwrapApiData = (response) => {
+  if (response && typeof response === "object" && "data" in response && response.data !== undefined) {
+    return response.data;
+  }
+  return response;
+};
+
 const normalizePayload = (response) => {
-  const root = response?.data ?? response ?? {};
+  const root = unwrapApiData(response) ?? {};
   if (Array.isArray(root)) {
     return {
       notifications: root,
@@ -19,7 +26,7 @@ const normalizePayload = (response) => {
   return {
     notifications,
     unreadCount: Number(root?.unreadCount || 0),
-    pages: Number(root?.pages || 1),
+    pages: Math.max(1, Number(root?.pages || 1)),
   };
 };
 

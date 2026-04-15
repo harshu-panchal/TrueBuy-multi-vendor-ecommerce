@@ -2,6 +2,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import api from '../../../shared/utils/api';
 
+const unwrapApiData = (response) => {
+  if (response && typeof response === 'object' && 'data' in response && response.data !== undefined) {
+    return response.data;
+  }
+  return response;
+};
+
 const normalizeDeliveryBoy = (raw) => {
   if (!raw) return null;
   const id = raw.id || raw._id;
@@ -110,7 +117,7 @@ export const useDeliveryAuthStore = create(
           const response = await api.post('/delivery/auth/register', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response) || {};
           set({ isLoading: false });
           return { success: true, message: payload?.message || 'Registration submitted.' };
         } catch (error) {
@@ -123,7 +130,7 @@ export const useDeliveryAuthStore = create(
         set({ isLoading: true });
         try {
           const response = await api.post('/delivery/auth/forgot-password', { email });
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response) || {};
           set({ isLoading: false });
           return { success: true, message: payload?.message };
         } catch (error) {
@@ -136,7 +143,7 @@ export const useDeliveryAuthStore = create(
         set({ isLoading: true });
         try {
           const response = await api.post('/delivery/auth/verify-reset-otp', { email, otp });
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response) || {};
           set({ isLoading: false });
           return { success: true, message: payload?.message };
         } catch (error) {
@@ -149,7 +156,7 @@ export const useDeliveryAuthStore = create(
         set({ isLoading: true });
         try {
           const response = await api.post('/delivery/auth/reset-password', { email, password, confirmPassword });
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response) || {};
           set({ isLoading: false });
           return { success: true, message: payload?.message };
         } catch (error) {
@@ -163,7 +170,7 @@ export const useDeliveryAuthStore = create(
         set({ isLoading: true });
         try {
           const response = await api.post('/delivery/auth/login', { email, password });
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response) || {};
           const accessToken = payload?.accessToken;
           const refreshToken = payload?.refreshToken;
           const loginDeliveryBoy = normalizeDeliveryBoy(payload?.deliveryBoy);
@@ -178,7 +185,7 @@ export const useDeliveryAuthStore = create(
           let enriched = loginDeliveryBoy;
           try {
             const profileResponse = await api.get('/delivery/auth/profile');
-            const profilePayload = profileResponse?.data ?? profileResponse;
+            const profilePayload = unwrapApiData(profileResponse);
             enriched = normalizeDeliveryBoy({ ...loginDeliveryBoy, ...profilePayload });
           } catch {
             // Keep login payload as fallback.
@@ -233,7 +240,7 @@ export const useDeliveryAuthStore = create(
         set({ isUpdatingStatus: true });
         try {
           const response = await api.put('/delivery/auth/profile', { isAvailable, status });
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response);
           set({
             deliveryBoy: normalizeDeliveryBoy({
               ...current,
@@ -253,7 +260,7 @@ export const useDeliveryAuthStore = create(
         set({ isLoading: true });
         try {
           const response = await api.get('/delivery/auth/profile');
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response);
           const deliveryBoy = normalizeDeliveryBoy(payload);
           set({ deliveryBoy, isLoading: false });
           return deliveryBoy;
@@ -267,7 +274,7 @@ export const useDeliveryAuthStore = create(
         set({ isLoading: true });
         try {
           const response = await api.put('/delivery/auth/profile', profileData);
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response);
           const current = get().deliveryBoy || {};
           const deliveryBoy = normalizeDeliveryBoy({ ...current, ...payload });
           set({ deliveryBoy, isLoading: false });
@@ -288,7 +295,7 @@ export const useDeliveryAuthStore = create(
           if (limit !== undefined) params.limit = limit;
 
           const response = await api.get('/delivery/orders', { params });
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response);
 
           const hasPaginatedPayload =
             payload &&
@@ -322,7 +329,7 @@ export const useDeliveryAuthStore = create(
 
       fetchDashboardSummary: async () => {
         const response = await api.get('/delivery/orders/dashboard-summary');
-        const payload = response?.data ?? response ?? {};
+        const payload = unwrapApiData(response) || {};
         const recentRaw = Array.isArray(payload?.recentOrders) ? payload.recentOrders : [];
         return {
           totalOrders: Number(payload?.totalOrders || 0),
@@ -335,7 +342,7 @@ export const useDeliveryAuthStore = create(
 
       fetchProfileSummary: async () => {
         const response = await api.get('/delivery/orders/profile-summary');
-        const payload = response?.data ?? response ?? {};
+        const payload = unwrapApiData(response) || {};
         return {
           totalDeliveries: Number(payload?.totalDeliveries || 0),
           completedToday: Number(payload?.completedToday || 0),
@@ -347,7 +354,7 @@ export const useDeliveryAuthStore = create(
         set({ isLoadingOrder: true });
         try {
           const response = await api.get(`/delivery/orders/${id}`);
-          const payload = response?.data ?? response;
+          const payload = unwrapApiData(response);
           const order = normalizeOrder(payload);
           set({ selectedOrder: order, isLoadingOrder: false });
           return order;
@@ -366,7 +373,7 @@ export const useDeliveryAuthStore = create(
           }
 
           const response = await api.patch(`/delivery/orders/${id}/status`, requestPayload);
-          const responsePayload = response?.data ?? response;
+          const responsePayload = unwrapApiData(response);
           const normalized = normalizeOrder(responsePayload);
           set((state) => ({
             orders: state.orders.map((order) => (String(order.id) === String(id) ? normalized : order)),
@@ -437,4 +444,3 @@ export const useDeliveryAuthStore = create(
     }
   )
 );
-

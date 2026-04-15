@@ -155,7 +155,7 @@ const DeliveryLogin = () => {
                 disabled={isLoading}
                 className="w-full bg-[#111111] text-white py-4 rounded-2xl font-bold text-lg hover:bg-black transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
               >
-                {isLoading ? 'Registering...' : 'Register as Tru Buy Partner'}
+                {isLoading ? 'Signing in...' : 'Sign In to Dashboard'}
               </button>
 
               {/* Demo Credentials */}
@@ -190,4 +190,3 @@ const DeliveryLogin = () => {
 };
 
 export default DeliveryLogin;
-
