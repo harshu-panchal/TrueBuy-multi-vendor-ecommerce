@@ -31,6 +31,40 @@ const extractCloudinaryPublicId = (url = '') => {
     }
 };
 
+const generateDeliveryOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const isValidDeliveryOtp = (value) => /^\d{6}$/.test(String(value || '').trim());
+
+const sendDeliveryOtpOnboardingEmail = async (user, deliveryOtp) => {
+    try {
+        await sendEmail({
+            to: user.email,
+            subject: 'Your Delivery Verification OTP',
+            text: `Your static 6-digit delivery OTP is ${deliveryOtp}. Share this OTP with delivery partner only after receiving your order.`,
+            html: `<p>Your static 6-digit delivery OTP is <strong>${deliveryOtp}</strong>.</p><p>Share this OTP with delivery partner only after receiving your order.</p>`,
+        });
+    } catch (err) {
+        // Keep auth flow non-blocking if mail provider is unavailable.
+        console.warn(`[User Delivery OTP] Email send failed for ${user.email}: ${err.message}`);
+    }
+};
+
+const ensureStaticDeliveryOtp = async (userDoc, options = {}) => {
+    const shouldSendEmail = options?.sendEmail !== false;
+    const current = String(userDoc?.deliveryOtp || '').trim();
+    if (isValidDeliveryOtp(current)) {
+        return current;
+    }
+
+    const generatedOtp = generateDeliveryOtp();
+    userDoc.deliveryOtp = generatedOtp;
+    userDoc.deliveryOtpGeneratedAt = new Date();
+    await userDoc.save({ validateBeforeSave: false });
+    if (shouldSendEmail) {
+        await sendDeliveryOtpOnboardingEmail(userDoc, generatedOtp);
+    }
+    return generatedOtp;
+};
+
 // POST /api/user/auth/register
 export const register = asyncHandler(async (req, res) => {
     const { name, email, password, phone } = req.body;
@@ -40,13 +74,17 @@ export const register = asyncHandler(async (req, res) => {
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(409, 'Email already registered.');
 
+    const deliveryOtp = generateDeliveryOtp();
     const user = await User.create({
         name: String(name || '').trim(),
         email: normalizedEmail,
         password,
+        deliveryOtp,
+        deliveryOtpGeneratedAt: new Date(),
         ...(normalizedPhone ? { phone: normalizedPhone } : {}),
     });
     await sendOTP(user, 'email_verification');
+    await sendDeliveryOtpOnboardingEmail(user, deliveryOtp);
 
     res.status(201).json(new ApiResponse(201, { email: user.email }, 'Registration successful. Please verify your email.'));
 });
@@ -56,7 +94,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     const { email, otp } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpiry');
+    const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpiry +deliveryOtp +deliveryOtpGeneratedAt');
     if (!user) throw new ApiError(404, 'User not found.');
     if (user.otp !== otp) throw new ApiError(400, 'Invalid OTP.');
     if (user.otpExpiry < Date.now()) throw new ApiError(400, 'OTP has expired. Please request a new one.');
@@ -65,6 +103,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     user.otp = undefined;
     user.otpExpiry = undefined;
     await user.save();
+    await ensureStaticDeliveryOtp(user);
 
     const { accessToken, refreshToken } = generateTokens({ id: user._id, role: 'customer', email: user.email });
     await persistRefreshSession(user, refreshToken);
@@ -76,7 +115,7 @@ export const login = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    const user = await User.findOne({ email: normalizedEmail }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password +deliveryOtp +deliveryOtpGeneratedAt');
     if (!user) throw new ApiError(401, 'Invalid email or password.');
     if (!user.isActive) throw new ApiError(403, 'Your account has been deactivated.');
     if (!user.isVerified) {
@@ -86,6 +125,7 @@ export const login = asyncHandler(async (req, res) => {
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) throw new ApiError(401, 'Invalid email or password.');
+    await ensureStaticDeliveryOtp(user);
 
     const { accessToken, refreshToken } = generateTokens({ id: user._id, role: 'customer', email: user.email });
     await persistRefreshSession(user, refreshToken);
@@ -225,6 +265,18 @@ export const getProfile = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) throw new ApiError(404, 'User not found.');
     res.status(200).json(new ApiResponse(200, user, 'Profile fetched.'));
+});
+
+// GET /api/user/auth/delivery-otp
+export const getDeliveryOtp = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id).select('+deliveryOtp +deliveryOtpGeneratedAt email');
+    if (!user) throw new ApiError(404, 'User not found.');
+
+    const deliveryOtp = await ensureStaticDeliveryOtp(user, { sendEmail: false });
+    res.status(200).json(new ApiResponse(200, {
+        deliveryOtp,
+        generatedAt: user.deliveryOtpGeneratedAt || null,
+    }, 'Delivery OTP fetched.'));
 });
 
 // PUT /api/user/auth/profile

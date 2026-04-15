@@ -44,6 +44,7 @@ router.post('/auth/login', authLimiter, validate(loginSchema), authController.lo
 router.post('/auth/refresh', validate(refreshTokenSchema), authController.refresh);
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...customerAuth, authController.getProfile);
+router.get('/auth/delivery-otp', ...customerAuth, authController.getDeliveryOtp);
 router.put('/auth/profile', ...customerAuth, validate(updateProfileSchema), authController.updateProfile);
 router.post('/auth/profile/avatar', ...customerAuth, uploadSingle('avatar'), authController.uploadProfileAvatar);
 router.post('/auth/change-password', ...customerAuth, validate(changePasswordSchema), authController.changePassword);

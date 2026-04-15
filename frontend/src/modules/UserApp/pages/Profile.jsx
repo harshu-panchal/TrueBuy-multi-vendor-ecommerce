@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiCopy } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from "../components/Layout/MobileLayout";
 import { useAuthStore } from '../../../shared/store/authStore';
 import { isValidEmail, isValidPhone } from '../../../shared/utils/helpers';
+import api from '../../../shared/utils/api';
 import toast from 'react-hot-toast';
 import PageTransition from '../../../shared/components/PageTransition';
 import PasswordStrengthMeter from '../components/Mobile/PasswordStrengthMeter';
@@ -23,6 +24,10 @@ const MobileProfile = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [deliveryOtp, setDeliveryOtp] = useState('');
+  const [deliveryOtpGeneratedAt, setDeliveryOtpGeneratedAt] = useState(null);
+  const [isDeliveryOtpLoading, setIsDeliveryOtpLoading] = useState(false);
+  const [showDeliveryOtp, setShowDeliveryOtp] = useState(false);
   const unreadNotificationCount = useUserNotificationStore((state) => state.unreadCount);
   const ensureNotificationHydrated = useUserNotificationStore((state) => state.ensureHydrated);
 
@@ -74,6 +79,39 @@ const MobileProfile = () => {
   useEffect(() => {
     ensureNotificationHydrated();
   }, [ensureNotificationHydrated]);
+
+  const fetchDeliveryOtp = async () => {
+    if (isDeliveryOtpLoading) return;
+    setIsDeliveryOtpLoading(true);
+    try {
+      const response = await api.get('/user/auth/delivery-otp');
+      const payload = response?.data ?? response ?? {};
+      const otp = String(payload?.deliveryOtp || '').trim();
+      setDeliveryOtp(otp);
+      setDeliveryOtpGeneratedAt(payload?.generatedAt || null);
+    } catch {
+      // Error toast handled by API interceptor.
+    } finally {
+      setIsDeliveryOtpLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'personal') return;
+    if (deliveryOtp || isDeliveryOtpLoading) return;
+    fetchDeliveryOtp();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const copyDeliveryOtp = async () => {
+    if (!deliveryOtp || isDeliveryOtpLoading) return;
+    try {
+      await navigator.clipboard.writeText(deliveryOtp);
+      toast.success('Delivery OTP copied');
+    } catch {
+      toast.error('Could not copy OTP');
+    }
+  };
 
   const onPersonalSubmit = async (data) => {
     try {
@@ -462,6 +500,58 @@ const MobileProfile = () => {
                         </AnimatePresence>
                       </div>
 
+                      <div className="rounded-2xl border border-gray-100 bg-white/70 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-gray-800">My Delivery OTP</p>
+                            <p className="mt-1 text-xs text-gray-500">
+                              Share this 6-digit OTP with delivery partner at delivery time.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowDeliveryOtp((prev) => !prev)}
+                            className="shrink-0 px-3 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-50"
+                          >
+                            {showDeliveryOtp ? (
+                              <span className="inline-flex items-center gap-1"><FiEyeOff /> Hide</span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1"><FiEye /> Show</span>
+                            )}
+                          </button>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2">
+                          <div className="flex-1 rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 font-mono text-lg tracking-[0.35em] text-gray-900">
+                            {isDeliveryOtpLoading
+                              ? '••••••'
+                              : showDeliveryOtp
+                                ? (deliveryOtp || '------')
+                                : '••••••'}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={copyDeliveryOtp}
+                            disabled={!deliveryOtp || isDeliveryOtpLoading}
+                            className="px-4 py-3 rounded-xl bg-gray-900 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-black"
+                          >
+                            <span className="inline-flex items-center gap-1"><FiCopy /> Copy</span>
+                          </button>
+                        </div>
+
+                        <div className="mt-2 flex items-center justify-between text-[11px] text-gray-500">
+                          <span>{deliveryOtpGeneratedAt ? `Generated: ${new Date(deliveryOtpGeneratedAt).toLocaleDateString()}` : ''}</span>
+                          <button
+                            type="button"
+                            onClick={fetchDeliveryOtp}
+                            disabled={isDeliveryOtpLoading}
+                            className="text-primary-700 font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Refresh
+                          </button>
+                        </div>
+                      </div>
+
                       <button
                         type="submit"
                         disabled={isLoading}
@@ -611,4 +701,3 @@ const MobileProfile = () => {
 };
 
 export default MobileProfile;
-
