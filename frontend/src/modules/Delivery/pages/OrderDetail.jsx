@@ -87,8 +87,8 @@ const DeliveryOrderDetail = () => {
     if (!order || order.status !== 'in-transit' || isResendingOtp) return;
     try {
       setIsResendingOtp(true);
-      await resendDeliveryOtp(order.id);
-      toast.success('Delivery OTP resent to customer');
+      const result = await resendDeliveryOtp(order.id);
+      toast.success(result?.message || 'Delivery OTP request processed');
     } catch {
       // Error toast handled by API interceptor.
     } finally {
@@ -392,6 +392,5 @@ const DeliveryOrderDetail = () => {
 };
 
 export default DeliveryOrderDetail;
-
 
 

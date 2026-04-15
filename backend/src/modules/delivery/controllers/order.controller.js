@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Order from '../../../models/Order.model.js';
+import User from '../../../models/User.model.js';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { sendEmail } from '../../../services/email.service.js';
@@ -19,6 +20,7 @@ const hashDeliveryOtp = (otp) => {
 };
 
 const generateDeliveryOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const isValidSixDigitOtp = (otp) => /^\d{6}$/.test(String(otp || '').trim());
 
 const getCustomerEmail = (order) => {
     return (
@@ -39,6 +41,69 @@ const sendDeliveryOtpEmail = async (order, otp) => {
     });
 
     return true;
+};
+
+const clearLegacyOrderOtpState = (order) => {
+    order.deliveryOtpHash = undefined;
+    order.deliveryOtpExpiry = undefined;
+    order.deliveryOtpSentAt = undefined;
+    order.deliveryOtpAttempts = 0;
+    order.deliveryOtpDebug = undefined;
+};
+
+const ensureUserStaticDeliveryOtp = async (order) => {
+    if (!order?.userId) return { mode: 'legacy', otp: null };
+
+    const user = await User.findById(order.userId).select('+deliveryOtp +deliveryOtpGeneratedAt email');
+    if (!user) return { mode: 'legacy', otp: null };
+
+    const existingOtp = String(user.deliveryOtp || '').trim();
+    if (isValidSixDigitOtp(existingOtp)) {
+        return { mode: 'static', otp: existingOtp };
+    }
+
+    const generatedOtp = generateDeliveryOtp();
+    user.deliveryOtp = generatedOtp;
+    user.deliveryOtpGeneratedAt = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    try {
+        await sendEmail({
+            to: user.email,
+            subject: 'Your Delivery Verification OTP',
+            text: `Your static 6-digit delivery OTP is ${generatedOtp}. Share this OTP with delivery partner only after receiving your order.`,
+            html: `<p>Your static 6-digit delivery OTP is <strong>${generatedOtp}</strong>.</p><p>Share this OTP with delivery partner only after receiving your order.</p>`,
+        });
+    } catch (err) {
+        console.warn(`[Delivery OTP] Failed to email static OTP to user ${user.email}: ${err.message}`);
+    }
+
+    return { mode: 'static', otp: generatedOtp };
+};
+
+const verifyLegacyOrderOtp = async (order, normalizedOtp) => {
+    if (!order.deliveryOtpHash || !order.deliveryOtpExpiry) {
+        throw new ApiError(400, 'Delivery OTP was not generated. Re-mark order as shipped first.');
+    }
+
+    if (order.deliveryOtpExpiry < new Date()) {
+        throw new ApiError(400, 'Delivery OTP has expired. Please resend OTP.');
+    }
+
+    const attempts = Number(order.deliveryOtpAttempts || 0);
+    if (attempts >= DELIVERY_OTP_MAX_ATTEMPTS) {
+        throw new ApiError(429, 'Maximum OTP attempts reached. Please resend OTP.');
+    }
+
+    const isMatch = order.deliveryOtpHash === hashDeliveryOtp(normalizedOtp);
+    if (!isMatch) {
+        order.deliveryOtpAttempts = attempts + 1;
+        await order.save();
+        throw new ApiError(400, 'Invalid delivery OTP.');
+    }
+
+    order.deliveryOtpVerifiedAt = new Date();
+    clearLegacyOrderOtpState(order);
 };
 
 // GET /api/delivery/orders
@@ -243,58 +308,48 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
     }
 
     if (status === 'shipped') {
-        const generatedOtp = generateDeliveryOtp();
-        order.deliveryOtpHash = hashDeliveryOtp(generatedOtp);
-        order.deliveryOtpExpiry = new Date(Date.now() + DELIVERY_OTP_TTL_MS);
-        order.deliveryOtpSentAt = new Date();
-        order.deliveryOtpAttempts = 0;
+        const otpMode = await ensureUserStaticDeliveryOtp(order);
         order.deliveryOtpVerifiedAt = undefined;
-        if (!IS_PRODUCTION) {
-            order.deliveryOtpDebug = generatedOtp;
-        }
 
-        try {
-            const sent = await sendDeliveryOtpEmail(order, generatedOtp);
-            if (!sent) {
-                console.warn(`[Delivery OTP] Missing customer email for order ${order.orderId || order._id}`);
+        if (otpMode.mode === 'legacy') {
+            const generatedOtp = generateDeliveryOtp();
+            order.deliveryOtpHash = hashDeliveryOtp(generatedOtp);
+            order.deliveryOtpExpiry = new Date(Date.now() + DELIVERY_OTP_TTL_MS);
+            order.deliveryOtpSentAt = new Date();
+            order.deliveryOtpAttempts = 0;
+            if (!IS_PRODUCTION) {
+                order.deliveryOtpDebug = generatedOtp;
             }
-        } catch (err) {
-            console.warn(`[Delivery OTP] Failed to send OTP email for order ${order.orderId || order._id}: ${err.message}`);
+
+            try {
+                const sent = await sendDeliveryOtpEmail(order, generatedOtp);
+                if (!sent) {
+                    console.warn(`[Delivery OTP] Missing customer email for order ${order.orderId || order._id}`);
+                }
+            } catch (err) {
+                console.warn(`[Delivery OTP] Failed to send OTP email for order ${order.orderId || order._id}: ${err.message}`);
+            }
+        } else {
+            clearLegacyOrderOtpState(order);
         }
     }
 
     if (status === 'delivered') {
         const normalizedOtp = String(otp || '').trim();
-        if (!/^\d{6}$/.test(normalizedOtp)) {
+        if (!isValidSixDigitOtp(normalizedOtp)) {
             throw new ApiError(400, 'Delivery OTP is required to complete delivery.');
         }
 
-        if (!order.deliveryOtpHash || !order.deliveryOtpExpiry) {
-            throw new ApiError(400, 'Delivery OTP was not generated. Re-mark order as shipped first.');
+        const otpMode = await ensureUserStaticDeliveryOtp(order);
+        if (otpMode.mode === 'static') {
+            if (otpMode.otp !== normalizedOtp) {
+                throw new ApiError(400, 'Invalid delivery OTP.');
+            }
+            order.deliveryOtpVerifiedAt = new Date();
+            clearLegacyOrderOtpState(order);
+        } else {
+            await verifyLegacyOrderOtp(order, normalizedOtp);
         }
-
-        if (order.deliveryOtpExpiry < new Date()) {
-            throw new ApiError(400, 'Delivery OTP has expired. Please resend OTP.');
-        }
-
-        const attempts = Number(order.deliveryOtpAttempts || 0);
-        if (attempts >= DELIVERY_OTP_MAX_ATTEMPTS) {
-            throw new ApiError(429, 'Maximum OTP attempts reached. Please resend OTP.');
-        }
-
-        const isMatch = order.deliveryOtpHash === hashDeliveryOtp(normalizedOtp);
-        if (!isMatch) {
-            order.deliveryOtpAttempts = attempts + 1;
-            await order.save();
-            throw new ApiError(400, 'Invalid delivery OTP.');
-        }
-
-        order.deliveryOtpVerifiedAt = new Date();
-        order.deliveryOtpHash = undefined;
-        order.deliveryOtpExpiry = undefined;
-        order.deliveryOtpSentAt = undefined;
-        order.deliveryOtpAttempts = 0;
-        order.deliveryOtpDebug = undefined;
     }
 
     order.status = status;
@@ -393,6 +448,13 @@ export const resendDeliveryOtp = asyncHandler(async (req, res) => {
 
     if (order.status !== 'shipped') {
         throw new ApiError(409, 'OTP can only be resent when order is in shipped state.');
+    }
+
+    const otpMode = await ensureUserStaticDeliveryOtp(order);
+    if (otpMode.mode === 'static') {
+        return res.status(200).json(
+            new ApiResponse(200, null, 'Static delivery OTP is already assigned to this customer. Ask customer to share it.')
+        );
     }
 
     if (

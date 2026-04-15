@@ -417,8 +417,12 @@ export const useDeliveryAuthStore = create(
       },
 
       resendDeliveryOtp: async (id) => {
-        await api.post(`/delivery/orders/${id}/resend-delivery-otp`);
-        return true;
+        const response = await api.post(`/delivery/orders/${id}/resend-delivery-otp`);
+        const payload = response || {};
+        return {
+          success: true,
+          message: payload?.message || 'Delivery OTP request processed.',
+        };
       },
 
       // Initialize delivery auth state from localStorage
