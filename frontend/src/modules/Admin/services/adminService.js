@@ -184,18 +184,24 @@ export const deleteDeliveryBoy = (id) =>
 
 // ─── Return Requests ──────────────────────────────────────────────────────────
 export const getAllReturnRequests = (params = {}) =>
-    api.get('/admin/return-requests', { params });
+    api.get('/admin/returns', { params });
 
 export const getReturnRequestById = (id) =>
-    api.get(`/admin/return-requests/${id}`);
+    api.get(`/admin/returns/${id}`);
 
 export const updateReturnRequestStatus = (id, statusOrPayload, adminNote = '') => {
     const payload =
         typeof statusOrPayload === 'object' && statusOrPayload !== null
             ? statusOrPayload
             : { status: statusOrPayload, adminNote };
-    return api.patch(`/admin/return-requests/${id}/status`, payload);
+    return api.patch(`/admin/returns/${id}/status`, payload);
 };
+
+export const getAllExchangeRequests = (params = {}) =>
+    api.get('/exchange/admin', { params });
+
+export const getExchangeRequestById = (id) =>
+    api.get(`/exchange/${id}`);
 
 // ——— Reviews —————————————————————————————————————————————————————————————————————
 export const getAllReviews = (params = {}) =>

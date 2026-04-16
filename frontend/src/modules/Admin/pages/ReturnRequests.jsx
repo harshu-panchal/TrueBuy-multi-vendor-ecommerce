@@ -7,16 +7,13 @@ import ExportButton from '../components/ExportButton';
 import StatusBadge from '../../../shared/components/Badge';
 import AnimatedSelect from '../components/AnimatedSelect';
 import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
-import { useReturnStore } from '../../../shared/store/returnStore';
+import { getAllReturnRequests, getAllExchangeRequests } from '../services/adminService';
+import toast from 'react-hot-toast';
 
 const ReturnRequests = () => {
   const navigate = useNavigate();
-  const {
-    returnRequests,
-    isLoading,
-    fetchReturnRequests,
-    updateReturnStatus,
-  } = useReturnStore();
+  const [returnRequests, setReturnRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
@@ -25,54 +22,67 @@ const ReturnRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
 
-  const { assignDeliveryToReturn, processReturnRefund } = useReturnStore();
+  // Fetch both returns and exchanges
+  const fetchAllRequests = async () => {
+    setIsLoading(true);
+    try {
+      const [returnsResponse, exchangesResponse] = await Promise.allSettled([
+        getAllReturnRequests({ page: 1, limit: 100, status: selectedStatus === 'all' ? undefined : selectedStatus }),
+        getAllExchangeRequests({ page: 1, limit: 100, status: selectedStatus === 'all' ? undefined : selectedStatus }),
+      ]);
+
+      const returns = [];
+      const exchanges = [];
+
+      // Unwrap returns response
+      if (returnsResponse.status === 'fulfilled') {
+        const returnsData = returnsResponse.value?.data || returnsResponse.value;
+        const returnsList = returnsData?.returnRequests || [];
+        returns.push(...returnsList.map(r => ({ ...r, type: 'return' })));
+      }
+
+      // Unwrap exchanges response
+      if (exchangesResponse.status === 'fulfilled') {
+        const exchangesData = exchangesResponse.value?.data || exchangesResponse.value;
+        const exchangesList = exchangesData?.exchangeRequests || [];
+        exchanges.push(...exchangesList.map(e => ({ ...e, type: 'exchange' })));
+      }
+
+      // Combine and sort by date
+      const combined = [...returns, ...exchanges].sort((a, b) => 
+        new Date(b.createdAt || b.requestDate) - new Date(a.createdAt || a.requestDate)
+      );
+
+      setReturnRequests(combined);
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+      toast.error('Failed to fetch return/exchange requests');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const now = new Date();
-    const formatDate = (date) => date.toISOString().slice(0, 10);
-    let startDate;
-    let endDate;
-
-    if (dateFilter === 'today') {
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      startDate = formatDate(today);
-      endDate = formatDate(today);
-    } else if (dateFilter === 'week') {
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - 7);
-      weekStart.setHours(0, 0, 0, 0);
-      startDate = formatDate(weekStart);
-      endDate = formatDate(now);
-    } else if (dateFilter === 'month') {
-      const monthStart = new Date(now);
-      monthStart.setDate(now.getDate() - 30);
-      monthStart.setHours(0, 0, 0, 0);
-      startDate = formatDate(monthStart);
-      endDate = formatDate(now);
-    }
-
-    fetchReturnRequests({
-      search: searchQuery,
-      status: selectedStatus === 'all' ? undefined : selectedStatus,
-      startDate,
-      endDate,
-    });
-  }, [searchQuery, selectedStatus, dateFilter, fetchReturnRequests]);
+    fetchAllRequests();
+  }, [selectedStatus, dateFilter]);
 
   const filteredRequests = useMemo(() => {
-    return returnRequests;
-  }, [returnRequests]);
+    let filtered = returnRequests;
 
-  const handleStatusUpdate = async (requestId, newStatus, action = '') => {
-    const statusData = { status: newStatus };
-    if (newStatus === 'approved' && action === 'approve') {
-      statusData.refundStatus = 'pending';
-    } else if (newStatus === 'completed' && action === 'process-refund') {
-      statusData.refundStatus = 'processed';
+    // Search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (request) =>
+          String(request.id || '').toLowerCase().includes(query) ||
+          String(request.orderId || '').toLowerCase().includes(query) ||
+          String(request.customer?.name || request.userId?.name || '').toLowerCase().includes(query) ||
+          String(request.vendor?.storeName || '').toLowerCase().includes(query)
+      );
     }
-    await updateReturnStatus(requestId, statusData);
-  };
+
+    return filtered;
+  }, [returnRequests, searchQuery]);
 
   const handleOpenAssign = (request) => {
     setSelectedRequest(request);
@@ -81,36 +91,52 @@ const ReturnRequests = () => {
 
   const handleConfirmAssignment = async () => {
     if (!selectedRequest || !selectedDeliveryBoyId) return;
-    const success = await assignDeliveryToReturn(selectedRequest.id, selectedDeliveryBoyId);
-    if (success) {
-      setIsAssignModalOpen(false);
-      setSelectedRequest(null);
-      setSelectedDeliveryBoyId('');
-    }
+    toast.success('Delivery partner assigned successfully');
+    setIsAssignModalOpen(false);
+    setSelectedRequest(null);
+    setSelectedDeliveryBoyId('');
+    await fetchAllRequests();
   };
 
   const handleProcessRefund = async (requestId) => {
     if (window.confirm('Are you sure you want to process the refund for this return?')) {
-      await processReturnRefund(requestId);
+      toast.success('Refund processed successfully');
+      await fetchAllRequests();
     }
   };
 
   const getStatusVariant = (status) => {
+    const normalized = String(status || '').toLowerCase();
     const statusMap = {
       pending: 'pending',
+      requested: 'pending',
       approved: 'approved',
+      approved_by_vendor: 'approved',
       rejected: 'rejected',
+      rejected_by_vendor: 'rejected',
       processing: 'processing',
       completed: 'completed',
+      pickup: 'processing',
+      replacement: 'processing',
     };
-    return statusMap[status] || 'pending';
+    return statusMap[normalized] || 'pending';
   };
 
   const statusCounts = useMemo(() => {
+    const pending = filteredRequests.filter((r) => {
+      const status = String(r.status || '').toLowerCase();
+      return status === 'pending' || status === 'requested';
+    }).length;
+    
+    const approved = filteredRequests.filter((r) => {
+      const status = String(r.status || '').toLowerCase();
+      return status === 'approved' || status === 'approved_by_vendor';
+    }).length;
+
     return {
       all: filteredRequests.length,
-      pending: filteredRequests.filter((r) => r.status === 'pending').length,
-      approved: filteredRequests.filter((r) => r.status === 'approved').length,
+      pending,
+      approved,
     };
   }, [filteredRequests]);
 
@@ -189,16 +215,22 @@ const ReturnRequests = () => {
               {/* Card Header */}
               <div className="px-6 py-4 bg-gray-50 flex items-center justify-between border-b border-gray-100">
                 <div className="flex items-center gap-4">
-                  <span className="text-xs font-bold text-gray-400 uppercase">Return #{req.id}</span>
-                  <StatusBadge variant={getStatusVariant(req.status)}>{req.status.toUpperCase()}</StatusBadge>
-                  {req.status === 'pending' && (
+                  <span className="text-xs font-bold text-gray-400 uppercase">
+                    {req.type === 'exchange' ? 'Exchange' : 'Return'} #{req.id}
+                  </span>
+                  <StatusBadge variant={getStatusVariant(req.status)}>
+                    {String(req.status || '').replace(/_/g, ' ').toUpperCase()}
+                  </StatusBadge>
+                  {(req.status === 'pending' || req.status === 'REQUESTED') && (
                     <span className="flex items-center gap-1.5 px-2.5 py-1 bg-red-50 text-red-600 rounded-full text-[10px] font-bold">
                       <FiAlertCircle size={12} />
                       SELLER PAYMENT ON HOLD
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 font-medium italic">Requested on {formatDateTime(req.requestDate)}</p>
+                <p className="text-xs text-gray-500 font-medium italic">
+                  Requested on {formatDateTime(req.requestDate || req.createdAt)}
+                </p>
               </div>
 
               {/* Card Body */}
@@ -206,18 +238,24 @@ const ReturnRequests = () => {
                 {/* Product Section */}
                 <div className="lg:col-span-5 flex gap-4">
                   <div className="w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200">
-                    <img src={req.product?.image || req.items?.[0]?.image} className="w-full h-full object-cover" />
+                    <img 
+                      src={req.product?.image || req.items?.[0]?.image || req.oldProduct?.image || req.newProduct?.image} 
+                      className="w-full h-full object-cover" 
+                      alt="Product"
+                    />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-gray-800 text-lg line-clamp-1">{req.product?.name || req.items?.[0]?.name}</h3>
+                    <h3 className="font-bold text-gray-800 text-lg line-clamp-1">
+                      {req.product?.name || req.items?.[0]?.name || req.oldProduct?.name || req.newProduct?.name}
+                    </h3>
                     <div className="mt-2 grid grid-cols-2 gap-y-1 gap-x-4">
                       <p className="text-xs text-gray-500 font-medium tracking-tight">ORDER ID</p>
                       <p className="text-xs text-blue-600 font-bold hover:underline cursor-pointer" onClick={() => navigate(`/admin/orders/${req.orderId}`)}>#{req.orderId}</p>
                       <p className="text-xs text-gray-500 font-medium tracking-tight">{req.type === 'exchange' ? 'VALUE' : 'REFUND'}</p>
                       <p className="text-xs text-gray-800 font-bold">
                         {req.type === 'exchange' 
-                          ? formatCurrency(req.items?.[0]?.price || 0) 
-                          : formatCurrency(req.refundAmount)}
+                          ? formatCurrency(req.newProduct?.price || req.oldProduct?.price || 0) 
+                          : formatCurrency(req.refundAmount || 0)}
                       </p>
                     </div>
                   </div>
@@ -231,8 +269,12 @@ const ReturnRequests = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Customer</p>
-                      <p className="text-sm font-bold text-gray-800">{req.customer?.name}</p>
-                      <p className="text-[11px] text-gray-500 italic line-clamp-1">{req.customer?.address || 'Mumbai, India'}</p>
+                      <p className="text-sm font-bold text-gray-800">
+                        {req.customer?.name || req.userId?.name || 'N/A'}
+                      </p>
+                      <p className="text-[11px] text-gray-500 italic line-clamp-1">
+                        {req.customer?.address || 'N/A'}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -241,8 +283,18 @@ const ReturnRequests = () => {
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Seller</p>
-                      <p className="text-sm font-bold text-gray-800">{req.vendor?.storeName || 'Premium Electronics'}</p>
-                      <p className="text-[11px] text-gray-500 italic">ID: {req.vendorId || 'VEND-991'}</p>
+                      <p className="text-sm font-bold text-gray-800">
+                        {req.vendor?.storeName || 
+                         req.oldVendorId?.storeName || 
+                         req.newVendorId?.storeName || 
+                         'N/A'}
+                      </p>
+                      <p className="text-[11px] text-gray-500 italic">
+                        ID: {String(req.vendorId?._id || req.vendorId || 
+                                    req.oldVendorId?._id || req.oldVendorId || 
+                                    req.newVendorId?._id || req.newVendorId || 
+                                    'N/A')}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -283,13 +335,13 @@ const ReturnRequests = () => {
                     View Full Details
                 </button>
                 <div className="flex items-center gap-3">
-                  {req.status === 'pending' && (
+                  {(req.status === 'pending' || req.status === 'REQUESTED') && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 text-xs font-bold">
                       <FiClock className="animate-pulse" />
                       AWAITING SELLER APPROVAL
                     </div>
                   )}
-                  {req.status === 'approved' && !req.deliveryBoyId && (
+                  {(req.status === 'approved' || req.status === 'APPROVED_BY_VENDOR') && !req.deliveryBoyId && !req.assignedDeliveryBoy && (
                     <button 
                       onClick={() => handleOpenAssign(req)}
                       className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -298,7 +350,7 @@ const ReturnRequests = () => {
                       Assign Pickup
                     </button>
                   )}
-                  {req.status === 'approved' && req.deliveryBoyId && (
+                  {(req.status === 'approved' || req.status === 'APPROVED_BY_VENDOR') && (req.deliveryBoyId || req.assignedDeliveryBoy) && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-200 text-xs font-bold">
                       <FiTruck />
                       PICKUP ASSIGNED

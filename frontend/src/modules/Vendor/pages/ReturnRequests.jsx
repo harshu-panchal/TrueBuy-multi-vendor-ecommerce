@@ -9,31 +9,71 @@ import AnimatedSelect from "../../Admin/components/AnimatedSelect";
 import { formatPrice } from "../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import {
+  getVendorReturnRequests,
+  getVendorExchangeRequests,
   updateVendorReturnRequestStatus,
+  approveVendorExchangeRequest,
+  rejectVendorExchangeRequest,
 } from "../services/vendorService";
-import { useReturnStore } from "../../../shared/store/returnStore";
 import toast from "react-hot-toast";
 
 const ReturnRequests = () => {
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
-  const { returnRequests: allRequests, isLoading, fetchReturnRequests, updateReturnStatus } = useReturnStore();
+  const [returnRequests, setReturnRequests] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
 
   const vendorId = vendor?.id;
 
-  useEffect(() => {
-    if (vendorId) {
-      fetchReturnRequests({ vendorId });
-    }
-  }, [vendorId, fetchReturnRequests]);
+  // Fetch both returns and exchanges
+  const fetchAllRequests = async () => {
+    if (!vendorId) return;
+    
+    setIsLoading(true);
+    try {
+      // Fetch returns and exchanges in parallel
+      const [returnsResponse, exchangesResponse] = await Promise.allSettled([
+        getVendorReturnRequests({ page: 1, limit: 100 }),
+        getVendorExchangeRequests({ page: 1, limit: 100 }),
+      ]);
 
-  const returnRequests = useMemo(() => {
-    if (!vendorId) return [];
-    return allRequests.filter(req => req.vendorId === vendorId || req.items?.some(i => i.vendorId === vendorId));
-  }, [allRequests, vendorId]);
+      const returns = [];
+      const exchanges = [];
+
+      // Unwrap returns response
+      if (returnsResponse.status === 'fulfilled') {
+        const returnsData = returnsResponse.value?.data || returnsResponse.value;
+        const returnsList = returnsData?.returnRequests || [];
+        returns.push(...returnsList.map(r => ({ ...r, type: 'return' })));
+      }
+
+      // Unwrap exchanges response
+      if (exchangesResponse.status === 'fulfilled') {
+        const exchangesData = exchangesResponse.value?.data || exchangesResponse.value;
+        const exchangesList = exchangesData?.exchangeRequests || [];
+        exchanges.push(...exchangesList.map(e => ({ ...e, type: 'exchange' })));
+      }
+
+      // Combine and sort by date
+      const combined = [...returns, ...exchanges].sort((a, b) => 
+        new Date(b.createdAt || b.requestDate) - new Date(a.createdAt || a.requestDate)
+      );
+
+      setReturnRequests(combined);
+    } catch (error) {
+      console.error('Error fetching requests:', error);
+      toast.error('Failed to fetch return/exchange requests');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllRequests();
+  }, [vendorId]);
 
   // Filtered return requests
   const filteredRequests = useMemo(() => {
@@ -93,57 +133,93 @@ const ReturnRequests = () => {
     return filtered;
   }, [returnRequests, searchQuery, selectedStatus, dateFilter]);
 
-  // Handle status update
-  const handleStatusUpdate = async (
-    requestId,
-    newStatus,
-    action = "",
-    options = {}
-  ) => {
-    const statusData = { status: newStatus };
-    if (newStatus === "approved" && action === "approve") {
-      statusData.refundStatus = "pending";
-    } else if (newStatus === "completed" && action === "process-refund") {
-      statusData.refundStatus = "processed";
-    }
-    if (newStatus === "rejected" && options?.rejectionReason) {
-      statusData.rejectionReason = options.rejectionReason;
-    }
-
+  // Handle status update for both returns and exchanges
+  const handleStatusUpdate = async (requestId, newStatus, action = "", options = {}) => {
     try {
-      await updateReturnStatus(requestId, statusData);
-    } catch {
-      return;
+      const request = returnRequests.find(r => r.id === requestId);
+      if (!request) {
+        toast.error('Request not found');
+        return;
+      }
+
+      if (request.type === 'exchange') {
+        // Handle exchange request
+        if (action === 'approve') {
+          await approveVendorExchangeRequest(requestId, { note: options.note || '' });
+          toast.success('Exchange request approved');
+        } else if (action === 'reject') {
+          await rejectVendorExchangeRequest(requestId, { 
+            note: options.note || '',
+            rejectionReason: options.rejectionReason || 'Rejected by vendor'
+          });
+          toast.success('Exchange request rejected');
+        }
+      } else {
+        // Handle return request
+        const payload = {
+          action: action === 'approve' ? 'APPROVE' : 'REJECT',
+          note: options.note || '',
+          rejectionReason: options.rejectionReason || ''
+        };
+        await updateVendorReturnRequestStatus(requestId, payload);
+        toast.success(action === 'approve' ? 'Return request approved' : 'Return request rejected');
+      }
+
+      // Refresh the list
+      await fetchAllRequests();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error(error.response?.data?.message || 'Failed to update status');
     }
-
-    const statusMessages = {
-      approve: "Return request approved",
-      reject: "Return request rejected",
-      "process-refund": "Refund processed successfully",
-    };
-
-    toast.success(statusMessages[action] || "Status updated successfully");
   };
 
   // Get status badge variant
   const getStatusVariant = (status) => {
+    const normalized = String(status || '').toLowerCase();
     const statusMap = {
       pending: "warning",
+      requested: "warning",
       approved: "success",
+      approved_by_vendor: "success",
       rejected: "error",
+      rejected_by_vendor: "error",
       processing: "info",
       completed: "success",
+      pickup: "info",
+      replacement: "info",
     };
-    return statusMap[status] || "warning";
+    return statusMap[normalized] || "warning";
+  };
+
+  // Normalize status for display
+  const normalizeStatus = (status) => {
+    const normalized = String(status || '').toLowerCase();
+    const statusMap = {
+      requested: "pending",
+      approved_by_vendor: "approved",
+      rejected_by_vendor: "rejected",
+      pickup: "picked_up",
+      replacement: "shipped",
+    };
+    return statusMap[normalized] || normalized;
   };
 
   // Table columns
   const columns = [
     {
       key: "id",
-      label: "Return ID",
+      label: "Request ID",
       sortable: true,
-      render: (value) => <span className="font-semibold">{value}</span>,
+      render: (value, row) => (
+        <div>
+          <span className="font-semibold">{value}</span>
+          {row.type === 'exchange' && (
+            <span className="ml-2 text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
+              EXCHANGE
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: "orderId",
@@ -161,25 +237,35 @@ const ReturnRequests = () => {
       key: "customer",
       label: "Customer",
       sortable: true,
-      render: (value) => (
-        <div>
-          <p className="font-medium text-gray-800">{value.name}</p>
-          <p className="text-xs text-gray-500">{value.email}</p>
-        </div>
-      ),
+      render: (value, row) => {
+        const customerName = value?.name || row.userId?.name || 'N/A';
+        const customerEmail = value?.email || row.userId?.email || '';
+        return (
+          <div>
+            <p className="font-medium text-gray-800">{customerName}</p>
+            {customerEmail && <p className="text-xs text-gray-500">{customerEmail}</p>}
+          </div>
+        );
+      },
     },
     {
       key: "requestDate",
       label: "Request Date",
       sortable: true,
-      render: (value) => new Date(value).toLocaleDateString(),
+      render: (value, row) => {
+        const date = value || row.createdAt;
+        return date ? new Date(date).toLocaleDateString() : 'N/A';
+      },
     },
     {
       key: "items",
       label: "Items",
       sortable: false,
-      render: (value) => {
-        const count = Array.isArray(value) ? value.length : 0;
+      render: (value, row) => {
+        if (row.type === 'exchange') {
+          return <span>1 item (Exchange)</span>;
+        }
+        const count = Array.isArray(value) ? value.length : 1;
         return (
           <span>
             {count} item{count !== 1 ? "s" : ""}
@@ -191,101 +277,127 @@ const ReturnRequests = () => {
       key: "reason",
       label: "Reason",
       sortable: true,
-      render: (value) => <span className="text-sm text-gray-700">{value}</span>,
+      render: (value) => <span className="text-sm text-gray-700">{value || 'N/A'}</span>,
     },
     {
       key: "refundAmount",
-      label: "Refund Amount",
+      label: "Amount",
       sortable: true,
-      render: (value) => (
-        <span className="font-bold text-gray-800">{formatPrice(value)}</span>
-      ),
+      render: (value, row) => {
+        if (row.type === 'exchange') {
+          const price = row.newProduct?.price || row.oldProduct?.price || 0;
+          return <span className="font-bold text-gray-800">{formatPrice(price)}</span>;
+        }
+        return <span className="font-bold text-gray-800">{formatPrice(value || 0)}</span>;
+      },
     },
     {
       key: "status",
       label: "Status",
       sortable: true,
-      render: (value) => (
-        <StatusBadge variant={getStatusVariant(value)}>{value}</StatusBadge>
-      ),
+      render: (value) => {
+        const displayStatus = normalizeStatus(value);
+        return (
+          <StatusBadge variant={getStatusVariant(value)}>
+            {displayStatus.replace(/_/g, ' ')}
+          </StatusBadge>
+        );
+      },
     },
     {
       key: "actions",
       label: "Actions",
       sortable: false,
-      render: (_, row) => (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate(`/vendor/return-requests/${row.id}`)}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="View Details">
-            <FiEye />
-          </button>
-          {row.status === "pending" && (
-            <>
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Are you sure you want to approve this return request?"
-                    )
-                  ) {
-                    handleStatusUpdate(row.id, "approved", "approve");
-                  }
-                }}
-                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                title="Approve">
-                <FiCheck />
-              </button>
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      "Are you sure you want to reject this return request?"
-                    )
-                  ) {
-                    const reason = window.prompt(
-                      "Optional rejection reason (visible in return details):",
-                      ""
-                    );
-                    handleStatusUpdate(row.id, "rejected", "reject", {
-                      rejectionReason: reason || "",
-                    });
-                  }
-                }}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Reject">
-                <FiX />
-              </button>
-            </>
-          )}
-          {row.status === "approved" && row.refundStatus === "pending" && (
+      render: (_, row) => {
+        const status = String(row.status || '').toLowerCase();
+        const isPending = status === 'pending' || status === 'requested';
+        
+        return (
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                if (window.confirm("Process refund for this return request?")) {
-                  handleStatusUpdate(row.id, "completed", "process-refund");
-                }
-              }}
-              className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-              title="Process Refund">
-              <FiRefreshCw />
+              onClick={() => navigate(`/vendor/return-requests/${row.id}`)}
+              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              title="View Details">
+              <FiEye />
             </button>
-          )}
-        </div>
-      ),
+            {isPending && (
+              <>
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Are you sure you want to approve this ${row.type === 'exchange' ? 'exchange' : 'return'} request?`
+                      )
+                    ) {
+                      handleStatusUpdate(row.id, "approved", "approve");
+                    }
+                  }}
+                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                  title="Approve">
+                  <FiCheck />
+                </button>
+                <button
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        `Are you sure you want to reject this ${row.type === 'exchange' ? 'exchange' : 'return'} request?`
+                      )
+                    ) {
+                      const reason = window.prompt(
+                        "Optional rejection reason:",
+                        ""
+                      );
+                      handleStatusUpdate(row.id, "rejected", "reject", {
+                        rejectionReason: reason || "Rejected by vendor",
+                      });
+                    }
+                  }}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Reject">
+                  <FiX />
+                </button>
+              </>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
   // Get status counts for stats
   const statusCounts = useMemo(() => {
+    const pending = returnRequests.filter((r) => {
+      const status = String(r.status || '').toLowerCase();
+      return status === 'pending' || status === 'requested';
+    }).length;
+    
+    const approved = returnRequests.filter((r) => {
+      const status = String(r.status || '').toLowerCase();
+      return status === 'approved' || status === 'approved_by_vendor';
+    }).length;
+    
+    const processing = returnRequests.filter((r) => {
+      const status = String(r.status || '').toLowerCase();
+      return status === 'processing' || status === 'pickup' || status === 'inspection_pending';
+    }).length;
+    
+    const completed = returnRequests.filter((r) => {
+      const status = String(r.status || '').toLowerCase();
+      return status === 'completed';
+    }).length;
+    
+    const rejected = returnRequests.filter((r) => {
+      const status = String(r.status || '').toLowerCase();
+      return status === 'rejected' || status === 'rejected_by_vendor';
+    }).length;
+
     return {
       all: returnRequests.length,
-      pending: returnRequests.filter((r) => r.status === "pending").length,
-      approved: returnRequests.filter((r) => r.status === "approved").length,
-      processing: returnRequests.filter((r) => r.status === "processing")
-        .length,
-      completed: returnRequests.filter((r) => r.status === "completed").length,
-      rejected: returnRequests.filter((r) => r.status === "rejected").length,
+      pending,
+      approved,
+      processing,
+      completed,
+      rejected,
     };
   }, [returnRequests]);
 

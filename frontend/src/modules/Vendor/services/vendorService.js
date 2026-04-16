@@ -299,7 +299,7 @@ export const getVendorAnalyticsOverview = (params = {}) =>
  * @param {{ page?, limit?, search?, status? }} params
  */
 export const getVendorReturnRequests = (params = {}) =>
-    api.get('/vendor/return-requests', { params });
+    api.get('/vendor/returns', { params });
 
 /**
  * Get all vendor return requests by paging through the vendor return endpoint.
@@ -340,15 +340,38 @@ export const getAllVendorReturnRequests = async (params = {}) => {
  * @param {string} id
  */
 export const getVendorReturnRequestById = (id) =>
-    api.get(`/vendor/return-requests/${id}`);
+    api.get(`/vendor/returns/${id}`);
 
 /**
- * Update return request status for the authenticated vendor
+ * Update return request status for the authenticated vendor (approve/reject)
  * @param {string} id
- * @param {{ status?: 'pending'|'approved'|'processing'|'rejected'|'completed', refundStatus?: 'pending'|'processed'|'failed', rejectionReason?: string }} payload
+ * @param {{ action: 'APPROVE'|'REJECT', note?: string, rejectionReason?: string }} payload
  */
 export const updateVendorReturnRequestStatus = (id, payload) =>
-    api.patch(`/vendor/return-requests/${id}/status`, payload);
+    api.patch(`/vendor/returns/${id}`, payload);
+
+/**
+ * Get vendor exchange requests
+ * @param {{ page?, limit?, status? }} params
+ */
+export const getVendorExchangeRequests = (params = {}) =>
+    api.get('/exchange/vendor', { params });
+
+/**
+ * Approve vendor exchange request
+ * @param {string} id
+ * @param {{ note?: string }} payload
+ */
+export const approveVendorExchangeRequest = (id, payload = {}) =>
+    api.post(`/exchange/${id}/approve`, payload);
+
+/**
+ * Reject vendor exchange request
+ * @param {string} id
+ * @param {{ note?: string, rejectionReason?: string }} payload
+ */
+export const rejectVendorExchangeRequest = (id, payload = {}) =>
+    api.post(`/exchange/${id}/reject`, payload);
 
 /**
  * Get paginated product reviews for the authenticated vendor
