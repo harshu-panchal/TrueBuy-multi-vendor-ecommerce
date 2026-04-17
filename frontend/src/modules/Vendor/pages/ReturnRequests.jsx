@@ -9,71 +9,26 @@ import AnimatedSelect from "../../Admin/components/AnimatedSelect";
 import { formatPrice } from "../../../shared/utils/helpers";
 import { useVendorAuthStore } from "../store/vendorAuthStore";
 import {
-  getVendorReturnRequests,
-  getVendorExchangeRequests,
-  updateVendorReturnRequestStatus,
   approveVendorExchangeRequest,
   rejectVendorExchangeRequest,
 } from "../services/vendorService";
+import { useReturnStore } from "../../../shared/store/returnStore";
 import toast from "react-hot-toast";
 
 const ReturnRequests = () => {
   const navigate = useNavigate();
   const { vendor } = useVendorAuthStore();
-  const [returnRequests, setReturnRequests] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { returnRequests, isLoading, fetchReturnRequests, updateReturnStatus } = useReturnStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
 
   const vendorId = vendor?.id;
 
-  // Fetch both returns and exchanges
-  const fetchAllRequests = async () => {
-    if (!vendorId) return;
-    
-    setIsLoading(true);
-    try {
-      // Fetch returns and exchanges in parallel
-      const [returnsResponse, exchangesResponse] = await Promise.allSettled([
-        getVendorReturnRequests({ page: 1, limit: 100 }),
-        getVendorExchangeRequests({ page: 1, limit: 100 }),
-      ]);
-
-      const returns = [];
-      const exchanges = [];
-
-      // Unwrap returns response
-      if (returnsResponse.status === 'fulfilled') {
-        const returnsData = returnsResponse.value?.data || returnsResponse.value;
-        const returnsList = returnsData?.returnRequests || [];
-        returns.push(...returnsList.map(r => ({ ...r, type: 'return' })));
-      }
-
-      // Unwrap exchanges response
-      if (exchangesResponse.status === 'fulfilled') {
-        const exchangesData = exchangesResponse.value?.data || exchangesResponse.value;
-        const exchangesList = exchangesData?.exchangeRequests || [];
-        exchanges.push(...exchangesList.map(e => ({ ...e, type: 'exchange' })));
-      }
-
-      // Combine and sort by date
-      const combined = [...returns, ...exchanges].sort((a, b) => 
-        new Date(b.createdAt || b.requestDate) - new Date(a.createdAt || a.requestDate)
-      );
-
-      setReturnRequests(combined);
-    } catch (error) {
-      console.error('Error fetching requests:', error);
-      toast.error('Failed to fetch return/exchange requests');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchAllRequests();
-  }, [vendorId]);
+    if (!vendorId) return;
+    fetchReturnRequests({ role: "vendor", page: 1, limit: 100 }).catch(() => null);
+  }, [vendorId, fetchReturnRequests]);
 
   // Filtered return requests
   const filteredRequests = useMemo(() => {
@@ -83,12 +38,12 @@ const ReturnRequests = () => {
     if (searchQuery) {
       filtered = filtered.filter(
         (request) =>
-          request.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          request.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          request.customer.name
+          String(request.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          String(request.orderId || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+          String(request.customer?.name || request.userId?.name || "")
             .toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
-          request.customer.email
+          String(request.customer?.email || request.userId?.email || "")
             .toLowerCase()
             .includes(searchQuery.toLowerCase())
       );
@@ -156,17 +111,16 @@ const ReturnRequests = () => {
         }
       } else {
         // Handle return request
-        const payload = {
-          action: action === 'approve' ? 'APPROVE' : 'REJECT',
+        await updateReturnStatus(requestId, {
+          status: action === 'approve' ? 'approved' : 'rejected',
           note: options.note || '',
           rejectionReason: options.rejectionReason || ''
-        };
-        await updateVendorReturnRequestStatus(requestId, payload);
+        });
         toast.success(action === 'approve' ? 'Return request approved' : 'Return request rejected');
       }
 
       // Refresh the list
-      await fetchAllRequests();
+      await fetchReturnRequests({ role: "vendor", page: 1, limit: 100 });
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error(error.response?.data?.message || 'Failed to update status');

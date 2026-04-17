@@ -7,13 +7,12 @@ import ExportButton from '../components/ExportButton';
 import StatusBadge from '../../../shared/components/Badge';
 import AnimatedSelect from '../components/AnimatedSelect';
 import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
-import { getAllReturnRequests, getAllExchangeRequests } from '../services/adminService';
+import { useReturnStore } from '../../../shared/store/returnStore';
 import toast from 'react-hot-toast';
 
 const ReturnRequests = () => {
   const navigate = useNavigate();
-  const [returnRequests, setReturnRequests] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const { returnRequests, isLoading, fetchReturnRequests, assignDeliveryToReturn, processReturnRefund } = useReturnStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
@@ -22,49 +21,9 @@ const ReturnRequests = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
 
-  // Fetch both returns and exchanges
-  const fetchAllRequests = async () => {
-    setIsLoading(true);
-    try {
-      const [returnsResponse, exchangesResponse] = await Promise.allSettled([
-        getAllReturnRequests({ page: 1, limit: 100, status: selectedStatus === 'all' ? undefined : selectedStatus }),
-        getAllExchangeRequests({ page: 1, limit: 100, status: selectedStatus === 'all' ? undefined : selectedStatus }),
-      ]);
-
-      const returns = [];
-      const exchanges = [];
-
-      // Unwrap returns response
-      if (returnsResponse.status === 'fulfilled') {
-        const returnsData = returnsResponse.value?.data || returnsResponse.value;
-        const returnsList = returnsData?.returnRequests || [];
-        returns.push(...returnsList.map(r => ({ ...r, type: 'return' })));
-      }
-
-      // Unwrap exchanges response
-      if (exchangesResponse.status === 'fulfilled') {
-        const exchangesData = exchangesResponse.value?.data || exchangesResponse.value;
-        const exchangesList = exchangesData?.exchangeRequests || [];
-        exchanges.push(...exchangesList.map(e => ({ ...e, type: 'exchange' })));
-      }
-
-      // Combine and sort by date
-      const combined = [...returns, ...exchanges].sort((a, b) => 
-        new Date(b.createdAt || b.requestDate) - new Date(a.createdAt || a.requestDate)
-      );
-
-      setReturnRequests(combined);
-    } catch (error) {
-      console.error('Error fetching requests:', error);
-      toast.error('Failed to fetch return/exchange requests');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchAllRequests();
-  }, [selectedStatus, dateFilter]);
+    fetchReturnRequests({ role: 'admin', page: 1, limit: 100 }).catch(() => null);
+  }, [fetchReturnRequests]);
 
   const filteredRequests = useMemo(() => {
     let filtered = returnRequests;
@@ -91,17 +50,20 @@ const ReturnRequests = () => {
 
   const handleConfirmAssignment = async () => {
     if (!selectedRequest || !selectedDeliveryBoyId) return;
-    toast.success('Delivery partner assigned successfully');
-    setIsAssignModalOpen(false);
-    setSelectedRequest(null);
-    setSelectedDeliveryBoyId('');
-    await fetchAllRequests();
+    const success = await assignDeliveryToReturn(selectedRequest.id, selectedDeliveryBoyId);
+    if (success) {
+      setIsAssignModalOpen(false);
+      setSelectedRequest(null);
+      setSelectedDeliveryBoyId('');
+    }
   };
 
   const handleProcessRefund = async (requestId) => {
     if (window.confirm('Are you sure you want to process the refund for this return?')) {
-      toast.success('Refund processed successfully');
-      await fetchAllRequests();
+      const success = await processReturnRefund(requestId);
+      if (success) {
+        await fetchReturnRequests({ role: 'admin', page: 1, limit: 100 });
+      }
     }
   };
 
@@ -451,4 +413,3 @@ const ReturnRequests = () => {
 };
 
 export default ReturnRequests;
-

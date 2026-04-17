@@ -43,7 +43,7 @@ const ReturnRequestDetail = () => {
 
   useEffect(() => {
     const loadDetail = async () => {
-      const data = await fetchReturnRequestById(id);
+      const data = await fetchReturnRequestById(id, 'admin');
       if (data) {
         setReturnRequest(data);
         setStatus(data.status);
@@ -748,4 +748,3 @@ const ReturnRequestDetail = () => {
 };
 
 export default ReturnRequestDetail;
-

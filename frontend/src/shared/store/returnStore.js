@@ -4,6 +4,15 @@ import * as vendorService from '../../modules/Vendor/services/vendorService';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 
+const resolveReturnScope = (role = null) => {
+    if (role === 'admin' || role === 'vendor' || role === 'delivery') return role;
+    if (typeof window === 'undefined') return 'user';
+    if (window.location.pathname.startsWith('/admin')) return 'admin';
+    if (window.location.pathname.startsWith('/vendor')) return 'vendor';
+    if (window.location.pathname.startsWith('/delivery')) return 'delivery';
+    return 'user';
+};
+
 export const useReturnStore = create((set, get) => ({
     returnRequests: [
         {
@@ -362,13 +371,14 @@ export const useReturnStore = create((set, get) => ({
         set({ isLoading: true });
         try {
             const { role, ...apiParams } = params;
+            const resolvedRole = resolveReturnScope(role);
             let response;
             let exchangeResponse = null;
             
-            if (role === 'admin') {
+            if (resolvedRole === 'admin') {
                 response = await adminService.getAllReturnRequests(apiParams);
                 exchangeResponse = await api.get('/exchange/admin', { params: apiParams });
-            } else if (role === 'vendor') {
+            } else if (resolvedRole === 'vendor') {
                 response = await vendorService.getVendorReturnRequests(apiParams);
                 exchangeResponse = await api.get('/exchange/vendor', { params: apiParams });
             } else {
@@ -392,7 +402,7 @@ export const useReturnStore = create((set, get) => ({
             const existingRequests = get().returnRequests;
             
             set({ 
-                returnRequests: role === 'admin' || role === 'vendor'
+                returnRequests: resolvedRole === 'admin' || resolvedRole === 'vendor'
                     ? [...normalizedRequests, ...existingRequests.filter((existing) => !normalizedRequests.some((req) => String(req.id) === String(existing.id)))]
                     : [...normalizedRequests, ...existingRequests.filter((existing) => !normalizedRequests.some((req) => String(req.id) === String(existing.id)))],
                 pagination: payload.pagination || exchangePayload.pagination || get().pagination,
@@ -408,7 +418,7 @@ export const useReturnStore = create((set, get) => ({
         return get().returnRequests.find(req => req.orderId === orderId || req.orderRefId === orderId);
     },
 
-    fetchReturnRequestById: async (id) => {
+    fetchReturnRequestById: async (id, role = null) => {
         // Check local state first (covers mock IDs like RET- or EXC-)
         const localMatch = get().returnRequests.find(req => String(req.id) === String(id));
         if (localMatch) return localMatch;
@@ -417,7 +427,12 @@ export const useReturnStore = create((set, get) => ({
         try {
             let response = null;
             try {
-                response = await adminService.getReturnRequestById(id);
+                const resolvedRole = resolveReturnScope(role);
+                if (resolvedRole === 'vendor') {
+                    response = await vendorService.getVendorReturnRequestById(id);
+                } else {
+                    response = await adminService.getReturnRequestById(id);
+                }
             } catch (error) {
                 if (error?.response?.status === 404) {
                     response = await api.get(`/exchange/${id}`);

@@ -68,7 +68,7 @@ const ReturnRequestDetail = () => {
       
       // If not in store, try fetching (fallback)
       if (!data) {
-        data = await fetchReturnRequestById(id);
+        data = await fetchReturnRequestById(id, 'vendor');
       }
 
       if (!data) {
