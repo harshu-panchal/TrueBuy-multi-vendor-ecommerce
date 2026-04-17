@@ -19,12 +19,12 @@ export const vendorStatusUpdateSchema = Joi.object({
 });
 
 export const vendorCommissionUpdateSchema = Joi.object({
-    commissionRate: Joi.number().min(0).max(100).required(),
-});
+    commissionRate: Joi.number().min(0).max(100).optional(),
+    b2bCommissionRate: Joi.number().min(0).max(100).optional(),
+}).or('commissionRate', 'b2bCommissionRate');
 
 export const vendorCommissionsQuerySchema = Joi.object({
     page: Joi.number().integer().min(1).optional(),
     limit: Joi.number().integer().min(1).max(200).optional(),
     status: Joi.string().valid('all', 'pending', 'paid', 'cancelled').optional(),
 });
-

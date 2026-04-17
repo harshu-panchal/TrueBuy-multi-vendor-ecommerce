@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiSearch, FiEdit, FiDollarSign } from "react-icons/fi";
+import { FiSearch, FiEdit } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import ExportButton from "../../components/ExportButton";
@@ -11,15 +11,17 @@ import toast from "react-hot-toast";
 
 const CommissionRates = () => {
   const navigate = useNavigate();
-  const { vendors, updateCommissionRate, initialize } = useVendorStore();
+  const { vendors, updateCommissionRates, initialize } = useVendorStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [commissionModal, setCommissionModal] = useState({
     isOpen: false,
     vendorId: null,
     vendorName: null,
     currentRate: "",
+    currentB2BRate: "",
   });
   const [newRate, setNewRate] = useState("");
+  const [newB2BRate, setNewB2BRate] = useState("");
 
   const filteredVendors = useMemo(() => {
     let filtered = vendors.filter((v) => v.status === "approved");
@@ -42,22 +44,33 @@ const CommissionRates = () => {
 
   const handleCommissionUpdate = async () => {
     const rate = parseFloat(newRate) / 100;
+    const b2bRate = parseFloat(newB2BRate) / 100;
     if (isNaN(rate) || rate < 0 || rate > 1) {
-      toast.error("Please enter a valid commission rate (0-100%)");
+      toast.error("Please enter a valid B2C commission rate (0-100%)");
       return;
     }
-    const success = await updateCommissionRate(commissionModal.vendorId, rate);
+    if (isNaN(b2bRate) || b2bRate < 0 || b2bRate > 1) {
+      toast.error("Please enter a valid B2B commission rate (0-100%)");
+      return;
+    }
+
+    const success = await updateCommissionRates(commissionModal.vendorId, {
+      commissionRate: rate,
+      b2bCommissionRate: b2bRate,
+    });
     if (success) {
       setCommissionModal({
         isOpen: false,
         vendorId: null,
         vendorName: null,
         currentRate: "",
+        currentB2BRate: "",
       });
       setNewRate("");
-      toast.success("Commission rate updated successfully");
+      setNewB2BRate("");
+      toast.success("Commission rates updated successfully");
     } else {
-      toast.error("Failed to update commission rate");
+      toast.error("Failed to update commission rates");
     }
   };
 
@@ -80,10 +93,23 @@ const CommissionRates = () => {
     },
     {
       key: "commissionRate",
-      label: "Current Rate",
+      label: "B2C Rate",
       sortable: true,
       render: (value, row) => {
         const rate = value || row.commissionRate || 0;
+        return (
+          <span className="text-lg font-bold text-gray-800">
+            {(rate * 100).toFixed(1)}%
+          </span>
+        );
+      },
+    },
+    {
+      key: "b2bCommissionRate",
+      label: "B2B Rate",
+      sortable: true,
+      render: (value, row) => {
+        const rate = value || row.b2bCommissionRate || 0;
         return (
           <span className="text-lg font-bold text-gray-800">
             {(rate * 100).toFixed(1)}%
@@ -110,15 +136,17 @@ const CommissionRates = () => {
           onClick={(e) => {
             e.stopPropagation();
             setNewRate(((row.commissionRate || 0) * 100).toFixed(1));
+            setNewB2BRate(((row.b2bCommissionRate || 0) * 100).toFixed(1));
             setCommissionModal({
               isOpen: true,
               vendorId: row.id,
               vendorName: row.storeName || row.name,
               currentRate: ((row.commissionRate || 0) * 100).toFixed(1),
+              currentB2BRate: ((row.b2bCommissionRate || 0) * 100).toFixed(1),
             });
           }}
           className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-          title="Update Commission Rate">
+          title="Update Commission Rates">
           <FiEdit />
         </button>
       ),
@@ -171,6 +199,11 @@ const CommissionRates = () => {
                     accessor: (row) =>
                       `${((row.commissionRate || 0) * 100).toFixed(1)}%`,
                   },
+                  {
+                    label: "B2B Commission Rate",
+                    accessor: (row) =>
+                      `${((row.b2bCommissionRate || 0) * 100).toFixed(1)}%`,
+                  },
                 ]}
                 filename="vendor-commission-rates"
               />
@@ -197,38 +230,68 @@ const CommissionRates = () => {
             vendorId: null,
             vendorName: null,
             currentRate: "",
+            currentB2BRate: "",
           });
           setNewRate("");
+          setNewB2BRate("");
         }}
         onConfirm={handleCommissionUpdate}
-        title="Update Commission Rate"
-        message={`Update commission rate for "${commissionModal.vendorName}"`}
+        title="Update Commission Rates"
+        message={`Update B2C/B2B commission rates for "${commissionModal.vendorName}"`}
         confirmText="Update"
         cancelText="Cancel"
         type="info"
         customContent={
           <div className="mt-4">
-            <div className="mb-3">
-              <p className="text-sm text-gray-600 mb-1">Current Rate</p>
-              <p className="text-lg font-bold text-gray-800">
-                {commissionModal.currentRate}%
-              </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Current B2C Rate</p>
+                <p className="text-lg font-bold text-gray-800">
+                  {commissionModal.currentRate}%
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Current B2B Rate</p>
+                <p className="text-lg font-bold text-gray-800">
+                  {commissionModal.currentB2BRate}%
+                </p>
+              </div>
             </div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              New Commission Rate (%)
-            </label>
-            <input
-              type="number"
-              value={newRate}
-              onChange={(e) => setNewRate(e.target.value)}
-              min="0"
-              max="100"
-              step="0.1"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="10.0"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Enter a value between 0 and 100
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  New B2C Rate (%)
+                </label>
+                <input
+                  type="number"
+                  value={newRate}
+                  onChange={(e) => setNewRate(e.target.value)}
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="10.0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  New B2B Rate (%)
+                </label>
+                <input
+                  type="number"
+                  value={newB2BRate}
+                  onChange={(e) => setNewB2BRate(e.target.value)}
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="10.0"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              Enter values between 0 and 100
             </p>
           </div>
         }

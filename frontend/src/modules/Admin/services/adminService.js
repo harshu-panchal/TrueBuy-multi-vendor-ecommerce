@@ -129,6 +129,10 @@ export const updateVendorStatus = (id, status, reason = '') =>
 export const updateCommissionRate = (id, commissionRate) =>
     api.patch(`/admin/vendors/${id}/commission`, { commissionRate });
 
+// Update one or both commission rates (B2C and/or B2B) in a single call.
+export const updateVendorCommissionRates = (id, { commissionRate, b2bCommissionRate } = {}) =>
+    api.patch(`/admin/vendors/${id}/commission`, { commissionRate, b2bCommissionRate });
+
 export const getVendorCommissions = (id, params = {}) =>
     api.get(`/admin/vendors/${id}/commissions`, { params });
 

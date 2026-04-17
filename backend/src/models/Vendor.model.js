@@ -18,6 +18,9 @@ const vendorSchema = new mongoose.Schema(
         },
         suspensionReason: { type: String },
         commissionRate: { type: Number, default: 10, min: 0, max: 100 },
+        // Optional separate commission rate for B2B wholesale flow (percentage 0-100).
+        // When null/undefined, the system should fall back to `commissionRate`.
+        b2bCommissionRate: { type: Number, default: null, min: 0, max: 100 },
         isVerified: { type: Boolean, default: false },
         rating: { type: Number, default: 0 },
         reviewCount: { type: Number, default: 0 },

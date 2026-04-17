@@ -15,12 +15,19 @@ const toApiVendor = (vendorDoc) => {
 
     const normalizedId = vendor?._id ? String(vendor._id) : String(vendor?.id || '');
     const normalizedCommissionRate = Number(vendor.commissionRate);
+    const rawB2BCommissionRate = Number(vendor.b2bCommissionRate);
+    const effectiveB2BCommissionRate = Number.isFinite(rawB2BCommissionRate)
+        ? rawB2BCommissionRate
+        : normalizedCommissionRate;
     return {
         ...vendor,
         id: normalizedId,
         commissionRate: Number.isFinite(normalizedCommissionRate)
             ? normalizedCommissionRate / 100
-            : 0
+            : 0,
+        b2bCommissionRate: Number.isFinite(effectiveB2BCommissionRate)
+            ? effectiveB2BCommissionRate / 100
+            : 0,
     };
 };
 
@@ -110,15 +117,35 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
 
 // PATCH /api/admin/vendors/:id/commission
 export const updateCommissionRate = asyncHandler(async (req, res) => {
-    const { commissionRate } = req.body;
-    const parsedRate = Number(commissionRate);
-    if (Number.isNaN(parsedRate) || parsedRate < 0) {
-        throw new ApiError(400, 'Commission rate must be a valid non-negative number.');
-    }
-    const dbCommissionRate = parsedRate <= 1 ? parsedRate * 100 : parsedRate;
-    if (dbCommissionRate > 100) throw new ApiError(400, 'Commission rate must be between 0 and 100.');
+    const { commissionRate, b2bCommissionRate } = req.body || {};
 
-    const vendor = await Vendor.findByIdAndUpdate(req.params.id, { commissionRate: dbCommissionRate }, { new: true });
+    const update = {};
+
+    if (typeof commissionRate !== 'undefined') {
+        const parsedRate = Number(commissionRate);
+        if (Number.isNaN(parsedRate) || parsedRate < 0) {
+            throw new ApiError(400, 'Commission rate must be a valid non-negative number.');
+        }
+        const dbCommissionRate = parsedRate <= 1 ? parsedRate * 100 : parsedRate;
+        if (dbCommissionRate > 100) throw new ApiError(400, 'Commission rate must be between 0 and 100.');
+        update.commissionRate = dbCommissionRate;
+    }
+
+    if (typeof b2bCommissionRate !== 'undefined') {
+        const parsedRate = Number(b2bCommissionRate);
+        if (Number.isNaN(parsedRate) || parsedRate < 0) {
+            throw new ApiError(400, 'B2B commission rate must be a valid non-negative number.');
+        }
+        const dbCommissionRate = parsedRate <= 1 ? parsedRate * 100 : parsedRate;
+        if (dbCommissionRate > 100) throw new ApiError(400, 'B2B commission rate must be between 0 and 100.');
+        update.b2bCommissionRate = dbCommissionRate;
+    }
+
+    if (Object.keys(update).length === 0) {
+        throw new ApiError(400, 'At least one of commissionRate or b2bCommissionRate is required.');
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(req.params.id, update, { new: true });
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     res.status(200).json(new ApiResponse(200, toApiVendor(vendor), 'Commission rate updated.'));
 });
