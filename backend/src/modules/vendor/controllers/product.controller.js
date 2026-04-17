@@ -36,12 +36,8 @@ const normalizeBulkPricingInput = (tiers = []) => {
 };
 
 const enforceWholesalePermissions = async ({ vendorId, wantsWholesale }) => {
-    if (!wantsWholesale) return;
-    const vendor = await Vendor.findById(vendorId).select('b2bPermissions').lean();
-    const canSell = vendor?.b2bPermissions?.canSellWholesale === true;
-    if (!canSell) {
-        throw new ApiError(403, 'Wholesale selling is not enabled for this vendor.');
-    }
+    // Wholesale selling no longer requires admin approval
+    return;
 };
 
 const sanitizeFaqs = (faqs) => {
@@ -298,9 +294,9 @@ export const createProduct = asyncHandler(async (req, res) => {
         rest.bulkPricing = normalizeBulkPricingInput(rest.bulkPricing || []);
         rest.minOrderQty = Math.max(1, Math.floor(toNumber(rest.minOrderQty, 1)));
         if (!rest.visibleTo) rest.visibleTo = 'vendors';
-        rest.wholesaleApprovalStatus = 'pending';
+        rest.wholesaleApprovalStatus = 'approved';
         rest.wholesaleRequestedAt = new Date();
-        rest.wholesaleApprovedAt = null;
+        rest.wholesaleApprovedAt = new Date();
         rest.wholesaleRejectedAt = null;
         rest.wholesaleRejectionReason = '';
     }
@@ -380,11 +376,11 @@ export const updateProduct = asyncHandler(async (req, res) => {
         }
         if (!product.visibleTo) product.visibleTo = 'vendors';
 
-        // Any meaningful wholesale change requires re-approval.
+        // By default, wholesale remains approved without admin intervention
         if (!wasWholesale || touchesWholesaleFields) {
-            product.wholesaleApprovalStatus = 'pending';
+            product.wholesaleApprovalStatus = 'approved';
             product.wholesaleRequestedAt = new Date();
-            product.wholesaleApprovedAt = null;
+            product.wholesaleApprovedAt = new Date();
             product.wholesaleRejectedAt = null;
             product.wholesaleRejectionReason = '';
         }

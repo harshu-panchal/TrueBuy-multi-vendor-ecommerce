@@ -25,7 +25,6 @@ const AddProduct = () => {
   const { brands, initialize: initBrands } = useBrandStore();
 
   const vendorId = vendor?.id;
-  const canSellWholesale = vendor?.b2bPermissions?.canSellWholesale === true;
 
   const [formData, setFormData] = useState({
     name: "",
@@ -112,10 +111,6 @@ const AddProduct = () => {
   };
 
   const handleWholesaleToggle = (checked) => {
-    if (checked && !canSellWholesale) {
-      toast.error("Wholesale selling is disabled for your vendor account. Contact admin.");
-      return;
-    }
     setFormData((prev) => ({
       ...prev,
       isWholesale: Boolean(checked),
@@ -421,10 +416,6 @@ const AddProduct = () => {
       return;
     }
     if (formData.isWholesale) {
-      if (!canSellWholesale) {
-        toast.error("Wholesale selling is disabled for your vendor account. Contact admin.");
-        return;
-      }
       if (!Number.isFinite(parsedWholesaleMoq) || parsedWholesaleMoq < 1) {
         toast.error("Please enter a valid Wholesale MOQ (minimum 1).");
         return;
@@ -649,7 +640,7 @@ const AddProduct = () => {
             <div>
               <h2 className="text-base font-bold text-gray-800">Wholesale Marketplace</h2>
               <p className="text-xs text-gray-500">
-                Enable wholesale listing for vendor-to-vendor purchases (requires admin approval).
+                Enable wholesale listing for vendor-to-vendor purchases.
               </p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -657,20 +648,13 @@ const AddProduct = () => {
                 type="checkbox"
                 checked={formData.isWholesale}
                 onChange={(e) => handleWholesaleToggle(e.target.checked)}
-                disabled={!canSellWholesale}
                 className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 disabled:opacity-50"
               />
-              <span className={`text-xs font-semibold ${canSellWholesale ? "text-gray-700" : "text-gray-400"}`}>
+              <span className="text-xs font-semibold text-gray-700">
                 Enable Wholesale
               </span>
             </label>
           </div>
-
-          {!canSellWholesale && (
-            <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
-              Wholesale selling is disabled for your account. Contact admin to enable it.
-            </div>
-          )}
 
           {formData.isWholesale && (
             <div className="mt-3 space-y-3">
