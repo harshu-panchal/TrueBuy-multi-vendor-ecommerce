@@ -348,7 +348,7 @@ export const getVendorReturnRequestById = (id) =>
  * @param {{ action: 'APPROVE'|'REJECT', note?: string, rejectionReason?: string }} payload
  */
 export const updateVendorReturnRequestStatus = (id, payload) =>
-    api.patch(`/vendor/returns/${id}`, payload);
+    api.put(`/vendor/returns/${id}`, payload);
 
 /**
  * Get vendor exchange requests

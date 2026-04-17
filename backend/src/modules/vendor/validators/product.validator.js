@@ -58,6 +58,16 @@ export const createProductSchema = Joi.object({
         }).optional(),
         defaultSelection: Joi.object().optional(),
     }).optional(),
+    // B2B Wholesale (optional)
+    isWholesale: Joi.boolean().optional(),
+    minOrderQty: Joi.number().integer().min(1).optional(),
+    bulkPricing: Joi.array().items(
+        Joi.object({
+            minQty: Joi.number().integer().min(1).required(),
+            price: Joi.number().min(0).required(),
+        })
+    ).optional(),
+    visibleTo: Joi.string().valid('vendors', 'all').optional(),
 }).unknown(true);
 
 export const updateProductSchema = Joi.object({
@@ -116,6 +126,16 @@ export const updateProductSchema = Joi.object({
         }).optional(),
         defaultSelection: Joi.object().optional(),
     }).optional(),
+    // B2B Wholesale (optional)
+    isWholesale: Joi.boolean().optional(),
+    minOrderQty: Joi.number().integer().min(1).optional(),
+    bulkPricing: Joi.array().items(
+        Joi.object({
+            minQty: Joi.number().integer().min(1).required(),
+            price: Joi.number().min(0).required(),
+        })
+    ).optional(),
+    visibleTo: Joi.string().valid('vendors', 'all').optional(),
 }).unknown(true);
 
 export const productIdParamSchema = Joi.object({

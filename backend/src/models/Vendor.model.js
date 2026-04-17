@@ -59,6 +59,11 @@ const vendorSchema = new mongoose.Schema(
         refreshTokenHash: { type: String, select: false },
         refreshTokenExpiresAt: { type: Date, select: false },
         joinDate: { type: Date, default: Date.now },
+        // B2B Wholesale permissions (admin-controlled; additive)
+        b2bPermissions: {
+            canBuyWholesale: { type: Boolean, default: true },
+            canSellWholesale: { type: Boolean, default: false },
+        },
     },
     { timestamps: true }
 );

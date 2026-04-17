@@ -226,6 +226,10 @@ import VendorSupportTickets from "./modules/Vendor/pages/SupportTickets";
 import VendorPickupLocations from "./modules/Vendor/pages/PickupLocations";
 import VendorReports from "./modules/Vendor/pages/Reports";
 import VendorLanguageSettings from "./modules/Vendor/pages/LanguageSettings";
+import VendorWholesaleHome from "./modules/Vendor/pages/wholesale/WholesaleHome";
+import VendorWholesaleProducts from "./modules/Vendor/pages/wholesale/WholesaleProducts";
+import VendorWholesaleCart from "./modules/Vendor/pages/wholesale/WholesaleCart";
+import VendorWholesaleOrders from "./modules/Vendor/pages/wholesale/WholesaleOrders";
 
 // Inner component that has access to useLocation
 const AppRoutes = () => {
@@ -681,6 +685,10 @@ const AppRoutes = () => {
         <Route path="orders/all-orders" element={<VendorAllOrders />} />
         <Route path="orders/order-tracking" element={<VendorOrderTracking />} />
         <Route path="orders/:id" element={<VendorOrderDetail />} />
+        <Route path="wholesale" element={<VendorWholesaleHome />} />
+        <Route path="wholesale/products" element={<VendorWholesaleProducts />} />
+        <Route path="wholesale/cart" element={<VendorWholesaleCart />} />
+        <Route path="wholesale/orders" element={<VendorWholesaleOrders />} />
         <Route path="analytics" element={<VendorAnalytics />} />
         <Route path="reports" element={<VendorReports />} />
         <Route path="earnings" element={<VendorEarnings />} />

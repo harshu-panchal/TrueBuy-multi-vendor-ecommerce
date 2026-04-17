@@ -19,10 +19,11 @@ export const returnIdParamSchema = Joi.object({
 });
 
 export const vendorDecisionSchema = Joi.object({
-    action: Joi.string().valid('APPROVE', 'REJECT').required(),
+    action: Joi.string().valid('APPROVE', 'REJECT').optional(),
+    status: Joi.string().optional(),
     note: Joi.string().trim().max(400).allow('').default(''),
     rejectionReason: Joi.string().trim().max(400).allow('').default(''),
-});
+}).or('action', 'status');
 
 export const adminAssignSchema = Joi.object({
     deliveryBoyId: Joi.string().trim().required(),

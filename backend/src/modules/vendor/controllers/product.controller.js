@@ -2,12 +2,46 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Product from '../../../models/Product.model.js';
+import Vendor from '../../../models/Vendor.model.js';
 import { slugify } from '../../../utils/slugify.js';
 
 const deriveStockStatus = (stockQuantity = 0, lowStockThreshold = 10) => {
     if (stockQuantity <= 0) return 'out_of_stock';
     if (stockQuantity <= lowStockThreshold) return 'low_stock';
     return 'in_stock';
+};
+
+const toNumber = (value, fallback = 0) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : fallback;
+};
+
+const normalizeBulkPricingInput = (tiers = []) => {
+    const normalized = (tiers || [])
+        .map((tier) => ({
+            minQty: Math.max(1, Math.floor(toNumber(tier?.minQty, 0))),
+            price: Math.max(0, toNumber(tier?.price, 0)),
+        }))
+        .filter((t) => Number.isFinite(t.minQty) && Number.isFinite(t.price))
+        .sort((a, b) => a.minQty - b.minQty);
+
+    const deduped = [];
+    const seen = new Set();
+    normalized.forEach((t) => {
+        if (seen.has(t.minQty)) return;
+        seen.add(t.minQty);
+        deduped.push(t);
+    });
+    return deduped;
+};
+
+const enforceWholesalePermissions = async ({ vendorId, wantsWholesale }) => {
+    if (!wantsWholesale) return;
+    const vendor = await Vendor.findById(vendorId).select('b2bPermissions').lean();
+    const canSell = vendor?.b2bPermissions?.canSellWholesale === true;
+    if (!canSell) {
+        throw new ApiError(403, 'Wholesale selling is not enabled for this vendor.');
+    }
 };
 
 const sanitizeFaqs = (faqs) => {
@@ -232,6 +266,12 @@ export const getVendorProductById = asyncHandler(async (req, res) => {
 export const createProduct = asyncHandler(async (req, res) => {
     const { name, ...rest } = req.body;
     if (!name) throw new ApiError(400, 'Product name is required.');
+    // Prevent vendor from setting admin-controlled wholesale approval fields.
+    delete rest.wholesaleApprovalStatus;
+    delete rest.wholesaleRequestedAt;
+    delete rest.wholesaleApprovedAt;
+    delete rest.wholesaleRejectedAt;
+    delete rest.wholesaleRejectionReason;
     const slug = slugify(name) + '-' + Date.now();
     const stockQuantity = Number(rest.stockQuantity ?? 0);
     const lowStockThreshold = Number(rest.lowStockThreshold ?? 10);
@@ -252,6 +292,19 @@ export const createProduct = asyncHandler(async (req, res) => {
         : stockQuantity;
     const stock = deriveStockStatus(finalStockQuantity, lowStockThreshold);
 
+    const wantsWholesale = rest.isWholesale === true;
+    await enforceWholesalePermissions({ vendorId: req.user.id, wantsWholesale });
+    if (wantsWholesale) {
+        rest.bulkPricing = normalizeBulkPricingInput(rest.bulkPricing || []);
+        rest.minOrderQty = Math.max(1, Math.floor(toNumber(rest.minOrderQty, 1)));
+        if (!rest.visibleTo) rest.visibleTo = 'vendors';
+        rest.wholesaleApprovalStatus = 'pending';
+        rest.wholesaleRequestedAt = new Date();
+        rest.wholesaleApprovedAt = null;
+        rest.wholesaleRejectedAt = null;
+        rest.wholesaleRejectionReason = '';
+    }
+
     const product = await Product.create({
         name,
         slug,
@@ -271,6 +324,21 @@ export const createProduct = asyncHandler(async (req, res) => {
 export const updateProduct = asyncHandler(async (req, res) => {
     const product = await Product.findOne({ _id: req.params.id, vendorId: req.user.id });
     if (!product) throw new ApiError(404, 'Product not found or access denied.');
+    const wasWholesale = product.isWholesale === true;
+    const hasWholesaleToggle = Object.prototype.hasOwnProperty.call(req.body, 'isWholesale');
+    const nextIsWholesale = hasWholesaleToggle ? req.body.isWholesale === true : wasWholesale;
+    const touchesWholesaleFields = ['isWholesale', 'minOrderQty', 'bulkPricing', 'visibleTo'].some((k) =>
+        Object.prototype.hasOwnProperty.call(req.body, k)
+    );
+
+    // Prevent vendor from setting admin-controlled wholesale approval fields.
+    delete req.body.wholesaleApprovalStatus;
+    delete req.body.wholesaleRequestedAt;
+    delete req.body.wholesaleApprovedAt;
+    delete req.body.wholesaleRejectedAt;
+    delete req.body.wholesaleRejectionReason;
+
+    await enforceWholesalePermissions({ vendorId: req.user.id, wantsWholesale: nextIsWholesale });
     Object.assign(product, req.body);
     if (Object.prototype.hasOwnProperty.call(req.body, 'faqs')) {
         product.faqs = sanitizeFaqs(req.body.faqs);
@@ -302,6 +370,36 @@ export const updateProduct = asyncHandler(async (req, res) => {
             product.stockQuantity = variantAggregateStock;
         }
     }
+
+    if (nextIsWholesale) {
+        if (Object.prototype.hasOwnProperty.call(req.body, 'bulkPricing')) {
+            product.bulkPricing = normalizeBulkPricingInput(req.body.bulkPricing || []);
+        }
+        if (Object.prototype.hasOwnProperty.call(req.body, 'minOrderQty')) {
+            product.minOrderQty = Math.max(1, Math.floor(toNumber(req.body.minOrderQty, product.minOrderQty || 1)));
+        }
+        if (!product.visibleTo) product.visibleTo = 'vendors';
+
+        // Any meaningful wholesale change requires re-approval.
+        if (!wasWholesale || touchesWholesaleFields) {
+            product.wholesaleApprovalStatus = 'pending';
+            product.wholesaleRequestedAt = new Date();
+            product.wholesaleApprovedAt = null;
+            product.wholesaleRejectedAt = null;
+            product.wholesaleRejectionReason = '';
+        }
+    } else if (wasWholesale && hasWholesaleToggle && nextIsWholesale === false) {
+        // Switching back to B2C-only keeps the catalog stable.
+        product.wholesaleApprovalStatus = 'approved';
+        product.wholesaleRequestedAt = null;
+        product.wholesaleApprovedAt = null;
+        product.wholesaleRejectedAt = null;
+        product.wholesaleRejectionReason = '';
+        product.bulkPricing = [];
+        product.minOrderQty = 1;
+        product.visibleTo = 'all';
+    }
+
     // Keep stock state deterministic from quantity + threshold.
     product.stock = deriveStockStatus(
         Number(product.stockQuantity ?? 0),

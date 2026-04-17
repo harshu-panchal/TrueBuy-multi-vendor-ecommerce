@@ -315,13 +315,14 @@ export const useOrderStore = create(
 
       requestReturn: async (orderId, payload = {}) => {
         const body = {
+          orderId,
           reason: String(payload?.reason || '').trim(),
           ...(payload?.vendorId ? { vendorId: payload.vendorId } : {}),
           ...(Array.isArray(payload?.items) ? { items: payload.items } : {}),
           ...(Array.isArray(payload?.images) ? { images: payload.images } : {}),
         };
 
-        const response = await api.post(`/user/orders/${orderId}/returns`, body);
+        const response = await api.post(`/user/returns`, body);
         const data = response?.data ?? response;
         return data;
       },

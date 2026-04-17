@@ -25,6 +25,7 @@ import {
   FiMessageSquare,
   FiTrendingUp,
   FiFile,
+  FiGrid,
 } from "react-icons/fi";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import vendorMenu from "../../config/vendorMenu.json";
@@ -35,6 +36,7 @@ const iconMap = {
   Dashboard: FiHome,
   Products: FiPackage,
   Orders: FiShoppingBag,
+  "Wholesale Marketplace": FiGrid,
   "Return Requests": FiRefreshCw,
   "Product Reviews": FiStar,
   "Stock Management": FiTrendingDown,
@@ -75,6 +77,11 @@ const getChildRoute = (parentRoute, childName) => {
       "Store Settings": "/vendor/settings/store",
       "Payment Settings": "/vendor/settings/payment",
       "Shipping Settings": "/vendor/settings/shipping",
+    },
+    "/vendor/wholesale": {
+      "Wholesale Products": "/vendor/wholesale/products",
+      "B2B Cart": "/vendor/wholesale/cart",
+      "B2B Orders": "/vendor/wholesale/orders",
     },
   };
 

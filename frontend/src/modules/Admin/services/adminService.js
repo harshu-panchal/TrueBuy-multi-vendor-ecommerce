@@ -197,6 +197,9 @@ export const updateReturnRequestStatus = (id, statusOrPayload, adminNote = '') =
     return api.patch(`/admin/returns/${id}/status`, payload);
 };
 
+export const assignDeliveryToReturn = (id, deliveryBoyId, note = '') => 
+    api.patch(`/admin/returns/${id}/assign`, { deliveryBoyId, note });
+
 export const getAllExchangeRequests = (params = {}) =>
     api.get('/exchange/admin', { params });
 

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as authController from '../controllers/auth.controller.js';
 import * as orderController from '../controllers/order.controller.js';
+import * as b2bOrderController from '../controllers/b2bOrder.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
@@ -51,6 +52,11 @@ if (!IS_PRODUCTION) {
 }
 router.patch('/orders/:id/status', ...deliveryAuth, orderController.updateDeliveryStatus);
 router.post('/orders/:id/resend-delivery-otp', ...deliveryAuth, orderController.resendDeliveryOtp);
+
+// B2B Orders (assigned via admin B2B panel)
+router.get('/b2b/orders', ...deliveryAuth, b2bOrderController.getAssignedB2BOrders);
+router.get('/b2b/orders/:id', ...deliveryAuth, b2bOrderController.getB2BOrderDetail);
+router.patch('/b2b/orders/:id/status', ...deliveryAuth, b2bOrderController.updateB2BDeliveryStatus);
 
 // Notifications
 router.get('/notifications', ...deliveryAuth, notificationController.getDeliveryNotifications);

@@ -82,6 +82,8 @@ const redirectTo = (path) => {
 const getScopeFromUrl = (url = '') => {
   if (url.startsWith('/admin')) return 'admin';
   if (url.startsWith('/vendor')) return 'vendor';
+  // B2B marketplace APIs are vendor-only but live under /b2b
+  if (url.startsWith('/b2b')) return 'vendor';
   if (url.startsWith('/delivery')) return 'delivery';
   return 'user';
 };

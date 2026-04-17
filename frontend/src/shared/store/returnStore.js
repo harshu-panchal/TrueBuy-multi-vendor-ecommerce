@@ -440,15 +440,44 @@ export const useReturnStore = create((set, get) => ({
 
     updateReturnStatus: async (id, statusData) => {
         set({ isLoading: true });
-        const { returnRequests } = get();
-        
-        const updatedRequests = returnRequests.map((req) =>
-            req.id === id ? { ...req, ...statusData, updatedAt: new Date().toISOString() } : req
-        );
+        try {
+            const isVendor = window.location.pathname.includes('/vendor/');
+            const isAdmin = window.location.pathname.includes('/admin/');
+            
+            let updatedReq = null;
+            if (isAdmin) {
+                const response = await adminService.updateReturnRequestStatus(id, statusData);
+                updatedReq = response.data?.data || response.data || statusData;
+            } else if (isVendor) {
+                const vendorPayload = {};
+                if (statusData.status === 'approved') {
+                    vendorPayload.action = 'APPROVE';
+                    vendorPayload.status = 'approved';
+                } else if (statusData.status === 'rejected') {
+                    vendorPayload.action = 'REJECT';
+                    vendorPayload.rejectionReason = statusData.rejectionReason || '';
+                    vendorPayload.status = 'rejected';
+                } else {
+                    vendorPayload.status = statusData.status; 
+                }
+                const response = await vendorService.updateVendorReturnRequestStatus(id, vendorPayload);
+                updatedReq = response.data?.data || response.data || statusData;
+            } else {
+                updatedReq = statusData;
+            }
 
-        set({ returnRequests: updatedRequests, isLoading: false });
-        // toast.success('Status updated successfully'); // Silent update for multi-step flows
-        return true;
+            const { returnRequests } = get();
+            const updatedRequests = returnRequests.map((req) =>
+                String(req.id) === String(id) ? { ...req, ...updatedReq, updatedAt: new Date().toISOString() } : req
+            );
+
+            set({ returnRequests: updatedRequests, isLoading: false });
+            return true;
+        } catch (error) {
+            set({ isLoading: false });
+            toast.error(error?.response?.data?.message || error.message || 'Failed to update status');
+            return false;
+        }
     },
 
     // Logistics Actions
@@ -472,22 +501,20 @@ export const useReturnStore = create((set, get) => ({
 
     inspectExchangeItem: async (id, result, notes) => {
         set({ isLoading: true });
-        const { returnRequests } = get();
         const nextStatus = result === 'approved' ? 'approved' : 'inspection_rejected';
         
-        const updatedRequests = returnRequests.map((req) =>
-            req.id === id ? { 
-                ...req, 
-                status: nextStatus, 
-                inspectionNotes: notes,
-                inspectionDate: new Date().toISOString(),
-                updatedAt: new Date().toISOString() 
-            } : req
-        );
+        const statusData = {
+            status: nextStatus,
+            inspectionNotes: notes,
+            inspectionDate: new Date().toISOString()
+        };
 
-        set({ returnRequests: updatedRequests, isLoading: false });
-        toast.success(result === 'approved' ? 'Inspection approved' : 'Inspection rejected');
-        return true;
+        const success = await get().updateReturnStatus(id, statusData);
+        if (success) {
+            toast.success(result === 'approved' ? 'Inspection approved' : 'Inspection rejected');
+        }
+        set({ isLoading: false });
+        return success;
     },
 
     resolveInspectionFailure: async (id, resolution) => {
@@ -549,17 +576,12 @@ export const useReturnStore = create((set, get) => ({
     assignDeliveryToReturn: async (id, deliveryBoyId) => {
         set({ isLoading: true });
         try {
-            // Mocking the backend response since we are frontend-only
-            // In reality, this would call adminService.assignDeliveryToReturn
-            const updatedReq = {
-                status: 'approved',
-                deliveryBoyId: deliveryBoyId, // Usually an object with name/phone, but using ID for now
-                updatedAt: new Date().toISOString()
-            };
+            const response = await adminService.assignDeliveryToReturn(id, deliveryBoyId);
+            const payload = response.data?.data || response.data;
             
             set((state) => ({
                 returnRequests: state.returnRequests.map((req) =>
-                    req.id === id ? { ...req, ...updatedReq } : req
+                    String(req.id) === String(id) ? { ...req, ...payload } : req
                 ),
                 isLoading: false
             }));
@@ -567,7 +589,7 @@ export const useReturnStore = create((set, get) => ({
             return true;
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to assign delivery partner');
+            toast.error(error?.response?.data?.message || 'Failed to assign delivery partner');
             return false;
         }
     },

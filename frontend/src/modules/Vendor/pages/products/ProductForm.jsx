@@ -27,6 +27,7 @@ const ProductForm = () => {
   const isEdit = id && id !== "new";
 
   const vendorId = vendor?.id;
+  const canSellWholesale = vendor?.b2bPermissions?.canSellWholesale === true;
 
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
@@ -73,6 +74,17 @@ const ProductForm = () => {
     seoDescription: "",
     relatedProducts: [],
     faqs: [],
+    // B2B Wholesale
+    isWholesale: false,
+    minOrderQty: "",
+    bulkPricing: [],
+    wholesaleApprovalStatus: "",
+    wholesaleRejectionReason: "",
+  });
+  const [initialWholesale, setInitialWholesale] = useState({
+    isWholesale: false,
+    minOrderQty: 1,
+    bulkPricingJson: "[]",
   });
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
@@ -140,6 +152,21 @@ const ProductForm = () => {
       product.price
     );
 
+    const rawBulk = Array.isArray(product.bulkPricing) ? product.bulkPricing : [];
+    const normalizedBulkNumeric = rawBulk
+      .map((t) => ({
+        minQty: Number.parseInt(t?.minQty, 10),
+        price: Number.parseFloat(t?.price),
+      }))
+      .filter((t) => Number.isFinite(t.minQty) && t.minQty >= 1 && Number.isFinite(t.price) && t.price >= 0)
+      .sort((a, b) => a.minQty - b.minQty);
+
+    setInitialWholesale({
+      isWholesale: Boolean(product.isWholesale),
+      minOrderQty: Number(product.minOrderQty || 1),
+      bulkPricingJson: JSON.stringify(normalizedBulkNumeric),
+    });
+
     setFormData({
       name: product.name || "",
       unit: product.unit || "",
@@ -176,6 +203,17 @@ const ProductForm = () => {
       seoDescription: product.seoDescription || "",
       relatedProducts: product.relatedProducts || [],
       faqs: Array.isArray(product.faqs) ? product.faqs : [],
+      // B2B wholesale
+      isWholesale: Boolean(product.isWholesale),
+      minOrderQty: product.minOrderQty ? String(product.minOrderQty) : "",
+      bulkPricing: Array.isArray(product.bulkPricing)
+        ? product.bulkPricing.map((t) => ({
+          minQty: String(t?.minQty ?? ""),
+          price: String(t?.price ?? ""),
+        }))
+        : [],
+      wholesaleApprovalStatus: product.wholesaleApprovalStatus || "",
+      wholesaleRejectionReason: product.wholesaleRejectionReason || "",
     });
   };
 
@@ -185,6 +223,41 @@ const ProductForm = () => {
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
+  };
+
+  const handleWholesaleToggle = (checked) => {
+    if (checked && !canSellWholesale) {
+      toast.error("Wholesale selling is disabled for your vendor account. Contact admin.");
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      isWholesale: Boolean(checked),
+      minOrderQty: checked ? (prev.minOrderQty || "1") : "",
+      bulkPricing: checked ? (Array.isArray(prev.bulkPricing) ? prev.bulkPricing : []) : [],
+    }));
+  };
+
+  const addBulkTier = () => {
+    setFormData((prev) => ({
+      ...prev,
+      bulkPricing: [...(Array.isArray(prev.bulkPricing) ? prev.bulkPricing : []), { minQty: "", price: "" }],
+    }));
+  };
+
+  const removeBulkTier = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      bulkPricing: (Array.isArray(prev.bulkPricing) ? prev.bulkPricing : []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const updateBulkTier = (index, field, value) => {
+    setFormData((prev) => {
+      const tiers = Array.isArray(prev.bulkPricing) ? [...prev.bulkPricing] : [];
+      tiers[index] = { ...(tiers[index] || {}), [field]: value };
+      return { ...prev, bulkPricing: tiers };
+    });
   };
 
   const handleImageUpload = async (e) => {
@@ -449,10 +522,35 @@ const ProductForm = () => {
     const parsedMinimumOrderQuantity = formData.minimumOrderQuantity
       ? parseInt(formData.minimumOrderQuantity, 10)
       : null;
+    const parsedWholesaleMoq = formData.isWholesale
+      ? parseInt(formData.minOrderQty || "1", 10)
+      : null;
 
     if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedStockQuantity)) {
       toast.error("Please enter valid numeric values");
       return;
+    }
+    if (formData.isWholesale) {
+      if (!canSellWholesale) {
+        toast.error("Wholesale selling is disabled for your vendor account. Contact admin.");
+        return;
+      }
+      if (!Number.isFinite(parsedWholesaleMoq) || parsedWholesaleMoq < 1) {
+        toast.error("Please enter a valid Wholesale MOQ (minimum 1).");
+        return;
+      }
+      const hasInvalidTier = (formData.bulkPricing || []).some((t) => {
+        const minQty = Number.parseInt(t?.minQty, 10);
+        const price = Number.parseFloat(t?.price);
+        return (
+          (t?.minQty !== "" && (!Number.isFinite(minQty) || minQty < 1)) ||
+          (t?.price !== "" && (!Number.isFinite(price) || price < 0))
+        );
+      });
+      if (hasInvalidTier) {
+        toast.error("Please enter valid Bulk Pricing tiers (minQty >= 1, price >= 0).");
+        return;
+      }
     }
 
     const hasInvalidFaq = (formData.faqs || []).some((faq) => {
@@ -465,8 +563,26 @@ const ProductForm = () => {
       return;
     }
 
+    const {
+      wholesaleApprovalStatus,
+      wholesaleRejectionReason,
+      isWholesale,
+      minOrderQty,
+      bulkPricing,
+      ...restForm
+    } = formData;
+    const normalizedBulkPricing = formData.isWholesale
+      ? (formData.bulkPricing || [])
+        .map((t) => ({
+          minQty: Number.parseInt(t?.minQty, 10),
+          price: Number.parseFloat(t?.price),
+        }))
+        .filter((t) => Number.isFinite(t.minQty) && t.minQty >= 1 && Number.isFinite(t.price) && t.price >= 0)
+        .sort((a, b) => a.minQty - b.minQty)
+      : [];
+
     const payload = {
-      ...formData,
+      ...restForm,
       price: parsedPrice,
       originalPrice: parsedOriginalPrice,
       stockQuantity: parsedStockQuantity,
@@ -483,6 +599,30 @@ const ProductForm = () => {
         .filter((faq) => faq.question && faq.answer),
       variants: buildVariantPayload(formData.variants || {}),
     };
+
+    const wholesaleChanged =
+      Boolean(formData.isWholesale) !== Boolean(initialWholesale.isWholesale) ||
+      (formData.isWholesale
+        ? (Number(parsedWholesaleMoq) !== Number(initialWholesale.minOrderQty) ||
+          JSON.stringify(normalizedBulkPricing) !== String(initialWholesale.bulkPricingJson || "[]"))
+        : false);
+
+    // Only send wholesale fields if they actually changed (prevents unnecessary re-approval on normal edits).
+    if (!isEdit) {
+      if (formData.isWholesale) {
+        payload.isWholesale = true;
+        payload.minOrderQty = parsedWholesaleMoq;
+        payload.bulkPricing = normalizedBulkPricing;
+        payload.visibleTo = "vendors";
+      }
+    } else if (wholesaleChanged) {
+      payload.isWholesale = Boolean(formData.isWholesale);
+      if (formData.isWholesale) {
+        payload.minOrderQty = parsedWholesaleMoq;
+        payload.bulkPricing = normalizedBulkPricing;
+        payload.visibleTo = "vendors";
+      }
+    }
 
     let result;
     if (isEdit) {
@@ -631,6 +771,131 @@ const ProductForm = () => {
               />
             </div>
           </div>
+        </div>
+
+        {/* Wholesale Marketplace */}
+        <div className="bg-white rounded-xl p-3 sm:p-4 shadow-sm border border-gray-200">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-base font-bold text-gray-800">Wholesale Marketplace</h2>
+              <p className="text-xs text-gray-500">
+                Enable wholesale listing for vendor-to-vendor purchases (requires admin approval).
+              </p>
+              {formData.isWholesale && formData.wholesaleApprovalStatus && (
+                <div className="mt-1 text-[11px] text-gray-600">
+                  Status: <span className="font-semibold">{String(formData.wholesaleApprovalStatus)}</span>
+                  {String(formData.wholesaleApprovalStatus).toLowerCase() === "rejected" && formData.wholesaleRejectionReason
+                    ? ` • Reason: ${formData.wholesaleRejectionReason}`
+                    : ""}
+                </div>
+              )}
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={formData.isWholesale}
+                onChange={(e) => handleWholesaleToggle(e.target.checked)}
+                disabled={!canSellWholesale}
+                className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 disabled:opacity-50"
+              />
+              <span className={`text-xs font-semibold ${canSellWholesale ? "text-gray-700" : "text-gray-400"}`}>
+                Enable Wholesale
+              </span>
+            </label>
+          </div>
+
+          {!canSellWholesale && (
+            <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">
+              Wholesale selling is disabled for your account. Contact admin to enable it.
+            </div>
+          )}
+
+          {formData.isWholesale && (
+            <div className="mt-3 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Minimum Order Quantity (MOQ)
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    name="minOrderQty"
+                    value={formData.minOrderQty}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                    placeholder="1"
+                  />
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    Buyer must purchase at least this quantity.
+                  </p>
+                </div>
+
+                <div className="flex items-end justify-end">
+                  <button
+                    type="button"
+                    onClick={addBulkTier}
+                    className="px-3 py-2 text-xs font-semibold bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Add Bulk Tier
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-gray-700">Bulk Pricing Tiers</div>
+                {(formData.bulkPricing || []).length === 0 ? (
+                  <div className="text-xs text-gray-500">
+                    No tiers added. Example: 10+ → ₹90, 51+ → ₹80
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {(formData.bulkPricing || []).map((tier, index) => (
+                      <div key={index} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end bg-gray-50 border border-gray-200 rounded-lg p-2">
+                        <div className="sm:col-span-4">
+                          <label className="block text-[11px] font-semibold text-gray-600 mb-1">From Qty</label>
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={tier?.minQty ?? ""}
+                            onChange={(e) => updateBulkTier(index, "minQty", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                            placeholder="10"
+                          />
+                        </div>
+                        <div className="sm:col-span-5">
+                          <label className="block text-[11px] font-semibold text-gray-600 mb-1">Unit Price</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={tier?.price ?? ""}
+                            onChange={(e) => updateBulkTier(index, "price", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                            placeholder="90"
+                          />
+                        </div>
+                        <div className="sm:col-span-3 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => removeBulkTier(index)}
+                            className="px-3 py-2 text-xs font-semibold text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <p className="text-[11px] text-gray-500">
+                      Tier rule: highest matching “From Qty” applies (e.g. 51+ overrides 10+).
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Product Media */}
@@ -1207,4 +1472,3 @@ const ProductForm = () => {
 };
 
 export default ProductForm;
-

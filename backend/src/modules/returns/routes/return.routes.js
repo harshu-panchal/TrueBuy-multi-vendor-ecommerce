@@ -23,16 +23,21 @@ const router = Router();
 
 // Customer
 router.post(
-    '/returns',
+    '/user/returns',
     ...requireCustomer,
     validate(createReturnSchema),
     customerReturnController.createReturnRequest
 );
 router.get(
-    '/returns/my',
+    '/user/returns',
     ...requireCustomer,
     validate(listReturnsQuerySchema, 'query'),
     customerReturnController.getMyReturnRequests
+);
+router.get(
+    '/user/returns/:orderId',
+    ...requireCustomer,
+    customerReturnController.getReturnRequestByOrderId
 );
 
 // Vendor
@@ -42,7 +47,7 @@ router.get(
     validate(listReturnsQuerySchema, 'query'),
     vendorReturnController.getVendorReturns
 );
-router.patch(
+router.put(
     '/vendor/returns/:id',
     ...requireVendor,
     validate(returnIdParamSchema, 'params'),
@@ -56,6 +61,18 @@ router.get(
     ...requireAdmin,
     validate(listReturnsQuerySchema, 'query'),
     adminReturnController.getAdminReturns
+);
+router.get(
+    '/admin/returns/:id',
+    ...requireAdmin,
+    validate(returnIdParamSchema, 'params'),
+    adminReturnController.getAdminReturnById
+);
+router.patch(
+    '/admin/returns/:id/status',
+    ...requireAdmin,
+    validate(returnIdParamSchema, 'params'),
+    adminReturnController.updateAdminReturnStatus
 );
 router.patch(
     '/admin/returns/:id/assign',

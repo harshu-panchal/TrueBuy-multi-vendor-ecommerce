@@ -4,6 +4,7 @@ import ReturnRequest, {
     LEGACY_TO_NEW_STATUS,
     normalizeStatusValue,
 } from '../../../models/ReturnRequest.model.js';
+import mongoose from 'mongoose';
 
 const STATUS_TRANSITIONS = Object.freeze({
     [RETURN_REQUEST_STATUS.REQUESTED]: [
@@ -49,6 +50,10 @@ export const updateReturnStatusAtomic = async ({
     setFields = {},
 }) => {
     ensureValidTargetStatus(targetStatus);
+
+    if (!mongoose.Types.ObjectId.isValid(returnRequestId)) {
+        throw new ApiError(404, 'Return request not found.');
+    }
 
     const currentRequest = await ReturnRequest.findOne({ _id: returnRequestId, ...extraFilter })
         .select('_id status')

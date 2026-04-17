@@ -14,6 +14,7 @@ import * as marketingController from '../controllers/marketing.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as systemController from '../controllers/system.controller.js';
+import * as b2bController from '../controllers/b2b.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -69,6 +70,15 @@ import {
     notificationSendSchema,
     customMessageSchema,
 } from '../validators/system.validator.js';
+import {
+    b2bOrdersQuerySchema,
+    b2bOrderIdParamSchema,
+    assignB2BDeliverySchema,
+    b2bWholesaleProductsQuerySchema,
+    b2bWholesaleProductStatusSchema,
+    b2bVendorPermissionsSchema,
+    vendorIdParamSchema as b2bVendorIdParamSchema,
+} from '../validators/b2b.validator.js';
 
 const router = Router();
 const adminAuth = [authenticate, authorize('admin', 'superadmin'), enforceAccountStatus];
@@ -192,6 +202,28 @@ router.delete('/marketing/campaigns/:id', ...adminAuth, validate(marketingIdPara
 // ─── Reports ──────────────────────────────────────────────────────────────────
 router.get('/reports/sales', ...adminAuth, reportController.getSalesReport);
 router.get('/reports/inventory', ...adminAuth, reportController.getInventoryReport);
+
+// ─── B2B Wholesale Marketplace ────────────────────────────────────────────────
+router.get('/b2b/orders', ...adminAuth, validate(b2bOrdersQuerySchema, 'query'), b2bController.getAllB2BOrders);
+router.get('/b2b/orders/:id', ...adminAuth, validate(b2bOrderIdParamSchema, 'params'), b2bController.getB2BOrderById);
+router.patch(
+    '/b2b/orders/:id/assign-delivery',
+    ...adminAuth,
+    validate(b2bOrderIdParamSchema, 'params'),
+    validate(assignB2BDeliverySchema),
+    b2bController.assignB2BDeliveryBoy
+);
+
+router.get('/b2b/products', ...adminAuth, validate(b2bWholesaleProductsQuerySchema, 'query'), b2bController.getWholesaleProductsForApproval);
+router.patch('/b2b/products/:id/status', ...adminAuth, validate(b2bWholesaleProductStatusSchema), b2bController.updateWholesaleProductStatus);
+
+router.patch(
+    '/b2b/vendors/:id/permissions',
+    ...adminAuth,
+    validate(b2bVendorIdParamSchema, 'params'),
+    validate(b2bVendorPermissionsSchema),
+    b2bController.updateVendorB2BPermissions
+);
 
 // ─── Notifications ─────────────────────────────────────────────────────────────
 router.get('/notifications', ...adminAuth, notificationController.getAdminNotifications);

@@ -1,5 +1,13 @@
 import mongoose from 'mongoose';
 
+const bulkPricingTierSchema = new mongoose.Schema(
+    {
+        minQty: { type: Number, required: true, min: 1 },
+        price: { type: Number, required: true, min: 0 },
+    },
+    { _id: false }
+);
+
 const productSchema = new mongoose.Schema(
     {
         name: { type: String, required: true, trim: true, index: true },
@@ -63,6 +71,21 @@ const productSchema = new mongoose.Schema(
         relatedProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
         faqs: [{ question: String, answer: String }],
         tags: [String],
+        // B2B Wholesale (isolated by query filters; does not affect B2C flows)
+        isWholesale: { type: Boolean, default: false, index: true },
+        minOrderQty: { type: Number, min: 1, default: 1 },
+        bulkPricing: { type: [bulkPricingTierSchema], default: [] },
+        visibleTo: { type: String, enum: ['vendors', 'all'], default: 'all', index: true },
+        wholesaleApprovalStatus: {
+            type: String,
+            enum: ['approved', 'pending', 'rejected'],
+            default: 'approved',
+            index: true,
+        },
+        wholesaleRequestedAt: { type: Date, default: null },
+        wholesaleApprovedAt: { type: Date, default: null },
+        wholesaleRejectedAt: { type: Date, default: null },
+        wholesaleRejectionReason: { type: String, default: '' },
     },
     { timestamps: true }
 );
@@ -70,6 +93,7 @@ const productSchema = new mongoose.Schema(
 productSchema.index({ vendorId: 1, isActive: 1 });
 productSchema.index({ categoryId: 1, isActive: 1 });
 productSchema.index({ name: 'text', description: 'text', tags: 'text' });
+productSchema.index({ isWholesale: 1, wholesaleApprovalStatus: 1, isActive: 1 });
 
 const Product = mongoose.model('Product', productSchema);
 export { Product };

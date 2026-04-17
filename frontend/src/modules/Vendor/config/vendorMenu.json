@@ -23,6 +23,15 @@
                      ]
     },
     {
+        "title": "Wholesale Marketplace",
+        "route": "/vendor/wholesale",
+        "children": [
+            "Wholesale Products",
+            "B2B Cart",
+            "B2B Orders"
+        ]
+    },
+    {
         "title":  "Return Requests",
         "route":  "/vendor/return-requests",
         "children":  [
