@@ -79,19 +79,40 @@ const redirectTo = (path) => {
   window.location.href = path;
 };
 
-const getScopeFromUrl = (url = '') => {
-  if (url.startsWith('/admin')) return 'admin';
-  if (url.startsWith('/vendor')) return 'vendor';
-  // B2B marketplace APIs are vendor-only but live under /b2b
-  if (url.startsWith('/b2b')) return 'vendor';
-  if (url.startsWith('/delivery')) return 'delivery';
-  return 'user';
-};
-
-const getScopeFromPath = (path = window.location.pathname) => {
+const getScopeFromPath = (path = (typeof window !== 'undefined' ? window.location.pathname : '/')) => {
   if (path.startsWith('/admin')) return 'admin';
   if (path.startsWith('/vendor')) return 'vendor';
   if (path.startsWith('/delivery')) return 'delivery';
+  return 'user';
+};
+
+const normalizeUrlPath = (url = '') => {
+  if (!url) return '';
+  const trimmed = String(url).trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      return new URL(trimmed).pathname;
+    } catch {
+      return trimmed.split('?')[0];
+    }
+  }
+  return trimmed.split('?')[0];
+};
+
+const getScopeFromUrl = (url = '', pathScope = getScopeFromPath()) => {
+  const path = normalizeUrlPath(url);
+  if (path.startsWith('/admin')) return 'admin';
+  if (path.startsWith('/vendor')) return 'vendor';
+  // B2B marketplace APIs are vendor-only but live under /b2b
+  if (path.startsWith('/b2b')) return 'vendor';
+  if (path.startsWith('/delivery')) return 'delivery';
+
+  // Exchange APIs live under /exchange and are role-scoped by endpoint/path context.
+  if (path.startsWith('/exchange/admin')) return 'admin';
+  if (path.startsWith('/exchange/vendor')) return 'vendor';
+  if (path.startsWith('/exchange/my')) return 'user';
+  if (path.startsWith('/exchange/')) return pathScope;
+
   return 'user';
 };
 
@@ -160,7 +181,8 @@ const runRefresh = async (scope) => {
 
 api.interceptors.request.use(
   (config) => {
-    const scope = getScopeFromUrl(config.url || '');
+    const pathScope = getScopeFromPath();
+    const scope = getScopeFromUrl(config.url || '', pathScope);
     const token = localStorage.getItem(AUTH_SCOPES[scope].accessKey);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -174,9 +196,9 @@ api.interceptors.response.use(
   (response) => response.data,
   async (error) => {
     const originalRequest = error.config || {};
-    const scope = getScopeFromUrl(originalRequest.url || '');
-    const currentPath = window.location.pathname;
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/';
     const pathScope = getScopeFromPath(currentPath);
+    const scope = getScopeFromUrl(originalRequest.url || '', pathScope);
 
     if (shouldAttemptRefresh(error, scope)) {
       try {
