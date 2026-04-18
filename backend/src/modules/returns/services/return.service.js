@@ -50,11 +50,9 @@ const resolveOrderByAnyIdForCustomer = async ({ orderRef, customerId }) => {
     return Order.findOne({ userId: customerId, $or: orFilter });
 };
 
-const getVendorIdFromOrderProduct = (order, productId) => {
+const getOrderItem = (order, productId) => {
     const orderItems = Array.isArray(order?.items) ? order.items : [];
-    const orderItem = orderItems.find((item) => String(item?.productId || '') === String(productId));
-    if (!orderItem) return null;
-    return orderItem?.vendorId ? String(orderItem.vendorId) : null;
+    return orderItems.find((item) => String(item?.productId || '') === String(productId));
 };
 
 export const createCustomerReturnRequest = async ({
@@ -73,9 +71,14 @@ export const createCustomerReturnRequest = async ({
         throw new ApiError(409, 'Returns can only be created for delivered orders.');
     }
 
-    const vendorId = getVendorIdFromOrderProduct(order, productId);
-    if (!vendorId) {
+    const item = getOrderItem(order, productId);
+    if (!item) {
         throw new ApiError(400, 'Selected product does not belong to this order.');
+    }
+
+    const vendorId = item?.vendorId ? String(item.vendorId) : null;
+    if (!vendorId) {
+        throw new ApiError(400, 'Vendor information missing for this product.');
     }
 
     const existingOpen = await ReturnRequest.findOne({
@@ -97,6 +100,15 @@ export const createCustomerReturnRequest = async ({
         images: Array.isArray(images) ? images : [],
         status: RETURN_REQUEST_STATUS.REQUESTED,
         refundStatus: RETURN_REFUND_STATUS.PENDING,
+        items: [
+            {
+                productId: item.productId,
+                name: item.name,
+                quantity: item.quantity,
+                reason: String(reason || '').trim(),
+            },
+        ],
+        refundAmount: (item.price || 0) * (item.quantity || 1),
     });
 
     const populated = await ReturnRequest.findById(created._id)
@@ -131,7 +143,7 @@ export const listReturnRequests = async ({ filter = {}, page = 1, limit = 20, st
     const [rows, total] = await Promise.all([
         ReturnRequest.find(query)
             .populate('orderId', 'orderId status total')
-            .populate('productId', 'name image')
+            .populate('productId', 'name image price')
             .populate('userId', 'name email phone')
             .populate('vendorId', 'storeName email')
             .populate('assignedDeliveryBoy', 'name email phone')

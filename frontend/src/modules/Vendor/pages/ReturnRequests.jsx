@@ -219,7 +219,8 @@ const ReturnRequests = () => {
         if (row.type === 'exchange') {
           return <span>1 item (Exchange)</span>;
         }
-        const count = Array.isArray(value) ? value.length : 1;
+        // Fallback: If items array is missing/empty but productId exists, it's 1 item
+        const count = Array.isArray(value) && value.length > 0 ? value.length : (row.productId ? 1 : 0);
         return (
           <span>
             {count} item{count !== 1 ? "s" : ""}
@@ -242,7 +243,9 @@ const ReturnRequests = () => {
           const price = row.newProduct?.price || row.oldProduct?.price || 0;
           return <span className="font-bold text-gray-800">{formatPrice(price)}</span>;
         }
-        return <span className="font-bold text-gray-800">{formatPrice(value || 0)}</span>;
+        // Fallback: If refundAmount is missing/0, use productId.price
+        const amount = value || row.productId?.price || 0;
+        return <span className="font-bold text-gray-800">{formatPrice(amount)}</span>;
       },
     },
     {

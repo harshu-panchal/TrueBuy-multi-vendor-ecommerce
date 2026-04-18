@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { validate } from '../../../middlewares/validate.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';

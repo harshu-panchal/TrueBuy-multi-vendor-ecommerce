@@ -374,7 +374,9 @@ const ReturnRequestDetail = () => {
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Items</p>
                 <p className="font-semibold text-gray-800">
-                  {returnRequest.items.length}
+                  {Array.isArray(returnRequest.items) && returnRequest.items.length > 0 
+                    ? returnRequest.items.length 
+                    : (returnRequest.productId ? 1 : 0)}
                 </p>
               </div>
               <div>
@@ -432,44 +434,79 @@ const ReturnRequestDetail = () => {
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
               <FiPackage className="text-primary-600 text-base" />
-              Items Being Returned ({returnRequest.items.length})
+              Items Being Returned ({Array.isArray(returnRequest.items) && returnRequest.items.length > 0 
+                ? returnRequest.items.length 
+                : (returnRequest.productId ? 1 : 0)})
             </h2>
             <div className="space-y-2">
-              {returnRequest.items.map((item, index) => (
-                <div
-                  key={item.id || index}
-                  className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
-                  {item.image && (
+              {returnRequest.items && returnRequest.items.length > 0 ? (
+                returnRequest.items.map((item, index) => (
+                  <div
+                    key={item.id || index}
+                    className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
+                    {(item.image || returnRequest.productId?.image) && (
+                      <img
+                        src={item.image || returnRequest.productId?.image}
+                        alt={item.name || returnRequest.productId?.name || "Product"}
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        onError={(e) => {
+                          e.target.src =
+                            "https://via.placeholder.com/100x100?text=Product";
+                        }}
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm text-gray-800 truncate">
+                        {item.name || returnRequest.productId?.name || "Unknown Product"}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <p className="text-xs text-gray-600">
+                          {formatPrice(item.price || returnRequest.productId?.price || 0)} × {item.quantity || 1}
+                        </p>
+                        {(item.reason || returnRequest.reason) && (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                            {item.reason || returnRequest.reason}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="font-bold text-sm text-gray-800">
+                      {formatPrice((item.price || returnRequest.productId?.price || 0) * (item.quantity || 1))}
+                    </p>
+                  </div>
+                ))
+              ) : returnRequest.productId ? (
+                <div className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
+                  {returnRequest.productId.image && (
                     <img
-                      src={item.image}
-                      alt={item.name || "Product"}
+                      src={returnRequest.productId.image}
+                      alt={returnRequest.productId.name || "Product"}
                       className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                       onError={(e) => {
-                        e.target.src =
-                          "https://via.placeholder.com/100x100?text=Product";
+                        e.target.src = "https://via.placeholder.com/100x100?text=Product";
                       }}
                     />
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-gray-800 truncate">
-                      {item.name || "Unknown Product"}
+                      {returnRequest.productId.name || "Unknown Product"}
                     </p>
                     <div className="flex items-center gap-3 mt-1">
                       <p className="text-xs text-gray-600">
-                        {formatPrice(item.price || 0)} × {item.quantity || 1}
+                        {formatPrice(returnRequest.productId.price || 0)} × 1
                       </p>
-                      {item.reason && (
-                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                          {item.reason}
-                        </span>
-                      )}
+                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
+                        {returnRequest.reason}
+                      </span>
                     </div>
                   </div>
                   <p className="font-bold text-sm text-gray-800">
-                    {formatPrice((item.price || 0) * (item.quantity || 1))}
+                    {formatPrice(returnRequest.productId.price || 0)}
                   </p>
                 </div>
-              ))}
+              ) : (
+                <p className="text-sm text-gray-500 text-center py-4">No item details available</p>
+              )}
             </div>
           </div>
 
@@ -698,7 +735,7 @@ const ReturnRequestDetail = () => {
               <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
                 <span className="font-bold text-gray-800">Refund Amount</span>
                 <span className="font-bold text-lg text-gray-800">
-                  {formatPrice(returnRequest.refundAmount)}
+                  {formatPrice(returnRequest.refundAmount || (returnRequest.productId?.price || 0))}
                 </span>
               </div>
               <div className="mt-3 pt-3 border-t border-gray-200">
