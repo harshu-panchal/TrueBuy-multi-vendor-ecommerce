@@ -9,21 +9,83 @@ import User from '../../../models/User.model.js';
 import Admin from '../../../models/Admin.model.js';
 import { createNotification } from '../../../services/notification.service.js';
 
+const toPlainObject = (value) => (value && typeof value.toObject === 'function' ? value.toObject() : value);
+
+const getImageValue = (source) => {
+    const obj = toPlainObject(source) || {};
+    if (typeof obj.image === 'string' && obj.image) return obj.image;
+    if (typeof obj.thumbnail === 'string' && obj.thumbnail) return obj.thumbnail;
+    if (Array.isArray(obj.images) && obj.images.length > 0) return obj.images[0];
+    return '';
+};
+
+const buildProductSnapshot = (source) => {
+    const obj = toPlainObject(source) || {};
+    const rawId = obj?._id ?? obj?.id ?? null;
+    return {
+        id: rawId ? String(rawId) : '',
+        name: obj?.name || 'Unknown Product',
+        price: Number(obj?.price ?? 0),
+        image: getImageValue(obj),
+    };
+};
+
 const enrichReturnItems = (request) => {
     const orderItems = Array.isArray(request?.orderId?.items) ? request.orderId.items : [];
     const returnItems = Array.isArray(request?.items) ? request.items : [];
 
     return returnItems.map((item) => {
-        const productId = String(item?.productId || '');
+        const itemObj = toPlainObject(item) || {};
+        const itemProductSource = toPlainObject(itemObj?.product) || toPlainObject(itemObj?.productId) || null;
+        const itemProductId =
+            itemObj?.productId && typeof itemObj.productId === 'object'
+                ? itemObj.productId?._id || itemObj.productId?.id
+                : itemObj?.productId;
+        const productId = String(itemProductId || '');
+
         const matchedOrderItem = orderItems.find(
-            (orderItem) => String(orderItem?.productId || '') === productId
+            (orderItem) => {
+                const orderProductId =
+                    orderItem?.productId && typeof orderItem.productId === 'object'
+                        ? orderItem.productId?._id || orderItem.productId?.id
+                        : orderItem?.productId;
+                return String(orderProductId || '') === productId;
+            }
         );
+        const orderProductSource = toPlainObject(matchedOrderItem?.productId) || null;
+        const itemProduct = buildProductSnapshot(itemProductSource || orderProductSource);
+        const resolvedName =
+            itemObj?.name ||
+            itemProductSource?.name ||
+            matchedOrderItem?.name ||
+            orderProductSource?.name ||
+            'Unknown Product';
+        const resolvedPrice = Number(
+            itemObj?.price ??
+                itemProductSource?.price ??
+                matchedOrderItem?.price ??
+                orderProductSource?.price ??
+                0
+        );
+        const resolvedImage =
+            itemObj?.image ||
+            getImageValue(itemProductSource) ||
+            matchedOrderItem?.image ||
+            getImageValue(orderProductSource) ||
+            '';
 
         return {
-            ...item,
-            name: item?.name || matchedOrderItem?.name || 'Unknown Product',
-            price: Number(item?.price ?? matchedOrderItem?.price ?? 0),
-            image: item?.image || matchedOrderItem?.image || '',
+            ...itemObj,
+            productId: itemProductId || itemObj?.productId || null,
+            name: resolvedName,
+            price: resolvedPrice,
+            image: resolvedImage,
+            product: {
+                ...itemProduct,
+                name: resolvedName,
+                price: resolvedPrice,
+                image: resolvedImage || itemProduct.image,
+            },
         };
     });
 };
@@ -32,6 +94,14 @@ const normalizeReturnRequest = (requestDoc) => {
     const request = requestDoc.toObject ? requestDoc.toObject() : requestDoc;
     const orderOrderId = request.orderId?.orderId;
     const orderRefId = request.orderId?._id ?? request.orderId ?? null;
+    const productSource =
+        toPlainObject(request?.product) ||
+        toPlainObject(request?.productId) ||
+        toPlainObject(request?.items?.[0]?.product) ||
+        toPlainObject(request?.items?.[0]?.productId) ||
+        null;
+    const normalizedItems = enrichReturnItems(request);
+    const normalizedProduct = buildProductSnapshot(productSource);
 
     return {
         ...request,
@@ -41,13 +111,30 @@ const normalizeReturnRequest = (requestDoc) => {
                 name: request.userId.name ?? 'Guest',
                 email: request.userId.email ?? 'N/A',
                 phone: request.userId.phone ?? '',
+                address:
+                    request.userId.address?.fullAddress ||
+                    request.userId.address?.street ||
+                    request.userId.address ||
+                    '',
             }
-            : { name: 'Guest', email: 'N/A', phone: '' },
+            : { name: 'Guest', email: 'N/A', phone: '', address: '' },
         orderId: orderOrderId || String(orderRefId || ''),
         orderRefId: orderRefId ? String(orderRefId) : null,
         requestDate: request.createdAt,
         rejectionReason: request.rejectionReason || request.adminNote || '',
-        items: enrichReturnItems(request),
+        product: {
+            ...normalizedProduct,
+            name:
+                normalizedProduct.name !== 'Unknown Product'
+                    ? normalizedProduct.name
+                    : normalizedItems?.[0]?.name || 'Unknown Product',
+            price:
+                normalizedProduct.price > 0
+                    ? normalizedProduct.price
+                    : Number(normalizedItems?.[0]?.price ?? request?.refundAmount ?? 0),
+            image: normalizedProduct.image || normalizedItems?.[0]?.image || '',
+        },
+        items: normalizedItems,
     };
 };
 
@@ -96,6 +183,8 @@ export const getVendorReturnRequests = asyncHandler(async (req, res) => {
     const [requests, total] = await Promise.all([
         ReturnRequest.find(filter)
             .populate('userId', 'name email phone')
+            .populate('productId', 'name price image images')
+            .populate('items.productId', 'name price image images')
             .populate('orderId', 'orderId total items vendorItems status paymentStatus')
             .sort({ createdAt: -1 })
             .skip((numericPage - 1) * numericLimit)
@@ -128,6 +217,8 @@ export const getVendorReturnRequestById = asyncHandler(async (req, res) => {
         vendorId: req.user.id,
     })
         .populate('userId', 'name email phone')
+        .populate('productId', 'name price image images')
+        .populate('items.productId', 'name price image images')
         .populate('orderId', 'orderId total createdAt items vendorItems status paymentStatus');
 
     if (!request) throw new ApiError(404, 'Return request not found.');
@@ -170,6 +261,8 @@ export const updateVendorReturnRequestStatus = asyncHandler(async (req, res) => 
         vendorId: req.user.id,
     })
         .populate('userId', 'name email phone')
+        .populate('productId', 'name price image images')
+        .populate('items.productId', 'name price image images')
         .populate('orderId', 'orderId total items vendorItems status paymentStatus');
     if (!request) throw new ApiError(404, 'Return request not found.');
 

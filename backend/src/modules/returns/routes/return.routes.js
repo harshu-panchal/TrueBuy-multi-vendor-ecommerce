@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { validate } from '../../../middlewares/validate.js';
+import ApiError from '../../../utils/ApiError.js';
 import {
     requireAdmin,
     requireCustomer,
@@ -20,6 +21,21 @@ import {
 } from '../validators/return.validator.js';
 
 const router = Router();
+
+const ensureJsonBody = (req, _res, next) => {
+    // Surface a clear message when body isn't parsed as JSON (wrong/missing Content-Type).
+    const hasBody = req.body !== undefined && req.body !== null;
+    const isObject = hasBody && typeof req.body === 'object' && !Array.isArray(req.body);
+    const isJson = typeof req.is === 'function' ? req.is('application/json') : true;
+
+    if (!isJson && hasBody) {
+        return next(new ApiError(400, 'Request body must be JSON. Set Content-Type: application/json.'));
+    }
+    if (!isObject) {
+        return next(new ApiError(400, 'Invalid JSON body. Send { "action": "...", "note": "..." } or { "status": "..." } with Content-Type: application/json.'));
+    }
+    return next();
+};
 
 // Customer
 router.post(
@@ -51,6 +67,7 @@ router.put(
     '/vendor/returns/:id',
     ...requireVendor,
     validate(returnIdParamSchema, 'params'),
+    ensureJsonBody,
     validate(vendorDecisionSchema),
     vendorReturnController.reviewVendorReturn
 );
@@ -98,4 +115,3 @@ router.patch(
 );
 
 export default router;
-

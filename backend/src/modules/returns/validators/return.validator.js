@@ -15,7 +15,13 @@ export const listReturnsQuerySchema = Joi.object({
 });
 
 export const returnIdParamSchema = Joi.object({
-    id: Joi.string().trim().required(),
+    id: Joi.string()
+        .trim()
+        .pattern(/^[0-9a-fA-F]{24}$/)
+        .required()
+        .messages({
+            'string.pattern.base': 'Invalid return id. Must be a valid MongoDB ObjectId.',
+        }),
 });
 
 export const vendorDecisionSchema = Joi.object({
@@ -42,4 +48,3 @@ export const deliveryUpdateSchema = Joi.object({
         .required(),
     note: Joi.string().trim().max(400).allow('').default(''),
 });
-

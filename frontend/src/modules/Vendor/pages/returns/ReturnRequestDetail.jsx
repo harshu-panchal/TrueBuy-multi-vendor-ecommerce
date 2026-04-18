@@ -21,7 +21,7 @@ import {
   FiTruck,
   FiClock,
 } from "react-icons/fi";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import StatusBadge from "../../../../shared/components/Badge";
 import { formatPrice } from "../../../../shared/utils/helpers";
 import ReturnTimeline from "../../../../shared/components/ReturnTimeline";
@@ -157,6 +157,27 @@ const ReturnRequestDetail = () => {
     );
   }
 
+  if (typeof returnRequest !== "object") {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">Unable to load request details</p>
+      </div>
+    );
+  }
+
+  const safeItems = Array.isArray(returnRequest?.items) ? returnRequest.items : [];
+  const safeImages = Array.isArray(returnRequest?.images) ? returnRequest.images : [];
+  const safePickupImages = Array.isArray(returnRequest?.pickupImages) ? returnRequest.pickupImages : [];
+  const fallbackProduct = returnRequest?.productId && typeof returnRequest.productId === "object" ? returnRequest.productId : null;
+  const customer = returnRequest?.customer ?? {};
+  const customerName = customer?.name || "Unknown";
+  const customerEmail = customer?.email || "N/A";
+  const customerPhone = customer?.phone || "";
+  const orderRef = returnRequest?.orderId || returnRequest?.orderRefId || "N/A";
+  const requestDateLabel = returnRequest?.requestDate
+    ? new Date(returnRequest.requestDate).toLocaleDateString()
+    : "N/A";
+
   // Calculate SLA for inspection
   const getSLAInfo = () => {
     if (returnRequest.status !== 'inspection_pending' || !returnRequest.receivedAt) return null;
@@ -206,7 +227,7 @@ const ReturnRequestDetail = () => {
             </div>
             <p className="text-xs text-gray-500">
               Requested on{" "}
-              {new Date(returnRequest.requestDate).toLocaleDateString()}
+              {requestDateLabel}
             </p>
           </div>
         </div>
@@ -374,14 +395,12 @@ const ReturnRequestDetail = () => {
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Items</p>
                 <p className="font-semibold text-gray-800">
-                  {Array.isArray(returnRequest.items) && returnRequest.items.length > 0 
-                    ? returnRequest.items.length 
-                    : (returnRequest.productId ? 1 : 0)}
+                  {safeItems.length > 0 ? safeItems.length : (fallbackProduct ? 1 : 0)}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Refund Status</p>
-                <StatusBadge
+              <StatusBadge
                   variant={
                     returnRequest.refundStatus === "processed"
                       ? "success"
@@ -390,7 +409,7 @@ const ReturnRequestDetail = () => {
                       : "warning"
                   }
                   className="text-xs">
-                  {returnRequest.refundStatus}
+                  {returnRequest?.refundStatus || "pending"}
                 </StatusBadge>
               </div>
             </div>
@@ -403,9 +422,9 @@ const ReturnRequestDetail = () => {
               Original Order
             </h2>
             <Link
-              to={`/vendor/orders/${returnRequest.orderId}`}
+              to={orderRef === "N/A" ? "#" : `/vendor/orders/${orderRef}`}
               className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold text-sm">
-              <span>View Order: {returnRequest.orderId}</span>
+              <span>View Order: {orderRef}</span>
               <FiArrowLeft className="rotate-180 text-xs" />
             </Link>
           </div>
@@ -434,20 +453,18 @@ const ReturnRequestDetail = () => {
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
               <FiPackage className="text-primary-600 text-base" />
-              Items Being Returned ({Array.isArray(returnRequest.items) && returnRequest.items.length > 0 
-                ? returnRequest.items.length 
-                : (returnRequest.productId ? 1 : 0)})
+              Items Being Returned ({safeItems.length > 0 ? safeItems.length : (fallbackProduct ? 1 : 0)})
             </h2>
             <div className="space-y-2">
-              {returnRequest.items && returnRequest.items.length > 0 ? (
-                returnRequest.items.map((item, index) => (
+              {safeItems.length > 0 ? (
+                safeItems.map((item, index) => (
                   <div
                     key={item.id || index}
                     className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
-                    {(item.image || returnRequest.productId?.image) && (
+                    {(item?.image || fallbackProduct?.image) && (
                       <img
-                        src={item.image || returnRequest.productId?.image}
-                        alt={item.name || returnRequest.productId?.name || "Product"}
+                        src={item?.image || fallbackProduct?.image}
+                        alt={item?.name || fallbackProduct?.name || "Product"}
                         className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                         onError={(e) => {
                           e.target.src =
@@ -457,30 +474,30 @@ const ReturnRequestDetail = () => {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm text-gray-800 truncate">
-                        {item.name || returnRequest.productId?.name || "Unknown Product"}
+                        {item?.name || fallbackProduct?.name || "Unknown Product"}
                       </p>
                       <div className="flex items-center gap-3 mt-1">
                         <p className="text-xs text-gray-600">
-                          {formatPrice(item.price || returnRequest.productId?.price || 0)} × {item.quantity || 1}
+                          {formatPrice(item?.price || fallbackProduct?.price || 0)} × {item?.quantity || 1}
                         </p>
-                        {(item.reason || returnRequest.reason) && (
+                        {(item?.reason || returnRequest?.reason) && (
                           <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                            {item.reason || returnRequest.reason}
+                            {item?.reason || returnRequest?.reason}
                           </span>
                         )}
                       </div>
                     </div>
                     <p className="font-bold text-sm text-gray-800">
-                      {formatPrice((item.price || returnRequest.productId?.price || 0) * (item.quantity || 1))}
+                      {formatPrice((item?.price || fallbackProduct?.price || 0) * (item?.quantity || 1))}
                     </p>
                   </div>
                 ))
-              ) : returnRequest.productId ? (
+              ) : fallbackProduct ? (
                 <div className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
-                  {returnRequest.productId.image && (
+                  {fallbackProduct?.image && (
                     <img
-                      src={returnRequest.productId.image}
-                      alt={returnRequest.productId.name || "Product"}
+                      src={fallbackProduct?.image}
+                      alt={fallbackProduct?.name || "Product"}
                       className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                       onError={(e) => {
                         e.target.src = "https://via.placeholder.com/100x100?text=Product";
@@ -489,19 +506,19 @@ const ReturnRequestDetail = () => {
                   )}
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-gray-800 truncate">
-                      {returnRequest.productId.name || "Unknown Product"}
+                      {fallbackProduct?.name || "Unknown Product"}
                     </p>
                     <div className="flex items-center gap-3 mt-1">
                       <p className="text-xs text-gray-600">
-                        {formatPrice(returnRequest.productId.price || 0)} × 1
+                        {formatPrice(fallbackProduct?.price || 0)} × 1
                       </p>
                       <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                        {returnRequest.reason}
+                        {returnRequest?.reason || "N/A"}
                       </span>
                     </div>
                   </div>
                   <p className="font-bold text-sm text-gray-800">
-                    {formatPrice(returnRequest.productId.price || 0)}
+                    {formatPrice(fallbackProduct?.price || 0)}
                   </p>
                 </div>
               ) : (
@@ -520,7 +537,7 @@ const ReturnRequestDetail = () => {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Reason</p>
                 <p className="font-semibold text-sm text-gray-800">
-                  {returnRequest.reason}
+                  {returnRequest?.reason || "N/A"}
                 </p>
               </div>
               {returnRequest.description && (
@@ -543,14 +560,14 @@ const ReturnRequestDetail = () => {
           </div>
 
           {/* Return Images */}
-          {returnRequest.images && returnRequest.images.length > 0 && (
+          {safeImages.length > 0 && (
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
                 <FiCamera className="text-primary-600 text-base" />
-                Return Images from Customer ({returnRequest.images.length})
+                Return Images from Customer ({safeImages.length})
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {returnRequest.images.map((img, idx) => (
+                {safeImages.map((img, idx) => (
                   <div 
                     key={idx} 
                     className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 group cursor-pointer shadow-sm hover:shadow-md transition-shadow"
@@ -571,14 +588,14 @@ const ReturnRequestDetail = () => {
           )}
 
           {/* Pickup Proof (from Rider) */}
-          {returnRequest.pickupImages && returnRequest.pickupImages.length > 0 && (
+          {safePickupImages.length > 0 && (
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200 border-l-4 border-l-green-500">
               <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2 uppercase tracking-wider">
                 <FiCheckCircle className="text-green-600 text-base" />
-                Pickup Proof from Rider ({returnRequest.pickupImages.length})
+                Pickup Proof from Rider ({safePickupImages.length})
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                {returnRequest.pickupImages.map((img, idx) => (
+                {safePickupImages.map((img, idx) => (
                   <div 
                     key={idx} 
                     className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 group cursor-pointer shadow-sm hover:shadow-md transition-shadow"
@@ -628,27 +645,27 @@ const ReturnRequestDetail = () => {
               <div>
                 <p className="text-xs text-gray-500 mb-1">Name</p>
                 <p className="font-semibold text-sm text-gray-800">
-                  {returnRequest.customer.name}
+                  {customerName}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Email</p>
                 <a
-                  href={`mailto:${returnRequest.customer.email}`}
+                  href={customerEmail === "N/A" ? "#" : `mailto:${customerEmail}`}
                   className="font-semibold text-xs text-blue-600 hover:text-blue-800 break-all">
-                  {returnRequest.customer.email}
+                  {customerEmail}
                 </a>
               </div>
-              {returnRequest.customer.phone && (
+              {customerPhone && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
                     <FiPhone className="text-xs" />
                     Phone
                   </p>
                   <a
-                    href={`tel:${returnRequest.customer.phone}`}
+                    href={`tel:${customerPhone}`}
                     className="font-semibold text-sm text-gray-800 hover:text-blue-600">
-                    {returnRequest.customer.phone}
+                    {customerPhone}
                   </a>
                 </div>
               )}
@@ -658,7 +675,7 @@ const ReturnRequestDetail = () => {
                   Pickup Address
                 </p>
                 <p className="text-sm text-gray-700 bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                  {returnRequest.pickupAddress || returnRequest.customer.address || "No address provided"}
+                  {returnRequest?.pickupAddress || customer?.address || "No address provided"}
                 </p>
               </div>
             </div>
@@ -683,13 +700,13 @@ const ReturnRequestDetail = () => {
                     <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest leading-none mb-1">Assigned Partner</p>
                     <p className="text-sm font-bold text-gray-800">
                       {typeof returnRequest.deliveryBoyId === 'object' 
-                        ? returnRequest.deliveryBoyId.name 
+                        ? (returnRequest.deliveryBoyId?.name || "Unknown Rider")
                         : returnRequest.deliveryBoyId === 'DB-001' ? 'Rahul Singh' : "Rider ID: " + returnRequest.deliveryBoyId}
                     </p>
-                    {typeof returnRequest.deliveryBoyId === 'object' && returnRequest.deliveryBoyId.phone && (
-                      <a href={`tel:${returnRequest.deliveryBoyId.phone}`} className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1 mt-0.5">
+                    {typeof returnRequest.deliveryBoyId === 'object' && returnRequest.deliveryBoyId?.phone && (
+                      <a href={`tel:${returnRequest.deliveryBoyId?.phone}`} className="text-xs text-blue-600 font-medium hover:underline flex items-center gap-1 mt-0.5">
                         <FiPhone size={10} />
-                        {returnRequest.deliveryBoyId.phone}
+                        {returnRequest.deliveryBoyId?.phone}
                       </a>
                     )}
                   </div>
@@ -724,9 +741,9 @@ const ReturnRequestDetail = () => {
                 <span className="text-gray-600">Items Total</span>
                 <span className="font-semibold">
                   {formatPrice(
-                    returnRequest.items.reduce(
+                    safeItems.reduce(
                       (sum, item) =>
-                        sum + (item.price || 0) * (item.quantity || 1),
+                        sum + (item?.price || 0) * (item?.quantity || 1),
                       0
                     )
                   )}
@@ -735,7 +752,7 @@ const ReturnRequestDetail = () => {
               <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between">
                 <span className="font-bold text-gray-800">Refund Amount</span>
                 <span className="font-bold text-lg text-gray-800">
-                  {formatPrice(returnRequest.refundAmount || (returnRequest.productId?.price || 0))}
+                  {formatPrice(returnRequest?.refundAmount || (fallbackProduct?.price || 0))}
                 </span>
               </div>
               <div className="mt-3 pt-3 border-t border-gray-200">
@@ -748,7 +765,7 @@ const ReturnRequestDetail = () => {
                       ? "error"
                       : "warning"
                   }>
-                  {returnRequest.refundStatus}
+                  {returnRequest?.refundStatus || "pending"}
                 </StatusBadge>
               </div>
             </div>
@@ -781,23 +798,23 @@ const ReturnRequestDetail = () => {
             </h2>
             <div className="space-y-1.5">
               <Link
-                to={`/vendor/orders/${returnRequest.orderId}`}
+                to={orderRef === "N/A" ? "#" : `/vendor/orders/${orderRef}`}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-semibold">
                 <FiShoppingBag className="text-sm" />
                 View Original Order
               </Link>
               <button
                 onClick={() =>
-                  (window.location.href = `mailto:${returnRequest.customer.email}`)
+                  (window.location.href = customerEmail === "N/A" ? "#" : `mailto:${customerEmail}`)
                 }
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold">
                 <FiMail className="text-sm" />
                 Email Customer
               </button>
-              {returnRequest.customer.phone && (
+              {customerPhone && (
                 <button
                   onClick={() =>
-                    (window.location.href = `tel:${returnRequest.customer.phone}`)
+                    (window.location.href = `tel:${customerPhone}`)
                   }
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold">
                   <FiPhone className="text-sm" />
