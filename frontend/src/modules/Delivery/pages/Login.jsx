@@ -46,7 +46,7 @@ const DeliveryLogin = () => {
     try {
       await login(formData.email, formData.password, rememberMe);
       toast.success('Login successful!');
-      // Redirect is handled by auth effect above to avoid duplicate navigation.
+      navigate('/delivery/dashboard', { replace: true });
     } catch (error) {
       toast.error(error.message || 'Invalid credentials');
     }

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
 
@@ -16,6 +17,16 @@ const decodeJwtPayload = (token) => {
 const DeliveryProtectedRoute = ({ children }) => {
   const { isAuthenticated, token } = useDeliveryAuthStore();
   const location = useLocation();
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    setIsHydrated(useDeliveryAuthStore.persist.hasHydrated());
+    const unsub = useDeliveryAuthStore.persist.onFinishHydration(() => setIsHydrated(true));
+    return () => unsub();
+  }, []);
+
+  if (!isHydrated) return null; // Avoid redirect loop and handle initial loading state
+
   const accessToken = token || localStorage.getItem('delivery-token');
   const payload = decodeJwtPayload(accessToken);
   const role = String(payload?.role || '').toLowerCase();

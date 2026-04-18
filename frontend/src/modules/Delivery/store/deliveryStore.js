@@ -170,12 +170,16 @@ export const useDeliveryAuthStore = create(
         set({ isLoading: true });
         try {
           const response = await api.post('/delivery/auth/login', { email, password });
-          const payload = unwrapApiData(response) || {};
-          const accessToken = payload?.accessToken;
-          const refreshToken = payload?.refreshToken;
-          const loginDeliveryBoy = normalizeDeliveryBoy(payload?.deliveryBoy);
+          
+          // Use 'response.data' explicit fallback in case interceptor changes
+          const payload = response?.data || response;
+          const resData = payload?.data || payload; // Unwrap any potential nested generic response wrapper
 
-          if (!accessToken || !refreshToken || !loginDeliveryBoy) {
+          const accessToken = resData?.accessToken;
+          const refreshToken = resData?.refreshToken;
+          const loginDeliveryBoy = normalizeDeliveryBoy(resData?.deliveryBoy);
+
+          if (!accessToken || !loginDeliveryBoy) {
             throw new Error('Invalid login response from server.');
           }
 
