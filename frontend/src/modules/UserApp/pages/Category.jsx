@@ -260,9 +260,10 @@ const MobileCategory = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="w-full pb-24">
+        <div className="w-full pb-24 bg-gray-50/30">
           {/* Header */}
-          <div className="px-4 py-4 bg-white border-b border-gray-200">
+          <div className="w-full bg-white border-b border-gray-200">
+            <div className="w-full px-4 py-4">
             <div className="flex items-center gap-3 mb-4">
               <button
                 onClick={() => navigate(-1)}
@@ -497,9 +498,10 @@ const MobileCategory = () => {
               </div>
             </div>
           </div>
+        </div>
 
           {/* Products List */}
-          <div className="px-4 py-4">
+          <div className="w-full px-4 py-8">
             {categoryProducts.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl text-gray-300 mx-auto mb-4">📦</div>

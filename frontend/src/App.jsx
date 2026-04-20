@@ -303,9 +303,7 @@ const AppRoutes = () => {
         path="/checkout"
         element={
           <RouteWrapper>
-            <ProtectedRoute>
-              <MobileCheckout />
-            </ProtectedRoute>
+            <MobileCheckout />
           </RouteWrapper>
         }
       />
@@ -745,7 +743,6 @@ function App() {
     <ErrorBoundary>
       <Router
         future={{
-          v7_startTransition: true,
           v7_relativeSplatPath: true,
         }}>
         <AppBootstrap />
@@ -757,21 +754,26 @@ function App() {
           toastOptions={{
             duration: 3000,
             style: {
-              background: "#212121",
-              color: "#fff",
+              background: "#ffffff",
+              color: "#1f2937",
+              boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
+              borderRadius: "12px",
+              border: "1px border-gray-100",
+              fontSize: "14px",
+              padding: "12px 16px",
             },
             success: {
               duration: 3000,
               iconTheme: {
-                primary: "#388E3C",
-                secondary: "#fff",
+                primary: "#10b981",
+                secondary: "#ffffff",
               },
             },
             error: {
               duration: 4000,
               iconTheme: {
-                primary: "#FF6161",
-                secondary: "#fff",
+                primary: "#ef4444",
+                secondary: "#ffffff",
               },
             },
           }}

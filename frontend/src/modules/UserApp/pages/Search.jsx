@@ -382,9 +382,10 @@ const MobileSearch = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto min-h-screen bg-gray-50">
+        <div className="w-full pb-24 lg:pb-12 min-h-screen bg-gray-50/50">
           {/* Search Header */}
-          <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30">
+          <div className="w-full bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+            <div className="w-full px-4 py-4">
             <form onSubmit={handleSearch} className="mb-3 lg:hidden">
               <div className="relative">
                 <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl z-10" />
@@ -756,9 +757,10 @@ const MobileSearch = () => {
               </div>
             </div>
           </div>
+        </div>
 
           {/* Products List */}
-          <div className="px-4 py-4 lg:p-6">
+          <div className="w-full px-4 py-8 lg:p-12">
             {isLoadingResults ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-2 text-gray-600">

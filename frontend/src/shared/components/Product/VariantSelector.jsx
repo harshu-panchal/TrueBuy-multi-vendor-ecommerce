@@ -125,10 +125,10 @@ const VariantSelector = ({ variants, onVariantChange, currentPrice }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {axes.map((axis) => (
         <div key={axis.key}>
-          <label className="block text-sm font-semibold text-gray-700 mb-3">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
             {axis.label}:{" "}
             <span className="font-normal text-gray-600">
               {selectedVariant?.[axis.key] || `Select ${axis.label.toLowerCase()}`}

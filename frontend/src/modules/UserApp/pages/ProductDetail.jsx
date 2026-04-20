@@ -483,9 +483,9 @@ const MobileProductDetail = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={true}>
-        <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto">
+        <div className="w-full pb-24 lg:pb-12 max-w-[1440px] mx-auto">
           {/* Back Button */}
-          <div className="px-4 pt-4 lg:pt-8 lg:px-8 mb-6">
+          <div className="px-4 pt-4 lg:pt-6 lg:px-8 mb-3">
             <button
               onClick={() => navigate(-1)}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors group">
@@ -496,7 +496,7 @@ const MobileProductDetail = () => {
             </button>
           </div>
 
-          <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-16 lg:px-8 lg:items-start">
+          <div className="flex flex-col lg:grid lg:grid-cols-[0.55fr_0.45fr] lg:gap-8 lg:px-8 lg:items-start">
             {/* Left Column: Product Image */}
             <div className="px-4 py-4 lg:p-0 sticky top-24">
               <ImageGallery images={productImages} productName={product.name} />
@@ -509,11 +509,11 @@ const MobileProductDetail = () => {
 
             {/* Right Column: Product Info */}
             <div className="px-4 py-4 lg:p-0">
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-4">
                 <div>
                   {/* Vendor Badge */}
                   {vendor && (
-                    <div className="mb-4">
+                    <div className="mb-2">
                       <Link
                         to={`/seller/${vendor.id}`}
                         className="inline-flex items-center gap-3 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full transition-all duration-300 border border-gray-200 group">
@@ -547,7 +547,7 @@ const MobileProductDetail = () => {
                     </div>
                   )}
                   {brand && (
-                    <div className="mb-4">
+                    <div className="mb-2">
                       <Link
                         to={`/brand/${brand.id}`}
                         className="inline-flex items-center gap-3 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full transition-all duration-300 border border-gray-200 group">
@@ -569,13 +569,13 @@ const MobileProductDetail = () => {
                     </div>
                   )}
 
-                  <h1 className="text-2xl lg:text-4xl font-extrabold text-gray-900 mb-4 leading-tight">
+                  <h1 className="text-2xl lg:text-3xl font-extrabold text-gray-900 mb-2 leading-tight">
                     {product.name}
                   </h1>
 
                   {/* Rating & Reviews */}
                   {product.rating && (
-                    <div className="flex items-center gap-4 mb-6">
+                    <div className="flex items-center gap-4 mb-4">
                       <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
                         <span className="font-bold text-yellow-700">{product.rating}</span>
                         <FiStar className="text-yellow-500 fill-yellow-500" />
@@ -591,7 +591,7 @@ const MobileProductDetail = () => {
                   )}
 
                   {/* Price */}
-                  <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
+                  <div className="bg-gray-50 rounded-2xl p-5 mb-4 border border-gray-100">
                     <div className="flex items-end gap-3 mb-2">
                       <span className="text-4xl font-extrabold text-gray-900">
                         {formatPrice(currentPrice)}
@@ -618,7 +618,7 @@ const MobileProductDetail = () => {
                 </div>
 
                 {/* Variants & Quantity */}
-                <div className="space-y-6 border-b border-gray-100 pb-8">
+                <div className="space-y-4 border-b border-gray-100 pb-6">
                   {product.variants && (
                     <VariantSelector
                       variants={product.variants}
@@ -628,7 +628,7 @@ const MobileProductDetail = () => {
                   )}
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-3">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
                       Quantity
                     </label>
                     <div className="flex items-center gap-4">
@@ -657,30 +657,21 @@ const MobileProductDetail = () => {
                 </div>
 
                 {/* DESKTOP ACTIONS */}
-                <div className="hidden lg:grid grid-cols-5 gap-4 py-4">
-                  {isInCart ? (
-                    <button
-                      onClick={handleRemoveFromCart}
-                      className="col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100">
-                      <FiTrash2 className="text-xl" />
-                      <span>Remove from Cart</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleAddToCart}
-                      disabled={product.stock === "out_of_stock"}
-                      className={`col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${product.stock === "out_of_stock"
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                        : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5"
-                        }`}>
-                      <FiShoppingBag className="text-xl" />
-                      <span>
-                        {product.stock === "out_of_stock"
-                          ? "Out of Stock"
-                          : "Add to Cart"}
-                      </span>
-                    </button>
-                  )}
+                <div className="hidden lg:grid grid-cols-5 gap-3 py-2">
+                  <button
+                    onClick={handleAddToCart}
+                    disabled={product.stock === "out_of_stock"}
+                    className={`col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${product.stock === "out_of_stock"
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                      : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5"
+                      }`}>
+                    <FiShoppingBag className="text-xl" />
+                    <span>
+                      {product.stock === "out_of_stock"
+                        ? "Out of Stock"
+                        : "Add to Cart"}
+                    </span>
+                  </button>
 
                   <button
                     onClick={handleFavorite}
@@ -712,7 +703,7 @@ const MobileProductDetail = () => {
                 </div>
 
                 {/* Description */}
-                <div className="pt-6">
+                <div className="pt-4">
                   <h3 className="text-lg font-bold text-gray-900 mb-4">
                     Product Description
                   </h3>
@@ -731,7 +722,7 @@ const MobileProductDetail = () => {
 
                 {/* FAQs */}
                 {productFaqs.length > 0 && (
-                  <div className="pt-6">
+                  <div className="pt-4">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">
                       Product FAQs
                     </h3>
@@ -755,7 +746,7 @@ const MobileProductDetail = () => {
 
                 {/* Write Review */}
                 {isAuthenticated && isMongoId(product?.id) && (
-                  <div className="pt-6">
+                  <div className="pt-6 lg:hidden">
                     {eligibleDeliveredOrderId ? (
                       <ReviewForm
                         productId={product.id}
@@ -771,7 +762,7 @@ const MobileProductDetail = () => {
 
                 {/* Reviews List */}
                 {productReviews.length > 0 && (
-                  <div className="pt-6">
+                  <div className="pt-4">
                     <h3 className="text-lg font-bold text-gray-900 mb-4">
                       Customer Reviews ({productReviews.length})
                     </h3>
@@ -857,29 +848,20 @@ const MobileProductDetail = () => {
               className="p-3 bg-gray-100 text-gray-700 rounded-xl font-semibold transition-all duration-300">
               <FiShare2 className="text-xl" />
             </button>
-            {isInCart ? (
-              <button
-                onClick={handleRemoveFromCart}
-                className="flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 bg-red-50 text-red-600 border border-red-100">
-                <FiTrash2 className="text-xl" />
-                <span>Remove</span>
-              </button>
-            ) : (
-              <button
-                onClick={handleAddToCart}
-                disabled={product.stock === "out_of_stock"}
-                className={`flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "gradient-green text-white hover:shadow-glow-green"
-                  }`}>
-                <FiShoppingBag className="text-xl" />
-                <span>
-                  {product.stock === "out_of_stock"
-                    ? "Out of Stock"
-                    : "Add to Cart"}
-                </span>
-              </button>
-            )}
+            <button
+              onClick={handleAddToCart}
+              disabled={product.stock === "out_of_stock"}
+              className={`flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "gradient-green text-white hover:shadow-glow-green"
+                }`}>
+              <FiShoppingBag className="text-xl" />
+              <span>
+                {product.stock === "out_of_stock"
+                  ? "Out of Stock"
+                  : "Add to Cart"}
+              </span>
+            </button>
           </div>
         </div>
       </MobileLayout>

@@ -45,7 +45,7 @@ const DesktopHeader = () => {
 
     return (
         <header className="hidden md:block sticky top-0 z-[999] bg-white shadow-sm border-b border-gray-100">
-            <div className="container mx-auto px-4 md:px-12 lg:px-24 xl:px-40 h-20 flex items-center justify-between gap-8">
+            <div className="w-full px-6 lg:px-10 xl:px-16 h-20 flex items-center justify-between gap-8">
                 {/* Logo */}
                 <Link to="/home" className="flex-shrink-0 flex items-center gap-2 relative z-[1001] overflow-visible w-48 h-full">
                     {appLogo.src ? (

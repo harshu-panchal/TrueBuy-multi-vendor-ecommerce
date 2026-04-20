@@ -33,13 +33,6 @@ const CartDrawer = () => {
     [items, getItemsByVendor]
   );
 
-  // Prevent body scroll when cart is open
-  useEffect(() => {
-    if (!isAuthenticated && items.length > 0) {
-      clearCart();
-    }
-  }, [isAuthenticated, items.length, clearCart]);
-
   useEffect(() => {
     if (isCartOpen) {
       document.body.style.overflowY = "hidden";

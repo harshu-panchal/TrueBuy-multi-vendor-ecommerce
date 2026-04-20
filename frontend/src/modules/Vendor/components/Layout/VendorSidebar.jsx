@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, NavLink } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FiHome,
@@ -226,26 +226,23 @@ const VendorSidebar = ({ isOpen, onClose }) => {
               <div className="ml-4 mt-1 pl-4 border-l-2 border-slate-600 space-y-1">
                 {item.children.map((child, index) => {
                   const childRoute = getChildRoute(item.route, child);
-                  const isChildActive =
-                    location.pathname === childRoute ||
-                    (childRoute !== item.route &&
-                      location.pathname.startsWith(childRoute));
-
+                  
                   return (
-                    <div
+                    <NavLink
                       key={index}
-                      onClick={() =>
-                        handleMenuItemClick(childRoute, item.title)
-                      }
-                      className={`
-                        px-3 py-2 text-xs rounded-lg transition-colors cursor-pointer
-                        ${isChildActive
+                      to={childRoute}
+                      onClick={() => {
+                        if (window.innerWidth < 1024) onClose();
+                      }}
+                      className={({ isActive }) => `
+                        block px-3 py-2 text-xs rounded-lg transition-colors cursor-pointer
+                        ${isActive
                           ? "bg-primary-500/20 text-white font-medium"
                           : "text-gray-400 hover:bg-slate-700"
                         }
                       `}>
                       {child}
-                    </div>
+                    </NavLink>
                   );
                 })}
               </div>

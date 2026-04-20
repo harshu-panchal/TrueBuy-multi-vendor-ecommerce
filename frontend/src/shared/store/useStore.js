@@ -33,28 +33,9 @@ export const useCartStore = create(
       items: [],
       ownerUserId: null,
       addItem: (item) => {
-        const authState = useAuthStore.getState();
-        if (!authState?.isAuthenticated) {
-          setPostLoginAction({
-            type: "cart:add",
-            payload: {
-              ...item,
-              quantity: Number(item?.quantity) > 0 ? Number(item.quantity) : 1,
-            },
-          });
-          toast.error("Please login to add products to cart");
-          redirectToLogin();
-          return false;
-        }
         const currentUserId = getCurrentAuthUserId();
-        if (!currentUserId) {
-          toast.error("Please login to add products to cart");
-          redirectToLogin();
-          return false;
-        }
-
         const ownerUserId = String(get().ownerUserId || "").trim();
-        if (ownerUserId && ownerUserId !== currentUserId) {
+        if (currentUserId && ownerUserId && ownerUserId !== currentUserId) {
           set({ items: [], ownerUserId: currentUserId });
         }
 
@@ -178,13 +159,6 @@ export const useCartStore = create(
       },
       clearCart: () => set((state) => ({ items: [], ownerUserId: state.ownerUserId })),
       getTotal: () => {
-        const authState = useAuthStore.getState();
-        if (!authState?.isAuthenticated) {
-          if (get().items.length > 0 || get().ownerUserId) {
-            set({ items: [], ownerUserId: null });
-          }
-          return 0;
-        }
         const currentUserId = getCurrentAuthUserId();
         const ownerUserId = String(get().ownerUserId || "").trim();
         if (ownerUserId && currentUserId && ownerUserId !== currentUserId) {
@@ -198,13 +172,6 @@ export const useCartStore = create(
         );
       },
       getItemCount: () => {
-        const authState = useAuthStore.getState();
-        if (!authState?.isAuthenticated) {
-          if (get().items.length > 0 || get().ownerUserId) {
-            set({ items: [], ownerUserId: null });
-          }
-          return 0;
-        }
         const currentUserId = getCurrentAuthUserId();
         const ownerUserId = String(get().ownerUserId || "").trim();
         if (ownerUserId && currentUserId && ownerUserId !== currentUserId) {
@@ -216,13 +183,6 @@ export const useCartStore = create(
       },
       // Group items by vendor
       getItemsByVendor: () => {
-        const authState = useAuthStore.getState();
-        if (!authState?.isAuthenticated) {
-          if (get().items.length > 0 || get().ownerUserId) {
-            set({ items: [], ownerUserId: null });
-          }
-          return [];
-        }
         const currentUserId = getCurrentAuthUserId();
         const ownerUserId = String(get().ownerUserId || "").trim();
         if (ownerUserId && currentUserId && ownerUserId !== currentUserId) {

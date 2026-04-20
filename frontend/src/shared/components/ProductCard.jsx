@@ -341,17 +341,17 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
             )}
 
             {/* Price section */}
-            <div className="flex items-center flex-nowrap gap-2 overflow-hidden mb-1">
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mb-1">
               <span className="text-sm md:text-lg font-black text-gray-900 tracking-tight">
                 {formatPrice(product.price)}
               </span>
               {product.originalPrice && (
-                <span className="text-[10px] md:text-xs text-gray-600/90 line-through decoration-gray-900/30 font-medium">
+                <span className="text-[10px] md:text-xs text-gray-600/90 line-through decoration-gray-900/30 font-medium whitespace-nowrap">
                   {formatPrice(product.originalPrice)}
                 </span>
               )}
               {product.originalPrice && (
-                <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-md">
+                <span className="text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-md whitespace-nowrap">
                   Save {formatPrice(product.originalPrice - product.price)}
                 </span>
               )}
@@ -381,32 +381,20 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
 
           {/* Interaction Zone */}
           <div className="mt-auto pt-4">
-            {isInCart ? (
-              <motion.button
-                type="button"
-                onClick={handleRemoveFromCart}
-                whileTap={{ scale: 0.95 }}
-                className="w-full py-2.5 rounded-xl font-bold text-[11px] bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-all flex items-center justify-center gap-2"
-              >
-                <FiTrash2 size={14} />
-                <span>Remove from Bag</span>
-              </motion.button>
-            ) : (
-              <motion.button
-                ref={buttonRef}
-                type="button"
-                onClick={handleAddToCart}
-                disabled={product.stock === "out_of_stock" || isAdding}
-                whileTap={{ scale: 0.95 }}
-                className={`w-full py-2.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 shadow-sm ${product.stock === "out_of_stock"
-                  ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                  : "bg-[#0f172a] text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/10 active:scale-[0.98]"
-                  }`}
-              >
-                <FiShoppingBag size={14} />
-                <span>{product.stock === "out_of_stock" ? "Out of Stock" : "Add to Cart"}</span>
-              </motion.button>
-            )}
+            <motion.button
+              ref={buttonRef}
+              type="button"
+              onClick={handleAddToCart}
+              disabled={product.stock === "out_of_stock" || isAdding}
+              whileTap={{ scale: 0.95 }}
+              className={`w-full py-2.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 shadow-sm ${product.stock === "out_of_stock"
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                : "bg-[#0f172a] text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/10 active:scale-[0.98]"
+                }`}
+            >
+              <FiShoppingBag size={14} />
+              <span>{product.stock === "out_of_stock" ? "Out of Stock" : "Add to Cart"}</span>
+            </motion.button>
           </div>
         </div>
       </motion.div>
