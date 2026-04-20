@@ -102,6 +102,12 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         );
     }
 
+    // Efficient cooldown (30s)
+    const lastResetSentAt = deliveryBoy.resetOtpExpiry ? deliveryBoy.resetOtpExpiry.getTime() - (10 * 60 * 1000) : 0;
+    if (deliveryBoy.resetOtp && (Date.now() - lastResetSentAt < 30000)) {
+        return res.status(200).json(new ApiResponse(200, null, 'If the email exists, a reset OTP has been sent.'));
+    }
+
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     deliveryBoy.resetOtp = otp;
     deliveryBoy.resetOtpExpiry = new Date(Date.now() + 10 * 60 * 1000);

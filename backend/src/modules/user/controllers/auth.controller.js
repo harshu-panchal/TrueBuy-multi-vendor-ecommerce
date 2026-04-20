@@ -74,17 +74,13 @@ export const register = asyncHandler(async (req, res) => {
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(409, 'Email already registered.');
 
-    const deliveryOtp = generateDeliveryOtp();
     const user = await User.create({
         name: String(name || '').trim(),
         email: normalizedEmail,
         password,
-        deliveryOtp,
-        deliveryOtpGeneratedAt: new Date(),
         ...(normalizedPhone ? { phone: normalizedPhone } : {}),
     });
     await sendOTP(user, 'email_verification');
-    await sendDeliveryOtpOnboardingEmail(user, deliveryOtp);
 
     res.status(201).json(new ApiResponse(201, { email: user.email }, 'Registration successful. Please verify your email.'));
 });
@@ -196,6 +192,12 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     if (!user.isVerified) {
         await sendOTP(user, 'email_verification');
         throw new ApiError(403, 'Please verify your email first. A new verification OTP has been sent.');
+    }
+
+    // Efficient cooldown (30s)
+    const lastResetSentAt = user.resetOtpExpiry ? user.resetOtpExpiry.getTime() - (10 * 60 * 1000) : 0;
+    if (user.resetOtp && (Date.now() - lastResetSentAt < 30000)) {
+        return res.status(200).json(new ApiResponse(200, null, 'If the email exists, a reset OTP has been sent.'));
     }
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));

@@ -7,8 +7,15 @@ import { sendEmail } from './email.service.js';
  * @param {string} type - Purpose label (for logging)
  */
 export const sendOTP = async (user, type = 'verification') => {
+    // Efficiently prevent duplicate sends within a short window (e.g., 30s)
+    const now = Date.now();
+    const lastSentAt = user.otpExpiry ? user.otpExpiry.getTime() - (10 * 60 * 1000) : 0;
+    if (user.otp && (now - lastSentAt < 30 * 1000)) {
+        return user.otp;
+    }
+
     const otp = crypto.randomInt(100000, 999999).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const otpExpiry = new Date(now + 10 * 60 * 1000); // 10 minutes
 
     user.otp = otp;
     user.otpExpiry = otpExpiry;
