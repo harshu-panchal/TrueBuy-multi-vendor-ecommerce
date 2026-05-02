@@ -5,6 +5,14 @@ import { validateEnv } from "./src/config/env.js";
 
 const PORT = process.env.PORT || 3000;
 
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+});
+
 const startServer = async () => {
   try {
     validateEnv();
@@ -14,7 +22,7 @@ const startServer = async () => {
       console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
     });
   } catch (error) {
-    console.error("Server startup failed:", error.message);
+    console.error("Server startup failed:", error);
     process.exit(1);
   }
 };

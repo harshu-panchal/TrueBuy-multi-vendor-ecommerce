@@ -1,0 +1,6 @@
+loggingEnabled: true
+devErrorsEnabled: true
+flushResponse: true
+nodeProcessCountPerApplication: 1
+maxConcurrentRequestsPerProcess: 1024
+gracefulShutdownTimeout: 60000
