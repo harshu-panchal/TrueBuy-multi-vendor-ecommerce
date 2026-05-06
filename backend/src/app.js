@@ -55,13 +55,7 @@ app.use(helmet());
 app.use(mongoSanitize());
 app.set('trust proxy', process.env.TRUST_PROXY === 'true' ? 1 : 0);
 app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.length === 0) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('Not allowed by CORS'));
-    },
-    credentials: true,
+    origin: '*',
 }));
 
 // ─── Body Parsing ────────────────────────────────────────────────────────────
