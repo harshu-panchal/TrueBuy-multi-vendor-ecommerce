@@ -24,33 +24,94 @@ const DeliveryRegister = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[0-9]{10}$/;
+    const nameRegex = /^[a-zA-Z\s.]+$/;
+    const vehicleNumberRegex = /^[A-Z0-9-\s]+$/i;
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Full name is required";
+    } else if (!nameRegex.test(formData.name.trim())) {
+      newErrors.name = "Name should only contain letters";
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!emailRegex.test(formData.email.trim())) {
+      newErrors.email = "Invalid email address";
+    }
+
+    const cleanPhone = formData.phone.replace(/\D/g, "");
+    if (!cleanPhone) {
+      newErrors.phone = "Phone number is required";
+    } else if (!phoneRegex.test(cleanPhone)) {
+      newErrors.phone = "Enter a valid 10-digit number";
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
+    }
+
+    if (!formData.vehicleNumber.trim()) {
+      newErrors.vehicleNumber = "Vehicle number is required";
+    } else if (!vehicleNumberRegex.test(formData.vehicleNumber.trim())) {
+      newErrors.vehicleNumber = "Invalid vehicle number format";
+    }
+
+    if (!formData.password) {
+      newErrors.password = "Password is required";
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Minimum 6 characters required";
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+
+    if (!formData.drivingLicense) {
+      newErrors.drivingLicense = "Driving license is required";
+    }
+
+    if (!formData.aadharCard) {
+      newErrors.aadharCard = "Aadhar card is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === 'drivingLicense' || name === 'aadharCard') {
       setFormData((prev) => ({ ...prev, [name]: files?.[0] || null }));
+      if (errors[name]) {
+        setErrors(prev => {
+          const next = { ...prev };
+          delete next[name];
+          return next;
+        });
+      }
       return;
     }
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-    if (!formData.drivingLicense || !formData.aadharCard) {
-      toast.error('Driving License and Aadhar Card are required');
-      return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!validateForm()) {
+      toast.error('Please fix the errors in the form');
       return;
     }
 
@@ -123,30 +184,34 @@ const DeliveryRegister = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Full Name *</label>
                 <div className="relative">
-                  <FiUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="John Doe" required className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900" />
+                  <FiUser className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.name ? 'text-red-500' : 'text-gray-400'}`} />
+                  <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="John Doe" required className={`w-full pl-12 pr-6 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.name ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
                 </div>
+                {errors.name && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.name}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Email Address *</label>
                 <div className="relative">
-                  <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="delivery@example.com" required className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900" />
+                  <FiMail className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.email ? 'text-red-500' : 'text-gray-400'}`} />
+                  <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="delivery@example.com" required className={`w-full pl-12 pr-6 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.email ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
                 </div>
+                {errors.email && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.email}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Phone Number *</label>
                 <div className="relative">
-                  <FiPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+1234567890" required className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900" />
+                  <FiPhone className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.phone ? 'text-red-500' : 'text-gray-400'}`} />
+                  <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+1234567890" required className={`w-full pl-12 pr-6 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.phone ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
                 </div>
+                {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.phone}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Address</label>
                 <div className="relative">
-                  <FiMapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="City, State" className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900" />
+                  <FiMapPin className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.address ? 'text-red-500' : 'text-gray-400'}`} />
+                  <input type="text" name="address" value={formData.address} onChange={handleChange} placeholder="City, State" className={`w-full pl-12 pr-6 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.address ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
                 </div>
+                {errors.address && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.address}</p>}
               </div>
             </div>
           </section>
@@ -169,9 +234,10 @@ const DeliveryRegister = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Vehicle Number</label>
                 <div className="relative">
-                  <FiTruck className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type="text" name="vehicleNumber" value={formData.vehicleNumber} onChange={handleChange} placeholder="ABC-1234" className="w-full pl-12 pr-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900" />
+                  <FiTruck className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.vehicleNumber ? 'text-red-500' : 'text-gray-400'}`} />
+                  <input type="text" name="vehicleNumber" value={formData.vehicleNumber} onChange={handleChange} placeholder="ABC-1234" className={`w-full pl-12 pr-6 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.vehicleNumber ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
                 </div>
+                {errors.vehicleNumber && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.vehicleNumber}</p>}
               </div>
             </div>
           </section>
@@ -186,16 +252,18 @@ const DeliveryRegister = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Driving License *</label>
                 <div className="relative group">
-                  <FiFileText className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-black transition-colors" />
-                  <input type="file" name="drivingLicense" onChange={handleChange} accept=".pdf,image/*" required className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 hover:border-black transition-all outline-none text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer" />
+                  <FiFileText className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.drivingLicense ? 'text-red-500' : 'text-gray-400 group-hover:text-black'}`} />
+                  <input type="file" name="drivingLicense" onChange={handleChange} accept=".pdf,image/*" required className={`w-full pl-12 pr-4 py-4 rounded-2xl transition-all outline-none text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer border-2 border-dashed ${errors.drivingLicense ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-black bg-gray-50'}`} />
                 </div>
+                {errors.drivingLicense && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.drivingLicense}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Aadhar Card *</label>
                 <div className="relative group">
-                  <FiFileText className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-hover:text-black transition-colors" />
-                  <input type="file" name="aadharCard" onChange={handleChange} accept=".pdf,image/*" required className="w-full pl-12 pr-4 py-4 rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 hover:border-black transition-all outline-none text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer" />
+                  <FiFileText className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.aadharCard ? 'text-red-500' : 'text-gray-400 group-hover:text-black'}`} />
+                  <input type="file" name="aadharCard" onChange={handleChange} accept=".pdf,image/*" required className={`w-full pl-12 pr-4 py-4 rounded-2xl transition-all outline-none text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer border-2 border-dashed ${errors.aadharCard ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-black bg-gray-50'}`} />
                 </div>
+                {errors.aadharCard && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.aadharCard}</p>}
               </div>
             </div>
           </section>
@@ -210,18 +278,20 @@ const DeliveryRegister = () => {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Password *</label>
                 <div className="relative">
-                  <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} placeholder="Minimum 6 characters" required className="w-full pl-12 pr-12 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900" />
+                  <FiLock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.password ? 'text-red-500' : 'text-gray-400'}`} />
+                  <input type={showPassword ? 'text' : 'password'} name="password" value={formData.password} onChange={handleChange} placeholder="Minimum 6 characters" required className={`w-full pl-12 pr-12 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.password ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
                   <button type="button" onClick={() => setShowPassword((v) => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition-colors">{showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}</button>
                 </div>
+                {errors.password && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.password}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Confirm Password *</label>
                 <div className="relative">
-                  <FiLock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Re-enter password" required className="w-full pl-12 pr-12 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900" />
+                  <FiLock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.confirmPassword ? 'text-red-500' : 'text-gray-400'}`} />
+                  <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} placeholder="Re-enter password" required className={`w-full pl-12 pr-12 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.confirmPassword ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
                   <button type="button" onClick={() => setShowConfirmPassword((v) => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition-colors">{showConfirmPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}</button>
                 </div>
+                {errors.confirmPassword && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.confirmPassword}</p>}
               </div>
             </div>
           </section>
