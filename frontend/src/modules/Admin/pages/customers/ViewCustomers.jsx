@@ -103,15 +103,20 @@ const ViewCustomers = () => {
       key: 'status',
       label: 'Status',
       sortable: true,
-      render: (value) => (
-        <span
-          className={`px-2 py-1 rounded text-xs font-semibold ${value === 'active'
-            ? 'bg-green-100 text-green-800'
-            : 'bg-red-100 text-red-800'
-            }`}
+      render: (value, row) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const { toggleCustomerStatus } = useCustomerStore.getState();
+            toggleCustomerStatus(row.id);
+          }}
+          className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300 border ${value === 'active'
+            ? 'bg-green-50 text-green-600 border-green-200 hover:bg-green-600 hover:text-white hover:border-green-600'
+            : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-600 hover:text-white hover:border-red-600'
+            } hover:shadow-md active:scale-95`}
         >
           {value}
-        </span>
+        </button>
       ),
     },
     {

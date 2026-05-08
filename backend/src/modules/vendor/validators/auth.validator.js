@@ -1,10 +1,14 @@
 import Joi from 'joi';
 
 export const registerSchema = Joi.object({
-    name: Joi.string().trim().min(2).max(50).required(),
+    name: Joi.string().trim().min(2).max(50).pattern(/^[a-zA-Z\s]+$/).required().messages({
+        'string.pattern.base': 'Name can only contain alphabets and spaces.',
+    }),
     email: Joi.string().email().lowercase().required(),
     password: Joi.string().min(6).required(),
-    phone: Joi.string().trim().required(),
+    phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+        'string.pattern.base': 'Phone number must be exactly 10 digits.',
+    }),
     storeName: Joi.string().trim().min(2).max(100).required(),
     storeDescription: Joi.string().trim().max(500).allow('').optional(),
     address: Joi.object({

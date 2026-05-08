@@ -1,9 +1,12 @@
 import { FiShoppingBag, FiPackage, FiUsers } from 'react-icons/fi';
 import { IndianRupee } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { formatPrice } from '../../../../shared/utils/helpers';
 
 const StatsCards = ({ stats }) => {
+  const navigate = useNavigate();
+
   const cards = [
     {
       title: 'Total Revenue',
@@ -14,6 +17,7 @@ const StatsCards = ({ stats }) => {
       bgColor: 'bg-gradient-to-br from-green-500 to-emerald-600',
       cardBg: 'bg-gradient-to-br from-green-50 to-emerald-50',
       iconBg: 'bg-white/20',
+      link: '/admin/analytics',
     },
     {
       title: 'Total Orders',
@@ -24,6 +28,7 @@ const StatsCards = ({ stats }) => {
       bgColor: 'bg-gradient-to-br from-blue-500 to-indigo-600',
       cardBg: 'bg-gradient-to-br from-blue-50 to-indigo-50',
       iconBg: 'bg-white/20',
+      link: '/admin/orders/all-orders',
     },
     {
       title: 'Total Products',
@@ -34,6 +39,7 @@ const StatsCards = ({ stats }) => {
       bgColor: 'bg-gradient-to-br from-purple-500 to-violet-600',
       cardBg: 'bg-gradient-to-br from-purple-50 to-violet-50',
       iconBg: 'bg-white/20',
+      link: '/admin/products/manage-products',
     },
     {
       title: 'Total Customers',
@@ -44,6 +50,7 @@ const StatsCards = ({ stats }) => {
       bgColor: 'bg-gradient-to-br from-orange-500 to-amber-600',
       cardBg: 'bg-gradient-to-br from-orange-50 to-amber-50',
       iconBg: 'bg-white/20',
+      link: '/admin/customers/view-customers',
     },
   ];
 
@@ -60,13 +67,14 @@ const StatsCards = ({ stats }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
-            className={`${card.cardBg} rounded-xl p-4 sm:p-6 shadow-md border-2 border-transparent hover:shadow-lg transition-all duration-300 relative overflow-hidden`}
+            onClick={() => navigate(card.link)}
+            className={`${card.cardBg} rounded-xl p-4 sm:p-6 shadow-md border-2 border-transparent hover:shadow-xl hover:scale-[1.02] transition-all duration-300 relative overflow-hidden cursor-pointer group`}
           >
             {/* Decorative gradient overlay */}
-            <div className={`absolute top-0 right-0 w-32 h-32 ${card.bgColor} opacity-10 rounded-full -mr-16 -mt-16`}></div>
+            <div className={`absolute top-0 right-0 w-32 h-32 ${card.bgColor} opacity-10 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500`}></div>
 
             <div className="flex items-center justify-between mb-3 sm:mb-4 relative z-10">
-              <div className={`${card.bgColor} ${card.iconBg} p-2 sm:p-3 rounded-lg shadow-md`}>
+              <div className={`${card.bgColor} ${card.iconBg} p-2 sm:p-3 rounded-lg shadow-md group-hover:rotate-12 transition-transform duration-300`}>
                 <Icon className={`${card.color} text-lg sm:text-xl`} />
               </div>
               {hasChange && (
@@ -81,7 +89,7 @@ const StatsCards = ({ stats }) => {
             </div>
             <div className="relative z-10">
               <h3 className="text-gray-600 text-xs sm:text-sm font-medium mb-1">{card.title}</h3>
-              <p className="text-gray-800 text-xl sm:text-2xl font-bold">{card.value}</p>
+              <p className="text-gray-800 text-xl sm:text-2xl font-bold group-hover:text-primary-600 transition-colors">{card.value}</p>
             </div>
           </motion.div>
         );

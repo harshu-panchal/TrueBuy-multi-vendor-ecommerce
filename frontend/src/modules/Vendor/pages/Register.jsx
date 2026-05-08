@@ -59,6 +59,21 @@ const VendorRegister = () => {
       return;
     }
 
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    if (!/^[A-Za-z\s]+$/.test(formData.name)) {
+      toast.error('Name can only contain alphabets');
+      return;
+    }
+
+    if (formData.phone.length !== 10) {
+      toast.error('Phone number must be exactly 10 digits');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -143,6 +158,9 @@ const VendorRegister = () => {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, '');
+                    }}
                     placeholder="John Doe"
                     className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                     required
@@ -167,7 +185,10 @@ const VendorRegister = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    placeholder="+1234567890"
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                    }}
+                    placeholder="9876543210"
                     className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                     required
                   />
