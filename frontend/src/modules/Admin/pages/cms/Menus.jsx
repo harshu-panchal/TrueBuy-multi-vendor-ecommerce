@@ -289,8 +289,12 @@ const MenuForm = ({
                   </label>
                   <input
                     type="number"
+                    min="0"
                     value={formData.displayOrder}
-                    onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) || 0 })}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setFormData({ ...formData, displayOrder: isNaN(val) ? 0 : Math.max(0, val) });
+                    }}
                     className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#6b2bd9]/10 focus:border-[#6b2bd9] outline-none transition-all shadow-sm"
                   />
                 </div>

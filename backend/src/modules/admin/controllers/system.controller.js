@@ -8,6 +8,7 @@ import Vendor from '../../../models/Vendor.model.js';
 import DeliveryBoy from '../../../models/DeliveryBoy.model.js';
 import Admin from '../../../models/Admin.model.js';
 import Order from '../../../models/Order.model.js';
+import * as fcmService from '../../../services/fcm.service.js';
 
 const POLICY_KEY_MAP = {
     'privacy-policy': 'privacy-policy',
@@ -240,21 +241,67 @@ export const sendPushNotification = asyncHandler(async (req, res) => {
         data = {},
     } = req.body;
 
-    const meta = {
-        ...data,
-        channel: 'push',
-        schedule,
-        scheduledDate: scheduledDate || null,
-        requestedByAdminId: String(req.user?._id || req.user?.id || ''),
-    };
+    // Resolve target to list of { recipientId, recipientType }
+    const recipients = await resolveNotificationRecipients({ target, recipientIds });
+    let normalizedRecipients = [];
 
-    const result = await createNotificationsForTarget({
-        target,
+    if (Array.isArray(recipients.recipientGroups)) {
+        normalizedRecipients = recipients.recipientGroups;
+    } else {
+        normalizedRecipients = [recipients];
+    }
+
+    const notificationId = fcmService.createNotificationId({
+        recipientType: target,
+        recipientId: 'broadcast',
         title,
-        message,
+        body: message,
+        data,
+    });
+
+    if (schedule === 'scheduled') {
+        if (!scheduledDate || new Date(scheduledDate) <= new Date()) {
+            throw new ApiError(400, 'Scheduled date must be in the future.');
+        }
+
+        const result = await fcmService.schedulePushNotification({
+            notificationId,
+            recipients: normalizedRecipients.flatMap(group => 
+                group.recipientIds.map(id => ({ recipientId: id, recipientType: group.recipientType }))
+            ),
+            title,
+            body: message,
+            data,
+            type,
+            scheduledAt: new Date(scheduledDate),
+            recipientType: target,
+        });
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                { ...result, mode: 'scheduled' },
+                `Notification scheduled successfully for ${new Date(scheduledDate).toLocaleString()}.`
+            )
+        );
+    }
+
+    const result = await fcmService.sendPushToRecipients({
+        notificationId,
+        recipients: normalizedRecipients.flatMap(group => 
+            group.recipientIds.map(id => ({ recipientId: id, recipientType: group.recipientType }))
+        ),
+        title,
+        body: message,
+        data: {
+            ...data,
+            channel: 'push',
+            schedule,
+            scheduledDate: scheduledDate || null,
+        },
         type,
-        recipientIds,
-        data: meta,
+        recipientType: target,
+        recipientId: null,
     });
 
     return res.status(200).json(
@@ -262,9 +309,11 @@ export const sendPushNotification = asyncHandler(async (req, res) => {
             200,
             {
                 ...result,
-                mode: 'in_app_only',
+                mode: result.skipped ? 'in_app_only' : 'push_sent',
             },
-            'Notification queued in-app successfully. FCM is not configured.'
+            result.skipped 
+                ? 'Notification delivered in-app. Push skipped (likely FCM not configured or no tokens).' 
+                : 'Notification dispatched successfully via FCM and In-App.'
         )
     );
 });
@@ -280,20 +329,40 @@ export const sendCustomMessage = asyncHandler(async (req, res) => {
         data = {},
     } = req.body;
 
-    const result = await createNotificationsForTarget({
-        target,
+    const recipients = await resolveNotificationRecipients({ target, recipientIds });
+    let normalizedRecipients = [];
+
+    if (Array.isArray(recipients.recipientGroups)) {
+        normalizedRecipients = recipients.recipientGroups;
+    } else {
+        normalizedRecipients = [recipients];
+    }
+
+    const notificationId = fcmService.createNotificationId({
+        recipientType: target,
+        recipientId: 'custom-broadcast',
         title,
-        message,
-        type,
-        recipientIds,
+        body: message,
+        data,
+    });
+
+    const result = await fcmService.sendPushToRecipients({
+        notificationId,
+        recipients: normalizedRecipients.flatMap(group => 
+            group.recipientIds.map(id => ({ recipientId: id, recipientType: group.recipientType }))
+        ),
+        title,
+        body: message,
         data: {
             ...data,
             channel: 'custom-message',
-            requestedByAdminId: String(req.user?._id || req.user?.id || ''),
         },
+        type,
+        recipientType: target,
+        recipientId: null,
     });
 
     return res.status(200).json(
-        new ApiResponse(200, result, 'Custom message delivered to in-app notifications successfully.')
+        new ApiResponse(200, result, 'Custom message delivered successfully.')
     );
 });

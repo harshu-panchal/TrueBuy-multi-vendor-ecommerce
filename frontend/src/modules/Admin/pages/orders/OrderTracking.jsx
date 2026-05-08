@@ -10,7 +10,7 @@ import {
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import Badge from "../../../../shared/components/Badge";
-// import { formatDateTime } from '../../utils/adminHelpers';
+import { formatDateTime } from '../../utils/adminHelpers';
 import { getAllOrders } from "../../services/adminService";
 
 const OrderTracking = () => {
@@ -120,7 +120,7 @@ const OrderTracking = () => {
       key: "date",
       label: "Order Date",
       sortable: true,
-      render: (value) => new Date(value).toLocaleString(),
+      render: (value) => formatDateTime(value),
     },
     {
       key: "actions",

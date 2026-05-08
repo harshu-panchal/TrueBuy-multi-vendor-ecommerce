@@ -111,21 +111,37 @@ const TaxReports = () => {
     };
   }, [orders]);
 
-  const filteredTaxData = useMemo(() => {
-    if (!dateRange.start && !dateRange.end) return taxData.tableData;
-    return taxData.tableData.filter((item) => {
-      const itemDate = new Date(item.date);
-      const start = dateRange.start ? new Date(dateRange.start) : null;
-      const end = dateRange.end ? new Date(dateRange.end) : null;
-      return (!start || itemDate >= start) && (!end || itemDate <= end);
-    });
+  const { filteredTableData, filteredChartData } = useMemo(() => {
+    const tableData = taxData.tableData;
+    const chartData = taxData.chartData;
+    
+    if (!dateRange.start && !dateRange.end) {
+      return { filteredTableData: tableData, filteredChartData: chartData };
+    }
+
+    const start = dateRange.start ? new Date(dateRange.start) : null;
+    if (start) start.setHours(0, 0, 0, 0);
+    
+    const end = dateRange.end ? new Date(dateRange.end) : null;
+    if (end) end.setHours(23, 59, 59, 999);
+
+    return {
+      filteredTableData: tableData.filter((item) => {
+        const itemDate = new Date(item.date);
+        return (!start || itemDate >= start) && (!end || itemDate <= end);
+      }),
+      filteredChartData: chartData.filter((item) => {
+        const itemDate = new Date(item.date);
+        return (!start || itemDate >= start) && (!end || itemDate <= end);
+      })
+    };
   }, [taxData, dateRange]);
 
-  const totalTax = filteredTaxData.reduce(
+  const totalTax = filteredTableData.reduce(
     (sum, item) => sum + item.taxAmount,
     0
   );
-  const totalRevenue = filteredTaxData.reduce(
+  const totalRevenue = filteredTableData.reduce(
     (sum, item) => sum + item.total,
     0
   );
@@ -227,9 +243,17 @@ const TaxReports = () => {
             <input
               type="date"
               value={dateRange.start}
-              onChange={(e) =>
-                setDateRange({ ...dateRange, start: e.target.value })
-              }
+              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                const today = new Date().toISOString().split('T')[0];
+                let val = e.target.value;
+                if (val > today) val = today;
+                setDateRange(prev => ({
+                  ...prev,
+                  start: val,
+                  end: prev.end && prev.end < val ? val : prev.end
+                }));
+              }}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -240,15 +264,21 @@ const TaxReports = () => {
             <input
               type="date"
               value={dateRange.end}
-              onChange={(e) =>
-                setDateRange({ ...dateRange, end: e.target.value })
-              }
+              min={dateRange.start}
+              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                const today = new Date().toISOString().split('T')[0];
+                let val = e.target.value;
+                if (val > today) val = today;
+                if (dateRange.start && val < dateRange.start) val = dateRange.start;
+                setDateRange({ ...dateRange, end: val });
+              }}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div className="flex items-end">
             <ExportButton
-              data={filteredTaxData}
+              data={filteredTableData}
               headers={[
                 { label: "Order ID", accessor: (row) => row.orderId },
                 { label: "Date", accessor: (row) => new Date(row.date).toLocaleString() },
@@ -274,12 +304,12 @@ const TaxReports = () => {
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <TaxTrendsChart taxData={taxData.chartData} period="month" />
+        <TaxTrendsChart taxData={filteredChartData} period="month" />
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
         <DataTable
-          data={filteredTaxData}
+          data={filteredTableData}
           columns={columns}
           pagination={true}
           itemsPerPage={10}

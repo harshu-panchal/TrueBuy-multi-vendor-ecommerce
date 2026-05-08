@@ -37,6 +37,17 @@ const HomeSliders = () => {
     initialize();
   }, [initialize]);
 
+  useEffect(() => {
+    if (editingSlider !== null || deleteModal.isOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [editingSlider, deleteModal.isOpen]);
+
   const handleSave = async (sliderData) => {
     const payload = {
       title: sliderData.title,
@@ -298,7 +309,7 @@ const HomeSliders = () => {
                       title: formData.get("title"),
                       image: formData.get("image"),
                       link: formData.get("link"),
-                      order: parseInt(formData.get("order"), 10),
+                      order: Math.max(0, parseInt(formData.get("order"), 10) || 0),
                       status: formData.get("status"),
                     });
                   }}
@@ -366,6 +377,7 @@ const HomeSliders = () => {
                       type="number"
                       name="order"
                       defaultValue={editingSlider.order || 1}
+                      min="0"
                       placeholder="Order"
                       required
                       className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"

@@ -17,7 +17,8 @@ import Badge from '../../../../shared/components/Badge';
 import DataTable from '../../components/DataTable';
 import { formatPrice } from '../../../../shared/utils/helpers';
 import { formatDateTime } from '../../utils/adminHelpers';
-import { getCustomerOrders } from '../../services/adminService';
+import { getCustomerOrders, updateCustomerAddress } from '../../services/adminService';
+import AddressFormModal from '../../components/Customers/AddressFormModal';
 
 import toast from 'react-hot-toast';
 
@@ -30,6 +31,8 @@ const CustomerDetailPage = () => {
   const [orders, setOrders] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
+  const [addressModal, setAddressModal] = useState({ isOpen: false, address: null });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const loadCustomer = async () => {
@@ -307,6 +310,7 @@ const CustomerDetailPage = () => {
       render: (_, row) => (
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setAddressModal({ isOpen: true, address: row })}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
             title="Edit"
           >
@@ -316,6 +320,25 @@ const CustomerDetailPage = () => {
       ),
     },
   ];
+
+  const handleUpdateAddress = async (formData) => {
+    if (!addressModal.address) return;
+    setIsSubmitting(true);
+    try {
+      await updateCustomerAddress(customer.id, addressModal.address._id || addressModal.address.id, formData);
+      toast.success('Address updated successfully');
+      
+      // Refresh customer data
+      const data = await fetchCustomerById(id);
+      if (data) setCustomer(data);
+      
+      setAddressModal({ isOpen: false, address: null });
+    } catch (error) {
+      // Error handled by interceptor
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const totalSpent = orders.reduce((sum, order) => {
     if (order.status !== 'cancelled') {
@@ -620,6 +643,14 @@ const CustomerDetailPage = () => {
           )}
         </div>
       </div>
+
+      <AddressFormModal
+        isOpen={addressModal.isOpen}
+        onClose={() => setAddressModal({ isOpen: false, address: null })}
+        address={addressModal.address}
+        onSave={handleUpdateAddress}
+        isSubmitting={isSubmitting}
+      />
     </motion.div>
   );
 };

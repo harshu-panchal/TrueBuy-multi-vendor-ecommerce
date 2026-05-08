@@ -16,8 +16,8 @@ export const getAdminProfile = () =>
     api.get('/admin/auth/profile');
 
 // ─── Analytics / Dashboard ────────────────────────────────────────────────────
-export const getDashboardStats = () =>
-    api.get('/admin/analytics/dashboard');
+export const getDashboardStats = (period = 'month') =>
+    api.get('/admin/analytics/dashboard', { params: { period } });
 
 export const getRevenueData = (period = 'monthly', params = {}) =>
     api.get('/admin/analytics/revenue', { params: { period, ...params } });
@@ -42,6 +42,15 @@ export const getFinancialSummary = (period = 'monthly', params = {}) =>
 
 export const getInventoryStats = () =>
     api.get('/admin/analytics/inventory-stats');
+
+export const getTopCustomersReport = (params = {}) =>
+    api.get('/admin/analytics/top-customers', { params });
+
+export const getRegisteredCustomersCount = () =>
+    api.get('/admin/analytics/registered-customers-count');
+
+export const getOnlineCustomers = () =>
+    api.get('/admin/analytics/online-customers');
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 export const getAllOrders = (params = {}) =>
@@ -151,6 +160,9 @@ export const updateCustomerStatus = (id, isActive) =>
 
 export const deleteCustomerAddress = (customerId, addressId) =>
     api.delete(`/admin/customers/${customerId}/addresses/${addressId}`);
+
+export const updateCustomerAddress = (customerId, addressId, data) =>
+    api.put(`/admin/customers/${customerId}/addresses/${addressId}`, data);
 
 export const getCustomerOrders = (id, params = {}) =>
     api.get(`/admin/customers/${id}/orders`, { params });

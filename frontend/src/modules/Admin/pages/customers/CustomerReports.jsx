@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiUsers, FiTrendingUp, FiSearch, FiSettings, FiCheck, FiChevronDown, FiRefreshCw } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import { getTopCustomersReport, getRegisteredCustomersCount } from '../../services/adminService';
+import { formatDateTime } from '../../utils/adminHelpers';
+import { formatPrice } from '../../../../shared/utils/helpers';
+import toast from 'react-hot-toast';
 
 const CustomerReports = () => {
   const [activeTab, setActiveTab] = useState('top-customers');
@@ -85,7 +89,7 @@ const CustomerReports = () => {
       label: 'Order Total',
       sortable: true,
       hidden: !visibleColumnsTop.orderTotal,
-      render: (value) => <span className="text-green-600 font-bold">${parseFloat(value || 0).toFixed(2)}</span>
+      render: (value) => <span className="text-green-600 font-bold">{formatPrice(value || 0, "₹", false)}</span>
     }
   ];
 
@@ -116,14 +120,47 @@ const CustomerReports = () => {
     }
   ];
 
-  const registeredData = [
-    { period: 'In the last 7 days', count: null },
-    { period: 'In the last 14 days', count: null },
-    { period: 'In the last month', count: null },
-    { period: 'In the last year', count: null }
-  ];
+  const [registeredData, setRegisteredData] = useState([
+    { period: 'In the last 7 days', count: 0 },
+    { period: 'In the last 14 days', count: 0 },
+    { period: 'In the last month', count: 0 },
+    { period: 'In the last year', count: 0 }
+  ]);
 
-  const [topCustomersData] = useState([]);
+  const [topCustomersData, setTopCustomersData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchReports = async () => {
+    setLoading(true);
+    try {
+      if (activeTab === 'top-customers') {
+        const response = await getTopCustomersReport({
+          search: searchQuery || undefined
+        });
+        if (response && response.success) {
+          const data = (response.data || []).map(item => ({
+            ...item,
+            lastActivity: formatDateTime(item?.lastActivity)
+          }));
+          setTopCustomersData(data);
+        }
+      } else {
+        const response = await getRegisteredCustomersCount();
+        if (response && response.success) {
+          setRegisteredData(response.data || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching customer reports:', error);
+      toast.error('Failed to fetch report data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [activeTab, searchQuery]);
 
   const tabs = [
     { id: 'top-customers', label: 'Top Customers', icon: FiTrendingUp },
@@ -176,7 +213,9 @@ const CustomerReports = () => {
           <div className="p-4 bg-gray-50/50 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-t border-gray-100">
             <div className="flex items-center gap-2">
               <button 
-                className="p-2 text-gray-500 hover:bg-white hover:shadow-sm rounded-lg transition-all border border-gray-200"
+                onClick={fetchReports}
+                disabled={loading}
+                className={`p-2 text-gray-500 hover:bg-white hover:shadow-sm rounded-lg transition-all border border-gray-200 ${loading ? 'animate-spin' : ''}`}
                 title="Refresh Report"
               >
                 <FiRefreshCw className="text-sm" />
@@ -207,6 +246,7 @@ const CustomerReports = () => {
             data={activeTab === 'top-customers' ? topCustomersData : registeredData}
             columns={filteredColumns}
             pagination={false}
+            loading={loading}
             rowLines={tableSettings.rowLines}
             columnLines={tableSettings.columnLines}
             className={`${tableSettings.striped ? '[&_tbody_tr:nth-child(even)]:bg-gray-50/50' : ''} ${!tableSettings.hover ? '[&_tbody_tr]:hover:bg-transparent' : ''}`}

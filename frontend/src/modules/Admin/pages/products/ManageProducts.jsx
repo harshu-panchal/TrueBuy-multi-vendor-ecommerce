@@ -269,7 +269,7 @@ const ManageProducts = () => {
                   { label: "Name", accessor: (row) => row.name },
                   {
                     label: "Price",
-                    accessor: (row) => formatPrice(row.price),
+                    accessor: (row) => row.price,
                   },
                   { label: "Stock", accessor: (row) => row.stockQuantity },
                   { label: "Status", accessor: (row) => row.stock },

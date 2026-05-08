@@ -1,5 +1,5 @@
-import { FiShoppingBag, FiPackage, FiUsers } from 'react-icons/fi';
-import { IndianRupee } from 'lucide-react';
+import { FiShoppingBag, FiPackage, FiUsers, FiTrendingUp, FiTruck } from 'react-icons/fi';
+// import { IndianRupee } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { formatPrice } from '../../../../shared/utils/helpers';
@@ -10,9 +10,9 @@ const StatsCards = ({ stats }) => {
   const cards = [
     {
       title: 'Total Revenue',
-      value: formatPrice(stats.totalRevenue || 0),
+      value: formatPrice(stats.totalRevenue || 0, "₹", false),
       change: stats.revenueChange,
-      icon: IndianRupee,
+      icon: FiTrendingUp,
       color: 'text-white',
       bgColor: 'bg-gradient-to-br from-green-500 to-emerald-600',
       cardBg: 'bg-gradient-to-br from-green-50 to-emerald-50',
@@ -51,6 +51,16 @@ const StatsCards = ({ stats }) => {
       cardBg: 'bg-gradient-to-br from-orange-50 to-amber-50',
       iconBg: 'bg-white/20',
       link: '/admin/customers/view-customers',
+    },
+    {
+      title: 'Delivery Partners',
+      value: (stats.totalDeliveryBoys || 0).toLocaleString(),
+      icon: FiTruck,
+      color: 'text-white',
+      bgColor: 'bg-gradient-to-br from-red-500 to-pink-600',
+      cardBg: 'bg-gradient-to-br from-red-50 to-pink-50',
+      iconBg: 'bg-white/20',
+      link: '/admin/delivery/delivery-boys',
     },
   ];
 

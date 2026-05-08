@@ -240,18 +240,24 @@ const normalizeCouponPayload = (payload, { partial = false } = {}) => {
         normalized.expiresAt = expiresAt;
     }
 
+    if (payload.countdownThreshold !== undefined) {
+        const threshold = toFiniteNumber(payload.countdownThreshold);
+        normalized.countdownThreshold = threshold === null || threshold < 0 ? 0 : threshold;
+    }
+
     return normalized;
 };
 
 const validateCouponBusinessRules = ({ type, value }) => {
-    if (type === 'percentage') {
-        const parsedValue = Number(value);
-        if (!Number.isFinite(parsedValue)) {
-            throw new ApiError(400, 'Coupon value must be a valid number');
-        }
-        if (parsedValue > 100) {
-            throw new ApiError(400, 'Percentage coupon value cannot exceed 100');
-        }
+    const parsedValue = Number(value);
+    if (!Number.isFinite(parsedValue)) {
+        throw new ApiError(400, 'Coupon value must be a valid number');
+    }
+    if (parsedValue < 0) {
+        throw new ApiError(400, 'Discount value cannot be negative');
+    }
+    if (type === 'percentage' && parsedValue > 100) {
+        throw new ApiError(400, 'Percentage coupon value cannot exceed 100');
     }
 };
 

@@ -19,10 +19,11 @@ const notificationLogSchema = new mongoose.Schema(
         failedTokenCount: { type: Number, default: 0 },
         status: {
             type: String,
-            enum: ['pending', 'sent', 'failed', 'skipped'],
+            enum: ['pending', 'scheduled', 'sent', 'failed', 'skipped'],
             default: 'pending',
             index: true,
         },
+        scheduledAt: { type: Date, index: true },
         error: { type: String, default: '' },
         providerResponse: { type: mongoose.Schema.Types.Mixed, default: null },
         expiresAt: {

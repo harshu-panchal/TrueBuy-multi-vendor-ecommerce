@@ -220,6 +220,35 @@ export const deleteCustomerAddress = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Update a customer address
+ * @route   PUT /api/admin/customers/:customerId/addresses/:addressId
+ * @access  Private (Admin)
+ */
+export const updateCustomerAddress = asyncHandler(async (req, res) => {
+    const { customerId, addressId } = req.params;
+    const updateData = req.body;
+
+    const customer = await User.findOne({ _id: customerId, role: 'customer' }).select('_id');
+    if (!customer) {
+        throw new ApiError(404, 'Customer not found');
+    }
+
+    const address = await Address.findOneAndUpdate(
+        { _id: addressId, userId: customerId },
+        updateData,
+        { new: true, runValidators: true }
+    );
+
+    if (!address) {
+        throw new ApiError(404, 'Address not found');
+    }
+
+    res.status(200).json(
+        new ApiResponse(200, address, 'Address updated successfully')
+    );
+});
+
+/**
  * @desc    Get customer orders (paginated)
  * @route   GET /api/admin/customers/:id/orders
  * @access  Private (Admin)

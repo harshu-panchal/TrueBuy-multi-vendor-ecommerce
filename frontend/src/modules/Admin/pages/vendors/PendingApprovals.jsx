@@ -6,6 +6,7 @@ import DataTable from "../../components/DataTable";
 import Badge from "../../../../shared/components/Badge";
 import ConfirmModal from "../../components/ConfirmModal";
 import { useVendorStore } from "../../store/vendorStore";
+import { formatDate } from "../../utils/adminHelpers";
 import toast from "react-hot-toast";
 
 const PendingApprovals = () => {
@@ -90,7 +91,7 @@ const PendingApprovals = () => {
       sortable: true,
       render: (value) => (
         <span className="text-sm text-gray-700">
-          {new Date(value).toLocaleDateString()}
+          {formatDate(value)}
         </span>
       ),
     },

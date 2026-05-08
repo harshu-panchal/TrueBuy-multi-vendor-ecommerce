@@ -138,7 +138,18 @@ const SalesReport = () => {
             <input
               type="date"
               value={dateRange.start}
-              onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                const today = new Date().toISOString().split('T')[0];
+                let val = e.target.value;
+                if (val > today) val = today;
+                
+                setDateRange(prev => ({
+                  ...prev,
+                  start: val,
+                  end: prev.end && prev.end < val ? val : prev.end
+                }));
+              }}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -147,7 +158,16 @@ const SalesReport = () => {
             <input
               type="date"
               value={dateRange.end}
-              onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+              min={dateRange.start}
+              max={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                const today = new Date().toISOString().split('T')[0];
+                let val = e.target.value;
+                if (val > today) val = today;
+                if (dateRange.start && val < dateRange.start) val = dateRange.start;
+                
+                setDateRange({ ...dateRange, end: val });
+              }}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -164,7 +184,7 @@ const SalesReport = () => {
                 { label: 'Order ID', accessor: (row) => row.orderId || row._id },
                 { label: 'Customer', accessor: (row) => row.userId?.name || 'Guest' },
                 { label: 'Date', accessor: (row) => new Date(row.createdAt).toLocaleString() },
-                { label: 'Amount', accessor: (row) => formatPrice(row.total) },
+                { label: 'Amount', accessor: (row) => row.total },
                 { label: 'Status', accessor: (row) => row.status },
               ]}
               filename="sales-report"

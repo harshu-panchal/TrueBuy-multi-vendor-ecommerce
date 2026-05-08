@@ -271,9 +271,9 @@ const PromoCodes = () => {
                     ? `${row.value}%`
                     : row.type === 'freeship'
                       ? 'Free Shipping'
-                      : formatCurrency(row.value),
+                      : row.value,
               },
-              { label: 'Min Purchase', accessor: (row) => formatCurrency(row.minPurchase) },
+              { label: 'Min Purchase', accessor: (row) => row.minPurchase || 0 },
               { label: 'Usage', accessor: (row) => `${row.usedCount} / ${row.usageLimit ?? 'Unlimited'}` },
               { label: 'Status', accessor: (row) => row.status },
             ]}

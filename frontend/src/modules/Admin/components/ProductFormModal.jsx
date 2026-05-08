@@ -21,6 +21,17 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
   const isAppRoute = location.pathname.startsWith("/app");
   const isEdit = productId && productId !== "new";
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [isOpen]);
+
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
   const [vendors, setVendors] = useState([]);

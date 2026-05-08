@@ -32,6 +32,7 @@ const Dashboard = () => {
     totalProducts: 0,
     totalCustomers: 0,
     totalVendors: 0,
+    totalDeliveryBoys: 0,
     pendingOrders: 0,
   });
   const [revenueData, setRevenueData] = useState([]);
@@ -95,7 +96,7 @@ const Dashboard = () => {
         customerGrowthRes,
         recentOrdersRes,
       ] = await Promise.allSettled([
-        getDashboardStats(),
+        getDashboardStats(period),
         getRevenueData(apiPeriod),
         getOrderStatusBreakdown(),
         getTopProducts(),
@@ -106,16 +107,17 @@ const Dashboard = () => {
       if (statsRes.status === "fulfilled") {
         const d = statsRes.value.data;
         setStats({
-          totalRevenue: d.totalRevenue || 0,
-          totalOrders: d.totalOrders || 0,
-          totalProducts: d.totalProducts || 0,
-          totalCustomers: d.totalUsers || 0,
-          totalVendors: d.totalVendors || 0,
-          pendingOrders: d.pendingOrders || 0,
-          ordersChange: d.ordersChange || 0,
-          customersChange: d.customersChange || 0,
-          productsChange: d.productsChange || 0,
-          revenueChange: d.revenueChange || 0,
+          totalRevenue: d?.totalRevenue || 0,
+          totalOrders: d?.totalOrders || 0,
+          totalProducts: d?.totalProducts || 0,
+          totalCustomers: d?.totalCustomers || d?.totalUsers || 0,
+          totalVendors: d?.totalVendors || 0,
+          totalDeliveryBoys: d?.totalDeliveryBoys || 0,
+          pendingOrders: d?.pendingOrders || 0,
+          ordersChange: d?.ordersChange || 0,
+          customersChange: d?.customersChange || 0,
+          productsChange: d?.productsChange || 0,
+          revenueChange: d?.revenueChange || 0,
         });
       } else {
         setStats({
@@ -124,6 +126,7 @@ const Dashboard = () => {
           totalProducts: 0,
           totalCustomers: 0,
           totalVendors: 0,
+          totalDeliveryBoys: 0,
           pendingOrders: 0,
         });
       }
@@ -193,7 +196,7 @@ const Dashboard = () => {
             data={revenueData}
             headers={[
               { label: "Period", accessor: (row) => row.bucket || row.date },
-              { label: "Revenue", accessor: (row) => formatCurrency(row.revenue) },
+              { label: "Revenue", accessor: (row) => row.revenue },
               { label: "Orders", accessor: (row) => row.orders },
             ]}
             filename="revenue_report"

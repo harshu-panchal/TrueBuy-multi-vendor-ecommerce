@@ -243,14 +243,15 @@ export const updateDeliveryReturnStatus = async ({
     status,
     note = '',
 }) => {
-    if (!deliveryAllowedStatuses.has(status)) {
-        throw new ApiError(400, `Delivery cannot set status to ${status}.`);
+    const normalizedStatus = normalizeStatusValue(status);
+    if (!deliveryAllowedStatuses.has(normalizedStatus)) {
+        throw new ApiError(400, `Delivery cannot set status to ${normalizedStatus}.`);
     }
 
     const nextRefundStatus =
-        status === RETURN_REQUEST_STATUS.REFUND_INITIATED
+        normalizedStatus === RETURN_REQUEST_STATUS.REFUND_INITIATED
             ? RETURN_REFUND_STATUS.INITIATED
-            : status === RETURN_REQUEST_STATUS.REFUND_COMPLETED
+            : normalizedStatus === RETURN_REQUEST_STATUS.REFUND_COMPLETED
                 ? RETURN_REFUND_STATUS.COMPLETED
                 : undefined;
 
@@ -258,7 +259,7 @@ export const updateDeliveryReturnStatus = async ({
         returnRequestId: returnId,
         actorRole: 'delivery',
         actorId: deliveryBoyId,
-        targetStatus: status,
+        targetStatus: normalizedStatus,
         note,
         extraFilter: { assignedDeliveryBoy: deliveryBoyId },
         setFields: nextRefundStatus ? { refundStatus: nextRefundStatus } : {},

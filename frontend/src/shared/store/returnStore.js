@@ -38,36 +38,43 @@ export const useReturnStore = create((set, get) => ({
             } else if (resolvedRole === 'vendor') {
                 response = await vendorService.getVendorReturnRequests(apiParams);
                 exchangeResponse = await api.get('/exchange/vendor', { params: apiParams });
+            } else if (resolvedRole === 'delivery') {
+                response = await api.get('/delivery/returns', { params: apiParams });
             } else {
-                response = await api.get('/exchange/my', { params: apiParams });
+                // User role: fetch both returns and exchanges
+                response = await api.get('/user/returns', { params: apiParams });
+                exchangeResponse = await api.get('/exchange/my', { params: apiParams });
             }
 
             const payload = response.data?.data || response.data || response;
             const exchangePayload = exchangeResponse?.data?.data || exchangeResponse?.data || exchangeResponse || {};
-            const returnRequests = Array.isArray(payload.returnRequests) ? payload.returnRequests : [];
-            const exchangeRequests = Array.isArray(payload.exchangeRequests)
-                ? payload.exchangeRequests
-                : Array.isArray(exchangePayload.exchangeRequests)
-                    ? exchangePayload.exchangeRequests
-                    : [];
+            
+            const returnRequests = Array.isArray(payload.returnRequests) 
+                ? payload.returnRequests 
+                : (Array.isArray(payload) ? payload : []);
+                
+            const exchangeRequests = Array.isArray(exchangePayload.exchangeRequests)
+                ? exchangePayload.exchangeRequests
+                : (Array.isArray(exchangePayload) ? exchangePayload : []);
+
             const normalizedReturnRequests = returnRequests.map((request) => ({ ...request, type: request.type || 'return' }));
             const normalizedExchangeRequests = exchangeRequests.map((request) => ({
                 ...request,
                 type: 'exchange',
             }));
+            
             const normalizedRequests = [...normalizedReturnRequests, ...normalizedExchangeRequests];
             const existingRequests = get().returnRequests;
             
             set({ 
                 returnRequests: resolvedRole === 'admin' || resolvedRole === 'vendor'
                     ? [...normalizedRequests, ...existingRequests.filter((existing) => !normalizedRequests.some((req) => String(req.id) === String(existing.id)))]
-                    : [...normalizedRequests, ...existingRequests.filter((existing) => !normalizedRequests.some((req) => String(req.id) === String(existing.id)))],
+                    : normalizedRequests,
                 pagination: payload.pagination || exchangePayload.pagination || get().pagination,
                 isLoading: false 
             });
         } catch (error) {
             set({ isLoading: false, error: error.message });
-            // toast.error('Failed to fetch return requests');
         }
     },
 
@@ -76,7 +83,7 @@ export const useReturnStore = create((set, get) => ({
     },
 
     fetchReturnRequestById: async (id, role = null) => {
-        // Check local state first (covers mock IDs like RET- or EXC-)
+        // Check local state first
         const localMatch = get().returnRequests.find(req => String(req.id) === String(id));
         if (localMatch) return localMatch;
 
@@ -87,6 +94,13 @@ export const useReturnStore = create((set, get) => ({
                 const resolvedRole = resolveReturnScope(role);
                 if (resolvedRole === 'vendor') {
                     response = await vendorService.getVendorReturnRequestById(id);
+                } else if (resolvedRole === 'admin') {
+                    response = await adminService.getReturnRequestById(id);
+                } else if (resolvedRole === 'delivery') {
+                    // Delivery might not have a direct "get by id" so we filter local or use list
+                    const list = await api.get('/delivery/returns');
+                    const found = (list.data?.data?.returnRequests || []).find(r => String(r.id || r._id) === String(id));
+                    if (found) return found;
                 } else {
                     response = await adminService.getReturnRequestById(id);
                 }
@@ -98,7 +112,7 @@ export const useReturnStore = create((set, get) => ({
                 }
             }
             set({ isLoading: false });
-            const payload = response.data?.data || response.data || response;
+            const payload = response?.data?.data || response?.data || response;
             if (payload?.replacementOrderId || payload?.paymentAdjustment || payload?.inventoryReserved) {
                 return { ...payload, type: 'exchange' };
             }
@@ -113,8 +127,10 @@ export const useReturnStore = create((set, get) => ({
     updateReturnStatus: async (id, statusData) => {
         set({ isLoading: true });
         try {
-            const isVendor = window.location.pathname.includes('/vendor/');
-            const isAdmin = window.location.pathname.includes('/admin/');
+            const path = window.location.pathname;
+            const isVendor = path.includes('/vendor');
+            const isAdmin = path.includes('/admin');
+            const isDelivery = path.includes('/delivery');
             
             let updatedReq = null;
             if (isAdmin) {
@@ -122,17 +138,21 @@ export const useReturnStore = create((set, get) => ({
                 updatedReq = response.data?.data || response.data || statusData;
             } else if (isVendor) {
                 const vendorPayload = {};
-                if (statusData.status === 'approved') {
+                if (statusData.status === 'approved' || statusData.status === 'APPROVED_BY_VENDOR') {
                     vendorPayload.action = 'APPROVE';
-                    vendorPayload.status = 'approved';
-                } else if (statusData.status === 'rejected') {
+                } else if (statusData.status === 'rejected' || statusData.status === 'REJECTED_BY_VENDOR') {
                     vendorPayload.action = 'REJECT';
                     vendorPayload.rejectionReason = statusData.rejectionReason || '';
-                    vendorPayload.status = 'rejected';
                 } else {
                     vendorPayload.status = statusData.status; 
                 }
+                vendorPayload.note = statusData.note || '';
                 const response = await vendorService.updateVendorReturnRequestStatus(id, vendorPayload);
+                updatedReq = response.data?.data || response.data || statusData;
+            } else if (isDelivery) {
+                // Ensure status is uppercase for backend validation
+                const status = (statusData.status || '').toUpperCase();
+                const response = await api.patch(`/delivery/returns/${id}`, { ...statusData, status });
                 updatedReq = response.data?.data || response.data || statusData;
             } else {
                 updatedReq = statusData;
@@ -140,7 +160,7 @@ export const useReturnStore = create((set, get) => ({
 
             const { returnRequests } = get();
             const updatedRequests = returnRequests.map((req) =>
-                String(req.id) === String(id) ? { ...req, ...updatedReq, updatedAt: new Date().toISOString() } : req
+                String(req.id || req._id) === String(id) ? { ...req, ...updatedReq, updatedAt: new Date().toISOString() } : req
             );
 
             set({ returnRequests: updatedRequests, isLoading: false });
@@ -155,15 +175,15 @@ export const useReturnStore = create((set, get) => ({
     // Logistics Actions
     markAsPickedUp: async (id, proofImages = []) => {
         return await get().updateReturnStatus(id, { 
-            status: 'picked_up', 
+            status: 'PICKED_UP', 
             pickupImages: proofImages,
             pickedUpAt: new Date().toISOString() 
         });
     },
 
     confirmSellerReceipt: async (id) => {
-        const req = get().returnRequests.find(r => r.id === id);
-        const nextStatus = req?.type === 'exchange' ? 'inspection_pending' : 'delivered_to_seller';
+        const req = get().returnRequests.find(r => String(r.id || r._id) === String(id));
+        const nextStatus = req?.type === 'exchange' ? 'INSPECTION_PENDING' : 'COMPLETED';
         
         return await get().updateReturnStatus(id, { 
             status: nextStatus, 
@@ -173,7 +193,7 @@ export const useReturnStore = create((set, get) => ({
 
     inspectExchangeItem: async (id, result, notes) => {
         set({ isLoading: true });
-        const nextStatus = result === 'approved' ? 'approved' : 'inspection_rejected';
+        const nextStatus = result === 'approved' ? 'COMPLETED' : 'REJECTED_BY_VENDOR';
         
         const statusData = {
             status: nextStatus,
@@ -192,8 +212,8 @@ export const useReturnStore = create((set, get) => ({
     resolveInspectionFailure: async (id, resolution) => {
         set({ isLoading: true });
         const statusData = {
-            status: resolution === 'refund' ? 'completed' : 'rejected', // Return to customer = rejected
-            refundStatus: resolution === 'refund' ? 'pending' : 'not_applicable',
+            status: resolution === 'refund' ? 'COMPLETED' : 'REJECTED_BY_VENDOR',
+            refundStatus: resolution === 'refund' ? 'PENDING' : 'FAILED',
             resolutionType: resolution,
             updatedAt: new Date().toISOString()
         };
@@ -208,15 +228,9 @@ export const useReturnStore = create((set, get) => ({
 
     shipReplacement: async (id, trackingNumber) => {
         set({ isLoading: true });
-        
-        // Generate a mock replacement order
-        const req = get().returnRequests.find(r => r.id === id);
-        const replacementOrderId = `REP-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-
-        // Update the return request
         const statusData = { 
-            status: 'replacement_shipped',
-            replacementOrderId,
+            status: 'COMPLETED',
+            replacementOrderId: `REP-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
             forwardTrackingNumber: trackingNumber || `TRK-FWD-${Math.random().toString(36).substr(2, 8).toUpperCase()}`,
             shippedAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -233,7 +247,7 @@ export const useReturnStore = create((set, get) => ({
     confirmReplacementDelivery: async (id) => {
         set({ isLoading: true });
         const statusData = {
-            status: 'completed',
+            status: 'COMPLETED',
             deliveredAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
@@ -253,7 +267,7 @@ export const useReturnStore = create((set, get) => ({
             
             set((state) => ({
                 returnRequests: state.returnRequests.map((req) =>
-                    String(req.id) === String(id) ? { ...req, ...payload } : req
+                    String(req.id || req._id) === String(id) ? { ...req, ...payload } : req
                 ),
                 isLoading: false
             }));
@@ -270,8 +284,8 @@ export const useReturnStore = create((set, get) => ({
         set({ isLoading: true });
         try {
             const statusData = { 
-                status: 'completed',
-                refundStatus: 'processed',
+                status: 'COMPLETED',
+                refundStatus: 'COMPLETED',
                 updatedAt: new Date().toISOString()
             };
             
@@ -280,7 +294,7 @@ export const useReturnStore = create((set, get) => ({
             
             set((state) => ({
                 returnRequests: state.returnRequests.map((req) =>
-                    req.id === id ? { ...req, ...updatedReq } : req
+                    String(req.id || req._id) === String(id) ? { ...req, ...updatedReq } : req
                 ),
                 isLoading: false
             }));
@@ -295,9 +309,8 @@ export const useReturnStore = create((set, get) => ({
 
     cancelReturnRequest: async (id) => {
         set({ isLoading: true });
-        // MOCK: Local only cancellation as requested
         set((state) => ({
-            returnRequests: state.returnRequests.filter(req => req.id !== id),
+            returnRequests: state.returnRequests.filter(req => String(req.id || req._id) !== String(id)),
             isLoading: false
         }));
         toast.success('Return request cancelled successfully');
@@ -328,50 +341,28 @@ export const useReturnStore = create((set, get) => ({
                 return true;
             }
 
-            // Check if there's an existing rejected request for this product in this order
-            const existingRequests = get().returnRequests;
-            const existingDraft = existingRequests.find(r => 
-                r.orderId === returnRequestData.orderId && 
-                r.items.some(item => returnRequestData.productIds.includes(item.id)) &&
-                r.status === 'rejected'
-            );
+            // Real backend call for returns
+            const response = await api.post('/user/returns', {
+                orderId: returnRequestData.orderId,
+                productId: returnRequestData.productId || returnRequestData.productIds?.[0],
+                reason: returnRequestData.reason,
+                images: Array.isArray(returnRequestData.images) ? returnRequestData.images : [],
+            });
 
-            if (existingDraft) {
-                // UPDATE existing rejected request (Re-request logic)
-                const statusData = {
-                    status: 'pending',
-                    reason: returnRequestData.reason,
-                    description: returnRequestData.description,
-                    images: returnRequestData.images,
-                    pickupAddress: returnRequestData.pickupAddress,
-                    rejectionReason: '', // Clear previous rejection reason
-                    updatedAt: new Date().toISOString()
-                };
-                await get().updateReturnStatus(existingDraft.id, statusData);
-            } else {
-                // CREATE new request mock
-                const newRequest = {
-                    id: `RET-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-                    ...returnRequestData,
-                    type: returnRequestData.type || 'return',
-                    status: 'pending',
-                    refundStatus: returnRequestData.type === 'exchange' ? 'not_applicable' : 'pending',
-                    requestDate: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                };
-                
-                set((state) => ({
-                    returnRequests: [newRequest, ...state.returnRequests],
-                    isLoading: false
-                }));
-            }
+            const payload = { ...(response.data?.data || response.data || response), type: 'return' };
+            
+            set((state) => ({
+                returnRequests: [payload, ...state.returnRequests],
+                isLoading: false,
+            }));
             
             toast.success('Return request submitted successfully');
             return true;
         } catch (error) {
             set({ isLoading: false });
-            toast.error(error.message || 'Failed to submit return request');
+            toast.error(error?.response?.data?.message || error.message || 'Failed to submit return request');
             return false;
         }
     }
+
 }));

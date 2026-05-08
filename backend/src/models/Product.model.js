@@ -14,7 +14,7 @@ const productSchema = new mongoose.Schema(
         slug: { type: String, required: true, unique: true },
         description: { type: String },
         price: { type: Number, required: true, min: 0 },
-        originalPrice: { type: Number },
+        originalPrice: { type: Number, min: 0 },
         unit: { type: String, default: 'Piece' },
         images: [{ type: String }],
         image: { type: String }, // primary image

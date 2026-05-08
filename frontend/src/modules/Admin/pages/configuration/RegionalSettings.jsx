@@ -191,8 +191,12 @@ const CountryForm = ({ onBack, onSave, initialData = null }) => {
                   </label>
                   <input
                     type="number"
+                    min="0"
                     value={formData.displayOrder}
-                    onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) })}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setFormData({ ...formData, displayOrder: isNaN(val) ? 0 : Math.max(0, val) });
+                    }}
                     className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#6b2bd9]/10 focus:border-[#6b2bd9] outline-none transition-all"
                   />
                 </div>
@@ -434,8 +438,12 @@ const ShippingMethodForm = ({ onBack, onSave, initialData = null }) => {
                     </label>
                     <input
                       type="number"
+                      min="0"
                       value={formData.order}
-                      onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) })}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+                      }}
                       className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#6b2bd9]/10 outline-none transition-all"
                     />
                   </div>
@@ -1336,8 +1344,12 @@ const TaxCategoryForm = ({ onBack, onSave, initialData }) => {
                 </label>
                 <input
                   type="number"
+                  min="0"
                   value={formData.order}
-                  onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+                  }}
                   className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#6b2bd9]/10 focus:border-[#6b2bd9] outline-none transition-all"
                 />
               </div>
@@ -2155,8 +2167,12 @@ const CurrencyForm = ({ onBack, onSave, initialData = null }) => {
                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Display Order</label>
                   <input
                     type="number"
+                    min="0"
                     value={formData.displayOrder}
-                    onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setFormData({ ...formData, displayOrder: isNaN(val) ? 0 : Math.max(0, val) });
+                    }}
                     className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#6b2bd9]/10 outline-none transition-all"
                   />
                 </div>
@@ -2420,8 +2436,12 @@ const LanguageForm = ({ onBack, onSave, initialData = null }) => {
                     </label>
                     <input
                       type="number"
+                      min="0"
                       value={formData.displayOrder}
-                      onChange={(e) => setFormData({ ...formData, displayOrder: parseInt(e.target.value) })}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setFormData({ ...formData, displayOrder: isNaN(val) ? 0 : Math.max(0, val) });
+                      }}
                       className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#6b2bd9]/10 focus:border-[#6b2bd9] outline-none transition-all"
                     />
                   </div>

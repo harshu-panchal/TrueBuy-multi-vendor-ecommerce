@@ -26,10 +26,14 @@ const Transactions = () => {
     const timer = setTimeout(() => {
       const loadTransactions = async () => {
         try {
+          const cleanSearch = searchQuery?.startsWith('TXN-') 
+            ? searchQuery.replace(/^TXN-/, '').replace(/-(PAY|REF)$/, '') 
+            : searchQuery;
+
           const response = await getCustomerTransactions({
             page: currentPage,
             limit: itemsPerPage,
-            search: searchQuery || undefined,
+            search: cleanSearch || undefined,
             status: statusFilter,
           });
           const orders = response?.data?.orders || [];
@@ -140,11 +144,6 @@ const Transactions = () => {
       sortable: true,
       render: (value, row) => (
         <div className="flex items-center gap-2">
-          <FiDollarSign
-            className={`text-sm ${
-              row.type === "refund" ? "text-red-600" : "text-green-600"
-            }`}
-          />
           <span
             className={`font-bold ${
               row.type === "refund" ? "text-red-600" : "text-green-600"

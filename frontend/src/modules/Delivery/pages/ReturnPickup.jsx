@@ -107,7 +107,7 @@ const ReturnPickup = () => {
     setIsSubmitting(true);
     // Mark as delivered to seller
     const success = await updateReturnStatus(id, { 
-      status: 'shipped', // or 'delivered_to_seller'
+      status: 'INSPECTION_PENDING', 
       deliveredToSellerAt: new Date().toISOString()
     });
     

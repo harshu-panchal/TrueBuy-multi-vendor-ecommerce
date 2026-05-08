@@ -18,6 +18,7 @@ import {
   FiInfo
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import { formatDate } from '../../utils/adminHelpers';
 
 const CampaignForm = ({ onBack, onSave, initialData = null }) => {
   const isEdit = !!initialData;
@@ -307,7 +308,7 @@ const Campaigns = () => {
       render: (v) => (
         <div className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
           <FiCalendar size={10} />
-          {v}
+          {formatDate(v)}
         </div>
       )
     },

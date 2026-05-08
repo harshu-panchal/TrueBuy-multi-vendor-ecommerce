@@ -21,9 +21,13 @@ import {
   FiHash,
   FiClock,
   FiChevronLeft,
-  FiLayers
+  FiLayers,
+  FiUpload,
+  FiTrash2
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import { uploadAdminImage } from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const Manufacturers = () => {
   // Navigation State
@@ -34,6 +38,7 @@ const Manufacturers = () => {
   const [showFilter, setShowFilter] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -103,6 +108,39 @@ const Manufacturers = () => {
     if (newSelected.has(id)) newSelected.delete(id);
     else newSelected.add(id);
     setSelectedIds(newSelected);
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type?.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      const response = await uploadAdminImage(file, 'manufacturers');
+      const imageUrl = response?.data?.url || response?.url || (typeof response === 'string' ? response : null);
+      if (!imageUrl) {
+        toast.error('Image upload failed');
+        return;
+      }
+      setFormData(prev => ({ ...prev, picture: imageUrl }));
+      toast.success('Brand logo uploaded successfully');
+    } catch (error) {
+      console.error('Upload error:', error);
+      // Error toast handled by api interceptor
+    } finally {
+      setIsUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = (e) => {
+    e.stopPropagation();
+    setFormData(prev => ({ ...prev, picture: null }));
   };
 
   // Table Columns
@@ -213,8 +251,12 @@ const Manufacturers = () => {
                     </label>
                     <input
                       type="number"
+                      min="0"
                       value={formData.displayOrder}
-                      onChange={(e) => setFormData({ ...formData, displayOrder: e.target.value })}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setFormData({ ...formData, displayOrder: isNaN(val) ? 0 : Math.max(0, val) });
+                      }}
                       className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary-500 outline-none transition-all"
                     />
                   </div>
@@ -266,10 +308,59 @@ const Manufacturers = () => {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                       <FiImage /> Brand Logo / Picture
                     </label>
-                    <div className="border-2 border-dashed border-gray-100 rounded-2xl p-8 flex flex-col items-center justify-center text-gray-400 hover:border-primary-200 hover:bg-primary-50/10 transition-all cursor-pointer group">
-                      <FiPlus size={32} className="mb-2 group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-black uppercase tracking-widest">Upload Image</span>
-                      <p className="text-[9px] mt-1 font-medium italic opacity-60">PNG, JPG up to 5MB</p>
+                    <div
+                      onClick={() => document.getElementById('manufacturer-logo-upload').click()}
+                      className="border-2 border-dashed border-gray-100 rounded-2xl p-8 flex flex-col items-center justify-center text-gray-400 hover:border-primary-200 hover:bg-primary-50/10 transition-all cursor-pointer group relative overflow-hidden min-h-[160px]"
+                    >
+                      <input
+                        id="manufacturer-logo-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        disabled={isUploadingImage}
+                      />
+
+                      {formData.picture ? (
+                        <div className="relative group/img">
+                          <img
+                            src={formData.picture}
+                            alt="Brand Logo"
+                            className="max-h-32 object-contain rounded-lg shadow-sm transition-transform group-hover/img:scale-105"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-3">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                document.getElementById('manufacturer-logo-upload').click();
+                              }}
+                              className="p-2 bg-white/20 hover:bg-white/40 rounded-full text-white backdrop-blur-sm transition-all"
+                            >
+                              <FiUpload size={16} />
+                            </button>
+                            <button
+                              onClick={handleRemoveImage}
+                              className="p-2 bg-red-500/20 hover:bg-red-500/40 rounded-full text-red-100 backdrop-blur-sm transition-all"
+                            >
+                              <FiTrash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className={`p-4 rounded-2xl bg-gray-50 group-hover:bg-primary-50 group-hover:text-primary-500 transition-all mb-3 ${isUploadingImage ? 'animate-pulse' : ''}`}>
+                            {isUploadingImage ? (
+                              <FiClock size={32} className="animate-spin" />
+                            ) : (
+                              <FiPlus size={32} className="group-hover:scale-110 transition-transform" />
+                            )}
+                          </div>
+                          <span className="text-xs font-black uppercase tracking-widest group-hover:text-primary-600 transition-colors">
+                            {isUploadingImage ? 'Uploading Logo...' : 'Upload Brand Logo'}
+                          </span>
+                          <p className="text-[9px] mt-1 font-medium italic opacity-60">PNG, JPG up to 5MB</p>
+                        </>
+                      )}
                     </div>
                   </div>
 

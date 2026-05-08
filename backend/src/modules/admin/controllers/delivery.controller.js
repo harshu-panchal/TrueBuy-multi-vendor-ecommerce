@@ -71,7 +71,12 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
     // Aggregate stats for each delivery boy
     const boysWithStats = await Promise.all(deliveryBoys.map(async (boy) => {
         const stats = await Order.aggregate([
-            { $match: { deliveryBoyId: boy._id } },
+            { 
+                $match: { 
+                    deliveryBoyId: boy._id,
+                    isDeleted: { $ne: true }
+                } 
+            },
             {
                 $group: {
                     _id: null,
@@ -87,7 +92,7 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
                                         { $ne: ['$isCashSettled', true] }
                                     ]
                                 },
-                                '$total',
+                                { $ifNull: ['$total', 0] },
                                 0
                             ]
                         }
@@ -110,11 +115,10 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
                 drivingLicense: buildDocUrl(req, boy.documents?.drivingLicense || ''),
                 aadharCard: buildDocUrl(req, boy.documents?.aadharCard || ''),
             },
-            stats: {
-                totalDeliveries: boyStats.totalDeliveries,
-                pendingDeliveries: boyStats.pendingDeliveries,
-                cashInHand: boyStats.cashInHand
-            }
+            totalDeliveries: boyStats.totalDeliveries,
+            pendingDeliveries: boyStats.pendingDeliveries,
+            cashInHand: boyStats.cashInHand,
+            stats: boyStats // keeping for backward compatibility if any
         };
     }));
 
@@ -146,7 +150,12 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
     const orders = await Order.find({ deliveryBoyId: boy._id }).sort({ createdAt: -1 }).limit(50);
 
     const stats = await Order.aggregate([
-        { $match: { deliveryBoyId: boy._id } },
+        { 
+            $match: { 
+                deliveryBoyId: boy._id,
+                isDeleted: { $ne: true }
+            } 
+        },
         {
             $group: {
                 _id: null,
@@ -162,7 +171,7 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
                                     { $ne: ['$isCashSettled', true] }
                                 ]
                             },
-                            '$total',
+                            { $ifNull: ['$total', 0] },
                             0
                         ]
                     }
@@ -183,6 +192,9 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
                 drivingLicense: buildDocUrl(req, boy.documents?.drivingLicense || ''),
                 aadharCard: buildDocUrl(req, boy.documents?.aadharCard || ''),
             },
+            totalDeliveries: boyStats.totalDeliveries,
+            totalEarnings: boyStats.totalEarnings,
+            cashInHand: boyStats.cashInHand,
             stats: boyStats,
             recentOrders: orders
         }, 'Delivery boy details fetched successfully')

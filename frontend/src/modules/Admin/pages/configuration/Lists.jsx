@@ -353,7 +353,16 @@ const PriceLabelForm = ({ onBack, onSave, initialData = null }) => {
            </div>
            <div className="space-y-2">
              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Display order</label>
-             <input type="number" value={formData.order} onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })} className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:border-[#6b2bd9] outline-none" />
+             <input
+               type="number"
+               min="0"
+               value={formData.order}
+               onChange={(e) => {
+                 const val = parseInt(e.target.value);
+                 setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+               }}
+               className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:border-[#6b2bd9] outline-none"
+             />
            </div>
            <div className="md:col-span-2 space-y-2">
              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Description</label>
@@ -414,7 +423,16 @@ const DimensionForm = ({ onBack, onSave, initialData = null }) => {
            </div>
            <div className="space-y-2">
              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Display order</label>
-             <input type="number" value={formData.order} onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })} className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold outline-none border focus:border-[#6b2bd9] transition-all" />
+             <input
+               type="number"
+               min="0"
+               value={formData.order}
+               onChange={(e) => {
+                 const val = parseInt(e.target.value);
+                 setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+               }}
+               className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold outline-none border focus:border-[#6b2bd9] transition-all"
+             />
            </div>
            <div className="space-y-2">
              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Status</label>
@@ -512,7 +530,16 @@ const WeightForm = ({ onBack, onSave, initialData = null }) => {
            </div>
            <div className="space-y-2">
              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Display order</label>
-             <input type="number" value={formData.order} onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })} className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold outline-none border focus:border-[#6b2bd9]" />
+             <input
+               type="number"
+               min="0"
+               value={formData.order}
+               onChange={(e) => {
+                 const val = parseInt(e.target.value);
+                 setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+               }}
+               className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold outline-none border focus:border-[#6b2bd9]"
+             />
            </div>
            <div className="space-y-2">
              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Status</label>
@@ -600,8 +627,12 @@ const QuantityUnitForm = ({ onBack, onSave, initialData = null }) => {
              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Display order</label>
              <input
                type="number"
+               min="0"
                value={formData.order}
-               onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
+               onChange={(e) => {
+                 const val = parseInt(e.target.value);
+                 setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+               }}
                className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#6b2bd9]/10 focus:border-[#6b2bd9] outline-none transition-all"
              />
            </div>
@@ -723,8 +754,12 @@ const DeliveryTimeForm = ({ onBack, onSave, initialData = null }) => {
              </label>
              <input
                type="number"
+               min="0"
                value={formData.order}
-               onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
+               onChange={(e) => {
+                 const val = parseInt(e.target.value);
+                 setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+               }}
                className="w-full px-5 py-3 bg-gray-50/50 border border-gray-100 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-[#6b2bd9]/10 focus:border-[#6b2bd9] outline-none transition-all"
              />
            </div>

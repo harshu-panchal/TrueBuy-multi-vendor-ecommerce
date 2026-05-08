@@ -15,6 +15,7 @@ import Badge from "../../../../shared/components/Badge";
 import ConfirmModal from "../../components/ConfirmModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
 import { formatPrice } from "../../../../shared/utils/helpers";
+import { formatDate } from "../../utils/adminHelpers";
 import { useVendorStore } from "../../store/vendorStore";
 import { getAllOrders } from "../../services/adminService";
 import toast from "react-hot-toast";
@@ -36,25 +37,13 @@ const ManageVendors = () => {
   const [commissionRate, setCommissionRate] = useState("");
   const [statusReason, setStatusReason] = useState("");
 
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
     const bootstrap = async () => {
+      setIsLoading(true);
       await initialize();
-      try {
-        const fetchedOrders = [];
-        let page = 1;
-        let pages = 1;
-        do {
-          const response = await getAllOrders({ page, limit: 200 });
-          const payload = response?.data ?? response;
-          const orderPage = Array.isArray(payload?.orders) ? payload.orders : [];
-          fetchedOrders.push(...orderPage);
-          pages = Math.max(Number(payload?.pages) || 1, 1);
-          page += 1;
-        } while (page <= pages);
-        setOrders(fetchedOrders);
-      } catch {
-        setOrders([]);
-      }
+      setIsLoading(false);
     };
     bootstrap();
   }, [initialize]);
@@ -62,30 +51,18 @@ const ManageVendors = () => {
   const isSameVendorId = (a, b) => String(a) === String(b);
 
   // Get vendor statistics
-  const getVendorStats = (vendorId) => {
-    const vendorOrders = orders.filter((order) => {
-      if (order.vendorItems && Array.isArray(order.vendorItems)) {
-        return order.vendorItems.some((vi) =>
-          isSameVendorId(vi.vendorId, vendorId)
-        );
-      }
-      return false;
-    });
-
-    const vendor = vendors.find((v) => String(v.id) === String(vendorId));
-    const totalEarnings = vendorOrders.reduce((sum, order) => {
-      const vendorItem = order.vendorItems?.find((vi) =>
-        isSameVendorId(vi.vendorId, vendorId)
-      );
-      return sum + Number(vendorItem?.subtotal || 0);
-    }, 0);
-
-    return {
-      totalOrders: vendorOrders.length,
-      totalEarnings,
-      pendingEarnings: 0,
-      commissionRate: vendor?.commissionRate || 0,
-    };
+  // Performance display using vendor fields
+  const renderPerformance = (row) => {
+    return (
+      <div className="text-xs">
+        <p className="text-gray-700">
+          <span className="font-semibold">{row.totalSales || 0}</span> orders
+        </p>
+        <p className="text-gray-500">
+          {formatPrice(row.totalEarnings || 0, "₹", false)} earned
+        </p>
+      </div>
+    );
   };
 
   const filteredVendors = useMemo(() => {
@@ -178,19 +155,7 @@ const ManageVendors = () => {
       key: "stats",
       label: "Performance",
       sortable: false,
-      render: (_, row) => {
-        const stats = getVendorStats(row.id);
-        return (
-          <div className="text-xs">
-            <p className="text-gray-700">
-              <span className="font-semibold">{stats.totalOrders}</span> orders
-            </p>
-            <p className="text-gray-500">
-              {formatPrice(stats.totalEarnings)} earned
-            </p>
-          </div>
-        );
-      },
+      render: (_, row) => renderPerformance(row),
     },
     {
       key: "actions",
@@ -448,7 +413,7 @@ const ManageVendors = () => {
                   {
                     label: "Join Date",
                     accessor: (row) =>
-                      new Date(row.joinDate).toLocaleDateString(),
+                      formatDate(row.joinDate),
                   },
                 ]}
                 filename="vendors"
@@ -463,6 +428,7 @@ const ManageVendors = () => {
           columns={columns}
           pagination={true}
           itemsPerPage={10}
+          loading={isLoading}
           onRowClick={(row) => navigate(`/admin/vendors/${row.id}`)}
         />
       </div>

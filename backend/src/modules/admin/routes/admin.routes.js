@@ -99,6 +99,9 @@ router.get('/analytics/recent-orders', ...adminAuth, analyticsController.getRece
 router.get('/analytics/sales', ...adminAuth, analyticsController.getSalesData);
 router.get('/analytics/finance-summary', ...adminAuth, analyticsController.getFinancialSummary);
 router.get('/analytics/inventory-stats', ...adminAuth, analyticsController.getInventoryStats);
+router.get('/analytics/top-customers', ...adminAuth, analyticsController.getTopCustomers);
+router.get('/analytics/registered-customers-count', ...adminAuth, analyticsController.getRegisteredCustomersCount);
+router.get('/analytics/online-customers', ...adminAuth, analyticsController.getOnlineCustomers);
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 router.get('/orders', ...adminAuth, orderController.getAllOrders);
@@ -147,6 +150,7 @@ router.get('/customers/:id', ...adminAuth, validate(customerIdParamSchema, 'para
 router.put('/customers/:id', ...adminAuth, validate(customerIdParamSchema, 'params'), validate(customerUpdateSchema), customerController.updateCustomerDetail);
 router.patch('/customers/:id/status', ...adminAuth, validate(customerIdParamSchema, 'params'), validate(customerStatusUpdateSchema), customerController.updateCustomerStatus);
 router.delete('/customers/:customerId/addresses/:addressId', ...adminAuth, validate(customerAddressParamsSchema, 'params'), customerController.deleteCustomerAddress);
+router.put('/customers/:customerId/addresses/:addressId', ...adminAuth, validate(customerAddressParamsSchema, 'params'), customerController.updateCustomerAddress);
 
 // ─── Delivery ─────────────────────────────────────────────────────────────────
 router.get('/delivery-boys', ...adminAuth, validate(deliveryListQuerySchema, 'query'), deliveryController.getAllDeliveryBoys);

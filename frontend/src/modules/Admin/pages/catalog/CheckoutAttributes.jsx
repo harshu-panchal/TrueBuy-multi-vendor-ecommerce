@@ -201,8 +201,12 @@ const AttributeForm = ({ onBack, onSave }) => {
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Display Order</label>
                     <input
                       type="number"
+                      min="0"
                       value={formData.order}
-                      onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) })}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+                      }}
                       className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-black focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
                     />
                   </div>
