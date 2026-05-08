@@ -86,6 +86,65 @@ const MobileCheckout = () => {
     paymentMethod: "online",
   });
 
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[0-9]{10}$/;
+    const zipRegex = /^[0-9]{5,6}$/;
+    const nameRegex = /^[a-zA-Z\s.]+$/;
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Full name is required";
+    } else if (formData.name.trim().length < 3) {
+      newErrors.name = "Name must be at least 3 characters";
+    } else if (!nameRegex.test(formData.name.trim())) {
+      newErrors.name = "Name should only contain letters";
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!emailRegex.test(formData.email.trim())) {
+      newErrors.email = "Please enter a valid email address";
+    }
+
+    const cleanPhone = formData.phone.replace(/\D/g, "");
+    if (!cleanPhone) {
+      newErrors.phone = "Phone number is required";
+    } else if (!phoneRegex.test(cleanPhone)) {
+      newErrors.phone = "Please enter a valid 10-digit phone number";
+    }
+
+    if (!formData.address.trim()) {
+      newErrors.address = "Address is required";
+    } else if (formData.address.trim().length < 10) {
+      newErrors.address = "Please enter a complete address";
+    }
+
+    if (!formData.city.trim()) newErrors.city = "City is required";
+    if (!formData.state.trim()) {
+      newErrors.state = "State is required";
+    } else if (!nameRegex.test(formData.state.trim())) {
+      newErrors.state = "State should only contain letters";
+    }
+
+    if (!formData.zipCode.trim()) {
+      newErrors.zipCode = "ZIP code is required";
+    } else if (!zipRegex.test(formData.zipCode.trim())) {
+      newErrors.zipCode = "Enter a valid 5 or 6 digit ZIP code";
+    }
+
+    if (!formData.country.trim()) {
+      newErrors.country = "Country is required";
+    } else if (!nameRegex.test(formData.country.trim())) {
+      newErrors.country = "Country should only contain letters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const checkoutAutofillKey = useMemo(() => getCheckoutAutofillKey(user), [user]);
   const autofillLoadedKeyRef = useRef(null);
 
@@ -377,10 +436,25 @@ const MobileCheckout = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (step === 1) {
+      if (!validateForm()) {
+        toast.error("Please fix the errors in the form.");
+        return;
+      }
+    }
 
     const normalizedShipping = {
       name: String(formData.name || "").trim(),
@@ -392,17 +466,6 @@ const MobileCheckout = () => {
       state: String(formData.state || "").trim(),
       country: String(formData.country || "").trim(),
     };
-
-    const missingRequired = Object.values(normalizedShipping).some((v) => !v);
-    if (missingRequired) {
-      toast.error("Please fill all shipping details correctly.");
-      return;
-    }
-
-    if (normalizedShipping.phone.length !== 10) {
-      toast.error("Please enter a valid 10-digit phone number.");
-      return;
-    }
 
     if (step === 2 && isApplyingCoupon) {
       toast.error("Please wait for coupon validation to complete.");
@@ -601,8 +664,14 @@ const MobileCheckout = () => {
                           value={formData.name}
                           onChange={handleInputChange}
                           required
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                          className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.name
+                            ? "border-red-500 focus:ring-red-200"
+                            : "border-gray-200 focus:ring-primary-500"
+                            }`}
                         />
+                        {errors.name && (
+                          <p className="text-red-500 text-xs mt-1 ml-1">{errors.name}</p>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -615,8 +684,14 @@ const MobileCheckout = () => {
                             value={formData.email}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.email
+                              ? "border-red-500 focus:ring-red-200"
+                              : "border-gray-200 focus:ring-primary-500"
+                              }`}
                           />
+                          {errors.email && (
+                            <p className="text-red-500 text-xs mt-1 ml-1">{errors.email}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -628,8 +703,14 @@ const MobileCheckout = () => {
                             value={formData.phone}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.phone
+                              ? "border-red-500 focus:ring-red-200"
+                              : "border-gray-200 focus:ring-primary-500"
+                              }`}
                           />
+                          {errors.phone && (
+                            <p className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</p>
+                          )}
                         </div>
                       </div>
                       <div>
@@ -642,8 +723,14 @@ const MobileCheckout = () => {
                           onChange={handleInputChange}
                           required
                           rows={3}
-                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                          className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.address
+                            ? "border-red-500 focus:ring-red-200"
+                            : "border-gray-200 focus:ring-primary-500"
+                            }`}
                         />
+                        {errors.address && (
+                          <p className="text-red-500 text-xs mt-1 ml-1">{errors.address}</p>
+                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -656,8 +743,14 @@ const MobileCheckout = () => {
                             value={formData.city}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.city
+                              ? "border-red-500 focus:ring-red-200"
+                              : "border-gray-200 focus:ring-primary-500"
+                              }`}
                           />
+                          {errors.city && (
+                            <p className="text-red-500 text-xs mt-1 ml-1">{errors.city}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -669,8 +762,14 @@ const MobileCheckout = () => {
                             value={formData.state}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.state
+                              ? "border-red-500 focus:ring-red-200"
+                              : "border-gray-200 focus:ring-primary-500"
+                              }`}
                           />
+                          {errors.state && (
+                            <p className="text-red-500 text-xs mt-1 ml-1">{errors.state}</p>
+                          )}
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -684,8 +783,14 @@ const MobileCheckout = () => {
                             value={formData.zipCode}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.zipCode
+                              ? "border-red-500 focus:ring-red-200"
+                              : "border-gray-200 focus:ring-primary-500"
+                              }`}
                           />
+                          {errors.zipCode && (
+                            <p className="text-red-500 text-xs mt-1 ml-1">{errors.zipCode}</p>
+                          )}
                         </div>
                         <div>
                           <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -697,8 +802,14 @@ const MobileCheckout = () => {
                             value={formData.country}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.country
+                              ? "border-red-500 focus:ring-red-200"
+                              : "border-gray-200 focus:ring-primary-500"
+                              }`}
                           />
+                          {errors.country && (
+                            <p className="text-red-500 text-xs mt-1 ml-1">{errors.country}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -990,14 +1101,71 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
     country: "",
   });
 
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const newErrors = {};
+    const phoneRegex = /^[0-9]{10}$/;
+    const zipRegex = /^[0-9]{5,6}$/;
+    const nameRegex = /^[a-zA-Z\s.]+$/;
+
+    if (!formData.name.trim()) newErrors.name = "Label is required";
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Full name is required";
+    } else if (!nameRegex.test(formData.fullName.trim())) {
+      newErrors.fullName = "Name should only contain letters";
+    }
+
+    const cleanPhone = formData.phone.replace(/\D/g, "");
+    if (!cleanPhone) {
+      newErrors.phone = "Phone is required";
+    } else if (!phoneRegex.test(cleanPhone)) {
+      newErrors.phone = "Enter valid 10-digit number";
+    }
+
+    if (!formData.address.trim()) newErrors.address = "Street address is required";
+    if (!formData.city.trim()) newErrors.city = "City is required";
+    if (!formData.state.trim()) {
+      newErrors.state = "State is required";
+    } else if (!nameRegex.test(formData.state.trim())) {
+      newErrors.state = "State should only contain letters";
+    }
+
+    if (!formData.zipCode.trim()) {
+      newErrors.zipCode = "Zip code is required";
+    } else if (!zipRegex.test(formData.zipCode.trim())) {
+      newErrors.zipCode = "Invalid zip code";
+    }
+
+    if (!formData.country.trim()) {
+      newErrors.country = "Country is required";
+    } else if (!nameRegex.test(formData.country.trim())) {
+      newErrors.country = "Country should only contain letters";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (validate()) {
+      onSubmit(formData);
+    } else {
+      toast.error("Please fill all fields correctly");
+    }
   };
 
   return (
@@ -1032,9 +1200,13 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.name}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.name
+                ? "border-red-500 focus:ring-red-200"
+                : "border-gray-200 focus:ring-primary-500"
+                }`}
               placeholder="Home, Work, etc."
             />
+            {errors.name && <p className="text-red-500 text-xs mt-1 ml-1">{errors.name}</p>}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1046,8 +1218,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.fullName}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.fullName
+                ? "border-red-500 focus:ring-red-200"
+                : "border-gray-200 focus:ring-primary-500"
+                }`}
             />
+            {errors.fullName && <p className="text-red-500 text-xs mt-1 ml-1">{errors.fullName}</p>}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1059,8 +1235,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.phone}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.phone
+                ? "border-red-500 focus:ring-red-200"
+                : "border-gray-200 focus:ring-primary-500"
+                }`}
             />
+            {errors.phone && <p className="text-red-500 text-xs mt-1 ml-1">{errors.phone}</p>}
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1072,8 +1252,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.address}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.address
+                ? "border-red-500 focus:ring-red-200"
+                : "border-gray-200 focus:ring-primary-500"
+                }`}
             />
+            {errors.address && <p className="text-red-500 text-xs mt-1 ml-1">{errors.address}</p>}
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
@@ -1086,8 +1270,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
                 value={formData.city}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.city
+                  ? "border-red-500 focus:ring-red-200"
+                  : "border-gray-200 focus:ring-primary-500"
+                  }`}
               />
+              {errors.city && <p className="text-red-500 text-xs mt-1 ml-1">{errors.city}</p>}
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1099,8 +1287,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
                 value={formData.state}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.state
+                  ? "border-red-500 focus:ring-red-200"
+                  : "border-gray-200 focus:ring-primary-500"
+                  }`}
               />
+              {errors.state && <p className="text-red-500 text-xs mt-1 ml-1">{errors.state}</p>}
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1112,8 +1304,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
                 value={formData.zipCode}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+                className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.zipCode
+                  ? "border-red-500 focus:ring-red-200"
+                  : "border-gray-200 focus:ring-primary-500"
+                  }`}
               />
+              {errors.zipCode && <p className="text-red-500 text-xs mt-1 ml-1">{errors.zipCode}</p>}
             </div>
           </div>
           <div>
@@ -1126,8 +1322,12 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
               value={formData.country}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
+              className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.country
+                ? "border-red-500 focus:ring-red-200"
+                : "border-gray-200 focus:ring-primary-500"
+                }`}
             />
+            {errors.country && <p className="text-red-500 text-xs mt-1 ml-1">{errors.country}</p>}
           </div>
           <div className="flex gap-3 pt-4">
             <button
