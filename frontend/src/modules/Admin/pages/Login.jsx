@@ -151,20 +151,6 @@ const AdminLogin = () => {
                 {isLoading ? 'Logging in...' : 'Login'}
               </button>
 
-              {/* Demo Credentials */}
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <p className="text-sm text-gray-700 font-semibold mb-2">Demo Credentials:</p>
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500 flex justify-between">
-                    <span>Email:</span>
-                    <span className="font-medium text-gray-700">admin@admin.com</span>
-                  </p>
-                  <p className="text-xs text-gray-500 flex justify-between">
-                    <span>Password:</span>
-                    <span className="font-medium text-gray-700">admin123</span>
-                  </p>
-                </div>
-              </div>
             </div>
           </form>
         </motion.div>

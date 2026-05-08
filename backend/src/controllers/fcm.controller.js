@@ -21,16 +21,14 @@ const getRequestNotificationId = (req, prefix) => {
 
 // POST /api/fcm-tokens/save
 export const saveToken = asyncHandler(async (req, res) => {
-    const { token, deviceId = '', appVersion = '' } = req.body;
+    const { token, platform } = req.body;
     const recipientType = resolveRecipientType(req.user.role);
 
     await saveFcmTokenForRecipient({
         recipientId: req.user.id,
         recipientType,
         token,
-        platform: normalizePlatform(req.body.platform),
-        deviceId,
-        appVersion,
+        platform: normalizePlatform(platform),
     });
 
     return res.status(200).json(

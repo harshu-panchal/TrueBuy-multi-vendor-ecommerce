@@ -3,8 +3,6 @@ import Joi from 'joi';
 export const saveFcmTokenSchema = Joi.object({
     token: Joi.string().trim().min(20).required(),
     platform: Joi.string().trim().valid('web', 'android', 'ios', 'mobile', 'unknown').default('web'),
-    deviceId: Joi.string().trim().allow('').max(200).optional(),
-    appVersion: Joi.string().trim().allow('').max(100).optional(),
 });
 
 export const removeFcmTokenSchema = Joi.object({
