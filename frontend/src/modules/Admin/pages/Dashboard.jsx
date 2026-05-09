@@ -11,7 +11,7 @@ import TopProducts from "../components/Analytics/TopProducts";
 import RecentOrders from "../components/Analytics/RecentOrders";
 import TimePeriodFilter from "../components/Analytics/TimePeriodFilter";
 import ExportButton from "../components/ExportButton";
-import { formatCurrency } from "../utils/adminHelpers";
+import { formatCurrency, getDateRange } from "../utils/adminHelpers";
 import {
   getDashboardStats,
   getRevenueData,
@@ -34,6 +34,10 @@ const Dashboard = () => {
     totalVendors: 0,
     totalDeliveryBoys: 0,
     pendingOrders: 0,
+    ordersChange: 0,
+    customersChange: 0,
+    productsChange: 0,
+    revenueChange: 0,
   });
   const [revenueData, setRevenueData] = useState([]);
 
@@ -87,6 +91,11 @@ const Dashboard = () => {
     setLoading(true);
     try {
       const apiPeriod = mapUiPeriodToApiPeriod(period);
+      const range = getDateRange(period);
+      const params = {
+        startDate: range.start.toISOString(),
+        endDate: range.end.toISOString(),
+      };
 
       const [
         statsRes,
@@ -96,8 +105,8 @@ const Dashboard = () => {
         customerGrowthRes,
         recentOrdersRes,
       ] = await Promise.allSettled([
-        getDashboardStats(period),
-        getRevenueData(apiPeriod),
+        getDashboardStats(params),
+        getRevenueData(apiPeriod, params),
         getOrderStatusBreakdown(),
         getTopProducts(),
         getCustomerGrowth(apiPeriod),
@@ -128,6 +137,10 @@ const Dashboard = () => {
           totalVendors: 0,
           totalDeliveryBoys: 0,
           pendingOrders: 0,
+          ordersChange: 0,
+          customersChange: 0,
+          productsChange: 0,
+          revenueChange: 0,
         });
       }
       if (revenueRes.status === "fulfilled") {
@@ -156,8 +169,6 @@ const Dashboard = () => {
         setRecentOrders([]);
       }
     } catch (error) {
-      // Don't toast here as api.js interceptor handled global errors
-      // or to avoid 6+ toasts if all parallel requests fail simultaneously
       console.error("Dashboard fetch error:", error);
     } finally {
       setLoading(false);

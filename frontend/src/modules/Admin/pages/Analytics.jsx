@@ -5,30 +5,8 @@ import RevenueChart from '../components/Analytics/RevenueChart';
 import SalesChart from '../components/Analytics/SalesChart';
 import TimePeriodFilter from '../components/Analytics/TimePeriodFilter';
 import ExportButton from '../components/ExportButton';
-import { formatCurrency } from '../utils/adminHelpers';
+import { formatCurrency, getDateRange } from '../utils/adminHelpers';
 import { getDashboardStats, getRevenueData } from '../services/adminService';
-
-const getRangeForPeriod = (period) => {
-  const now = new Date();
-  const endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  let startDate = new Date(endDate);
-
-  if (period === 'today') {
-    startDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 0, 0, 0, 0);
-  } else if (period === 'week') {
-    startDate.setDate(endDate.getDate() - 6);
-  } else if (period === 'month') {
-    startDate.setDate(endDate.getDate() - 29);
-  } else {
-    startDate.setFullYear(endDate.getFullYear() - 1);
-    startDate.setDate(endDate.getDate() + 1);
-  }
-
-  return {
-    startDate: startDate.toISOString(),
-    endDate: endDate.toISOString(),
-  };
-};
 
 const Analytics = () => {
   const [period, setPeriod] = useState('month');
@@ -58,10 +36,15 @@ const Analytics = () => {
       setIsLoading(true);
       try {
         const apiPeriod = mapUiPeriodToApiPeriod(period);
-        const range = getRangeForPeriod(period);
+        const range = getDateRange(period);
+        const params = {
+          startDate: range.start.toISOString(),
+          endDate: range.end.toISOString(),
+        };
+
         const [statsRes, revenueRes] = await Promise.allSettled([
-          getDashboardStats(),
-          getRevenueData(apiPeriod, range),
+          getDashboardStats(params),
+          getRevenueData(apiPeriod, params),
         ]);
 
         if (mounted && statsRes.status === 'fulfilled') {
@@ -71,10 +54,10 @@ const Analytics = () => {
             totalOrders: stats.totalOrders || 0,
             totalProducts: stats.totalProducts || 0,
             totalCustomers: stats.totalUsers || 0,
-            revenueChange: 0,
-            ordersChange: 0,
-            productsChange: 0,
-            customersChange: 0,
+            revenueChange: stats.revenueChange || 0,
+            ordersChange: stats.ordersChange || 0,
+            productsChange: stats.productsChange || 0,
+            customersChange: stats.customersChange || 0,
           });
         }
 

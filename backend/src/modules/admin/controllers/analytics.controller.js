@@ -8,46 +8,57 @@ import Product from '../../../models/Product.model.js';
 // GET /api/admin/analytics/dashboard
 // GET /api/admin/analytics/dashboard
 export const getDashboardStats = asyncHandler(async (req, res) => {
-    const { period = 'month' } = req.query;
+    const { period, startDate, endDate } = req.query;
     const activeOrderFilter = { isDeleted: { $ne: true } };
-
-    const now = new Date();
+    
     let currentStart;
+    let currentEnd = new Date();
     let previousStart;
     let previousEnd;
 
-    // Define periods
-    if (period === 'today') {
-        currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        previousStart = new Date(currentStart);
-        previousStart.setDate(previousStart.getDate() - 1);
-        previousEnd = new Date(currentStart);
-        previousEnd.setMilliseconds(-1);
-    } else if (period === 'week') {
-        const day = now.getDay() || 7;
-        currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
-        previousStart = new Date(currentStart);
-        previousStart.setDate(previousStart.getDate() - 7);
-        previousEnd = new Date(currentStart);
-        previousEnd.setMilliseconds(-1);
-    } else if (period === 'year') {
-        currentStart = new Date(now.getFullYear(), 0, 1);
-        previousStart = new Date(now.getFullYear() - 1, 0, 1);
-        previousEnd = new Date(now.getFullYear(), 0, 0, 23, 59, 59, 999);
+    const now = new Date();
+
+    if (startDate && endDate) {
+        currentStart = new Date(startDate);
+        currentEnd = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+        const duration = currentEnd.getTime() - currentStart.getTime();
+        previousStart = new Date(currentStart.getTime() - duration - 1);
+        previousEnd = new Date(currentStart.getTime() - 1);
     } else {
-        // Default to Month
-        currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        previousEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        const p = period || 'month';
+        if (p === 'today') {
+            currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            previousStart = new Date(currentStart);
+            previousStart.setDate(previousStart.getDate() - 1);
+            previousEnd = new Date(currentStart.getTime() - 1);
+        } else if (p === 'week') {
+            const day = now.getDay() || 7;
+            currentStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+            previousStart = new Date(currentStart);
+            previousStart.setDate(previousStart.getDate() - 7);
+            previousEnd = new Date(currentStart.getTime() - 1);
+        } else if (p === 'year') {
+            currentStart = new Date(now.getFullYear(), 0, 1);
+            previousStart = new Date(now.getFullYear - 1, 0, 1);
+            previousEnd = new Date(now.getFullYear(), 0, 0, 23, 59, 59, 999);
+        } else {
+            // Default to month
+            currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            previousStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            previousEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        }
     }
 
+    const currentRange = { $gte: currentStart, $lte: currentEnd };
+    const prevRange = { $gte: previousStart, $lte: previousEnd };
+
     const [
-        totalOrders, totalUsers, totalVendors, totalProducts, totalRevenueAgg, pendingOrders,
+        totalOrdersCount, totalUsersCount, totalVendorsCount, totalProductsCount, lifetimeRevenueAgg, pendingOrders,
         totalDeliveryBoys,
-        currPeriodOrders, prevPeriodOrders,
-        currPeriodUsers, prevPeriodUsers,
-        currPeriodProducts, prevPeriodProducts,
-        currPeriodRevenueAgg, prevPeriodRevenueAgg
+        periodOrders, prevPeriodOrders,
+        periodUsers, prevPeriodUsers,
+        periodProducts, prevPeriodProducts,
+        periodRevenueAgg, prevPeriodRevenueAgg
     ] = await Promise.all([
         Order.countDocuments(activeOrderFilter),
         User.countDocuments({ role: 'customer' }),
@@ -56,20 +67,20 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         Order.aggregate([{ $match: { ...activeOrderFilter, status: { $ne: 'cancelled' } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
         Order.countDocuments({ ...activeOrderFilter, status: 'pending' }),
         User.countDocuments({ role: 'delivery' }),
-
-        // Current Period stats
-        Order.countDocuments({ ...activeOrderFilter, createdAt: { $gte: currentStart } }),
-        Order.countDocuments({ ...activeOrderFilter, createdAt: { $gte: previousStart, $lte: previousEnd } }),
-        User.countDocuments({ role: 'customer', createdAt: { $gte: currentStart } }),
-        User.countDocuments({ role: 'customer', createdAt: { $gte: previousStart, $lte: previousEnd } }),
-        Product.countDocuments({ isActive: true, createdAt: { $gte: currentStart } }),
-        Product.countDocuments({ isActive: true, createdAt: { $gte: previousStart, $lte: previousEnd } }),
+        
+        // Period stats
+        Order.countDocuments({ ...activeOrderFilter, createdAt: currentRange }),
+        Order.countDocuments({ ...activeOrderFilter, createdAt: prevRange }),
+        User.countDocuments({ role: 'customer', createdAt: currentRange }),
+        User.countDocuments({ role: 'customer', createdAt: prevRange }),
+        Product.countDocuments({ isActive: true, createdAt: currentRange }),
+        Product.countDocuments({ isActive: true, createdAt: prevRange }),
         Order.aggregate([
-            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: { $gte: currentStart } } },
+            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: currentRange } },
             { $group: { _id: null, total: { $sum: '$total' } } }
         ]),
         Order.aggregate([
-            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: { $gte: previousStart, $lte: previousEnd } } },
+            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: prevRange } },
             { $group: { _id: null, total: { $sum: '$total' } } }
         ]),
     ]);
@@ -79,33 +90,29 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         return Number((((current - previous) / previous) * 100).toFixed(1));
     };
 
-    const currRev = currPeriodRevenueAgg[0]?.total || 0;
+    const periodRev = periodRevenueAgg[0]?.total || 0;
     const prevRev = prevPeriodRevenueAgg[0]?.total || 0;
 
     res.status(200).json(new ApiResponse(200, {
-        // Global totals (optional, can be filtered if needed)
-        allTimeOrders: totalOrders,
-        allTimeRevenue: totalRevenueAgg[0]?.total || 0,
-        
-        // Filtered stats for the cards
-        totalOrders: currPeriodOrders,
-        totalRevenue: currRev,
-        totalCustomers: currPeriodUsers,
-        totalProducts: currPeriodProducts,
-        
-        // Contextual info
-        totalVendors,
+        totalOrders: periodOrders,
+        totalUsers: periodUsers, 
+        totalCustomers: periodUsers,
+        totalVendors: totalVendorsCount,
+        totalProducts: periodProducts,
+        totalRevenue: periodRev,
         totalDeliveryBoys,
+        
         pendingOrders,
         
-        // Percentage changes
-        ordersChange: calculateChange(currPeriodOrders, prevPeriodOrders),
-        customersChange: calculateChange(currPeriodUsers, prevPeriodUsers),
-        productsChange: calculateChange(currPeriodProducts, prevPeriodProducts),
-        revenueChange: calculateChange(currRev, prevRev),
-        
-        // Compatibility
-        totalUsers: currPeriodUsers
+        allTimeOrders: totalOrdersCount,
+        allTimeRevenue: lifetimeRevenueAgg[0]?.total || 0,
+        allTimeUsers: totalUsersCount,
+        allTimeProducts: totalProductsCount,
+
+        ordersChange: calculateChange(periodOrders, prevPeriodOrders),
+        customersChange: calculateChange(periodUsers, prevPeriodUsers),
+        productsChange: calculateChange(periodProducts, prevPeriodProducts),
+        revenueChange: calculateChange(periodRev, prevRev)
     }, 'Dashboard stats fetched.'));
 });
 
