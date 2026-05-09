@@ -26,7 +26,9 @@ import {
     logoutSchema,
     forgotPasswordSchema,
     verifyResetOtpSchema,
-    resetPasswordSchema
+    resetPasswordSchema,
+    updateBankDetailsSchema,
+    updateVendorProfileSchema
 } from '../validators/auth.validator.js';
 import {
     createProductSchema,
@@ -49,8 +51,8 @@ router.post('/auth/login', authLimiter, validate(loginSchema), authController.lo
 router.post('/auth/refresh', validate(refreshTokenSchema), authController.refresh);
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...vendorAuth, authController.getProfile);
-router.put('/auth/profile', ...vendorAuth, authController.updateProfile);
-router.put('/auth/bank-details', ...vendorAuth, authController.updateBankDetails);
+router.put('/auth/profile', ...vendorAuth, validate(updateVendorProfileSchema), authController.updateProfile);
+router.put('/auth/bank-details', ...vendorAuth, validate(updateBankDetailsSchema), authController.updateBankDetails);
 
 // Products
 router.get('/products', ...vendorAuth, productController.getVendorProducts);

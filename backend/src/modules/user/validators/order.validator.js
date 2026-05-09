@@ -11,7 +11,7 @@ export const placeOrderSchema = Joi.object({
     ).min(1).required(),
     shippingAddress: Joi.object({
         name: Joi.string().required(),
-        email: Joi.string().email().required(),
+        email: Joi.string().pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|in|org)$/).required(),
         phone: Joi.string().required(),
         address: Joi.string().required(),
         city: Joi.string().required(),

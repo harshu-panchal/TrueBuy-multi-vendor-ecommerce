@@ -133,6 +133,10 @@ const ReturnRequest = () => {
         toast.error('Please fill all bank details');
         return;
       }
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
+        toast.error('Invalid IFSC format: 4 alphabets, 5th "0", last 6 alphanumeric');
+        return;
+      }
     }
     
     if (!pickupAddress) {
@@ -374,7 +378,7 @@ const ReturnRequest = () => {
                           <input 
                             type="text"
                             value={bankDetails.accountName}
-                            onChange={(e) => setBankDetails({...bankDetails, accountName: e.target.value})}
+                            onChange={(e) => setBankDetails({...bankDetails, accountName: e.target.value.replace(/\d/g, '')})}
                             placeholder="Full name on passbook"
                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
                           />
@@ -385,7 +389,7 @@ const ReturnRequest = () => {
                               <input 
                                 type="text"
                                 value={bankDetails.ifscCode}
-                                onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value.toUpperCase()})}
+                                onChange={(e) => setBankDetails({...bankDetails, ifscCode: e.target.value.toUpperCase().slice(0, 11)})}
                                 placeholder="SBIN00XXXX"
                                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
                               />
@@ -395,7 +399,7 @@ const ReturnRequest = () => {
                               <input 
                                 type="text"
                                 value={bankDetails.bankName}
-                                onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value})}
+                                onChange={(e) => setBankDetails({...bankDetails, bankName: e.target.value.replace(/\d/g, '')})}
                                 placeholder="e.g. SBI, HDFC"
                                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
                               />
@@ -406,7 +410,7 @@ const ReturnRequest = () => {
                           <input 
                             type="text"
                             value={bankDetails.accountNumber}
-                            onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value})}
+                            onChange={(e) => setBankDetails({...bankDetails, accountNumber: e.target.value.replace(/\D/g, '')})}
                             placeholder="Your account number"
                             className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 outline-none mt-1"
                           />

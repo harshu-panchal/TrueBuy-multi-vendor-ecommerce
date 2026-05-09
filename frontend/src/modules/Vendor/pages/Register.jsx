@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiShoppingBag, FiMapPin, FiArrowLeft } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useVendorAuthStore } from "../store/vendorAuthStore";
+import { isValidEmail, isValidPhone } from '../../../shared/utils/helpers';
 import toast from 'react-hot-toast';
 import { appLogo } from "../../../data/logos";
 import PageTransition from '../../../shared/components/PageTransition';
@@ -52,6 +53,16 @@ const VendorRegister = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!isValidEmail(formData.email)) {
+      toast.error('Email must end with .com, .in, or .org');
+      return;
+    }
+    
+    if (!isValidPhone(formData.phone)) {
+      toast.error('Phone number must be exactly 10 digits');
+      return;
+    }
 
     // Validation
     if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.storeName) {
@@ -188,6 +199,7 @@ const VendorRegister = () => {
                     onInput={(e) => {
                       e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
                     }}
+                    maxLength="10"
                     placeholder="9876543210"
                     className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                     required

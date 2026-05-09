@@ -19,8 +19,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const TMP_UPLOAD_DIR = path.resolve(__dirname, '../../uploads/tmp');
 const DELIVERY_DOCS_DIR = path.resolve(__dirname, '../../uploads/delivery-docs');
+const DELIVERY_AVATAR_DIR = path.resolve(__dirname, '../../uploads/delivery-avatars');
 fs.mkdirSync(TMP_UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(DELIVERY_DOCS_DIR, { recursive: true });
+fs.mkdirSync(DELIVERY_AVATAR_DIR, { recursive: true });
 
 const imageDiskStorage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -107,6 +109,27 @@ export const uploadDeliveryDocuments = (fields) =>
         },
         limits: { fileSize: MAX_DOCUMENT_FILE_SIZE },
     }).fields(fields);
+
+// Single delivery partner avatar upload
+export const uploadDeliveryAvatar = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            cb(null, DELIVERY_AVATAR_DIR);
+        },
+        filename: (req, file, cb) => {
+            const ext = path.extname(file.originalname || '').toLowerCase();
+            cb(null, `${req.user?.id || 'anonymous'}-${Date.now()}${ext}`);
+        }
+    }),
+    fileFilter: (req, file, cb) => {
+        if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new ApiError(400, 'Invalid file type. Only JPEG, PNG, and WEBP are allowed.'), false);
+        }
+    },
+    limits: { fileSize: 2 * 1024 * 1024 } // 2MB for profile photo
+}).single('avatar');
 
 // CSV upload for bulk operations
 export const uploadCSV = multer({

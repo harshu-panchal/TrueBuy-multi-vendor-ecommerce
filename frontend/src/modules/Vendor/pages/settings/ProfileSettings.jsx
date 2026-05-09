@@ -139,8 +139,11 @@ const ProfileSettings = () => {
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, "");
+                    }}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
 
@@ -165,10 +168,14 @@ const ProfileSettings = () => {
                   <input
                     type="tel"
                     name="phone"
-                    value={formData.phone}
+                    value={formData.phone || ""}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    }}
+                    maxLength="10"
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
               </div>

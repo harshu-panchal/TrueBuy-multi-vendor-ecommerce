@@ -77,12 +77,57 @@ const PaymentSettings = () => {
     if (!vendor) return;
 
     try {
+      // Basic Frontend Validation
+      const { accountName, accountNumber, ifscCode, bankName } = formData.bankDetails;
+      
+      if (!accountName || !accountNumber || !ifscCode || !bankName) {
+        toast.error('All bank fields are required');
+        return;
+      }
+
+      if (!/^\d+$/.test(accountNumber)) {
+        toast.error('Account number must contain only digits');
+        return;
+      }
+
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) {
+        toast.error('Invalid IFSC format: 4 alphabets, 5th "0", last 6 alphanumeric');
+        return;
+      }
+
+      if (/\d/.test(accountName)) {
+        toast.error('Account holder name should not contain digits');
+        return;
+      }
+
+      if (/\d/.test(bankName)) {
+        toast.error('Bank name should not contain digits');
+        return;
+      }
+
+      if (formData.paymentMethods.upi && formData.upiId) {
+        if (!/^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+$/.test(formData.upiId)) {
+          toast.error('Invalid UPI ID format (e.g. user@upi). Exactly one @ and no spaces allowed.');
+          return;
+        }
+      }
+
+      if (formData.paymentMethods.paypal && formData.paypalEmail) {
+        if (!/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[A-Za-z]{2,}$/.test(formData.paypalEmail)) {
+          toast.error('Invalid PayPal email format');
+          return;
+        }
+      }
+
       // Save bank details via dedicated endpoint
       await updateVendorBankDetails({
-        accountName: formData.bankDetails.accountName,
-        accountNumber: formData.bankDetails.accountNumber,
-        ifscCode: formData.bankDetails.ifscCode,
-        bankName: formData.bankDetails.bankName,
+        accountName,
+        accountNumber,
+        ifscCode,
+        bankName,
+        upiId: formData.upiId,
+        paypalEmail: formData.paypalEmail,
+        paymentMethods: formData.paymentMethods,
       });
       toast.success('Payment settings saved successfully');
     } catch {
@@ -150,8 +195,12 @@ const PaymentSettings = () => {
                     name="bank_accountName"
                     value={formData.bankDetails.accountName || ''}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\d/g, '');
+                    }}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter account holder name"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
 
@@ -164,8 +213,12 @@ const PaymentSettings = () => {
                     name="bank_accountNumber"
                     value={formData.bankDetails.accountNumber || ''}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\D/g, '');
+                    }}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Enter account number"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
 
@@ -178,8 +231,12 @@ const PaymentSettings = () => {
                     name="bank_ifscCode"
                     value={formData.bankDetails.ifscCode || ''}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.toUpperCase();
+                    }}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    maxLength="11"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                     placeholder="BANK0001234"
                   />
                 </div>
@@ -193,8 +250,11 @@ const PaymentSettings = () => {
                     name="bank_bankName"
                     value={formData.bankDetails.bankName || ''}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\d/g, '');
+                    }}
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
               </div>

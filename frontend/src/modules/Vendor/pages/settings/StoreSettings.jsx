@@ -3,6 +3,7 @@ import { FiSave, FiImage, FiGlobe, FiShoppingBag } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
+import { isValidEmail, isValidPhone } from "../../../../shared/utils/helpers";
 import toast from "react-hot-toast";
 
 const StoreSettings = () => {
@@ -41,11 +42,12 @@ const StoreSettings = () => {
   };
 
   const handleSocialMediaChange = (platform, value) => {
+    const cleanValue = value.replace(/\s/g, "");
     setFormData({
       ...formData,
       socialMedia: {
         ...formData.socialMedia,
-        [platform]: value,
+        [platform]: cleanValue,
       },
     });
   };
@@ -53,6 +55,16 @@ const StoreSettings = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!vendor) return;
+
+    if (!isValidEmail(formData.email)) {
+      toast.error("Email must end with .com, .in, or .org");
+      return;
+    }
+
+    if (!isValidPhone(formData.phone)) {
+      toast.error("Phone number must be exactly 10 digits");
+      return;
+    }
 
     try {
       // Parse address string into the object shape the backend expects
@@ -77,6 +89,7 @@ const StoreSettings = () => {
         storeDescription: formData.storeDescription,
         phone: formData.phone,
         address: addressData,
+        socialMedia: formData.socialMedia,
       });
       toast.success("Store settings saved successfully");
     } catch {
@@ -162,7 +175,10 @@ const StoreSettings = () => {
                     name="storeLogo"
                     value={formData.storeLogo || ""}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\d/g, "");
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                     placeholder="data/logos/logo.png"
                   />
                 </div>
@@ -247,8 +263,12 @@ const StoreSettings = () => {
                     name="phone"
                     value={formData.phone || ""}
                     onChange={handleChange}
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    }}
+                    maxLength="10"
                     required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
 
@@ -297,8 +317,11 @@ const StoreSettings = () => {
                     onChange={(e) =>
                       handleSocialMediaChange("facebook", e.target.value)
                     }
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\s/g, "");
+                    }}
                     placeholder="https://facebook.com/yourpage"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
                 <div>
@@ -311,8 +334,11 @@ const StoreSettings = () => {
                     onChange={(e) =>
                       handleSocialMediaChange("instagram", e.target.value)
                     }
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\s/g, "");
+                    }}
                     placeholder="https://instagram.com/yourpage"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
                 <div>
@@ -325,8 +351,11 @@ const StoreSettings = () => {
                     onChange={(e) =>
                       handleSocialMediaChange("twitter", e.target.value)
                     }
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\s/g, "");
+                    }}
                     placeholder="https://twitter.com/yourpage"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
                 <div>
@@ -339,8 +368,11 @@ const StoreSettings = () => {
                     onChange={(e) =>
                       handleSocialMediaChange("linkedin", e.target.value)
                     }
+                    onInput={(e) => {
+                      e.target.value = e.target.value.replace(/\s/g, "");
+                    }}
                     placeholder="https://linkedin.com/company/yourpage"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
               </div>

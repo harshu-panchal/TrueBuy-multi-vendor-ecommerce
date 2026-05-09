@@ -1,9 +1,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FiSearch, FiClock, FiTrendingUp } from 'react-icons/fi';
+import { FiSearch, FiClock, FiTrendingUp, FiMic } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getCatalogProducts } from '../../modules/UserApp/data/catalogData';
+import toast from 'react-hot-toast';
 import api from '../utils/api';
 
 const RECENT_SEARCHES_KEY = 'recent-searches';
@@ -16,6 +17,7 @@ const SearchBar = () => {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [suggestions, setSuggestions] = useState([]);
   const [isFocused, setIsFocused] = useState(false);
+  const [isListening, setIsListening] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -219,6 +221,57 @@ const SearchBar = () => {
   // Rotate placeholders when not focused and input is empty
 
 
+  const handleVoiceSearch = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error('Voice search is not supported in your browser');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-IN'; // Default to Indian English
+
+    setIsListening(true);
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setSearchQuery(transcript);
+      setShowSuggestions(true);
+      setIsListening(false);
+      
+      // Auto-submit after voice recognition
+      setTimeout(() => {
+        saveRecentSearch(transcript);
+        const searchRoute = `/search?q=${encodeURIComponent(transcript.trim())}`;
+        navigate(searchRoute);
+        setShowSuggestions(false);
+      }, 500);
+    };
+
+    recognition.onerror = (event) => {
+      setIsListening(false);
+      console.error('Speech recognition error:', event.error);
+      if (event.error === 'not-allowed') {
+        toast.error('Microphone permission denied');
+      } else {
+        toast.error('Voice recognition failed');
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error('Speech recognition start failed:', err);
+      setIsListening(false);
+    }
+  };
+
   const recentSearches = getRecentSearches();
   const hasSuggestions = suggestions.length > 0 || recentSearches.length > 0 || popularSearches.length > 0;
 
@@ -236,8 +289,29 @@ const SearchBar = () => {
             onBlur={handleInputBlur}
             onKeyDown={handleKeyDown}
             placeholder="Search products..."
-            className="w-full pl-12 pr-4 py-3 glass-card rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:shadow-glow transition-all duration-300 text-gray-700 placeholder:text-gray-400"
+            className="w-full pl-12 pr-12 py-3 glass-card rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:shadow-glow transition-all duration-300 text-gray-700 placeholder:text-gray-400"
           />
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1 z-10">
+            <motion.button
+              type="button"
+              onClick={handleVoiceSearch}
+              whileTap={{ scale: 0.9 }}
+              className={`p-2 rounded-lg transition-colors ${isListening
+                ? 'bg-red-100 text-red-600'
+                : 'hover:bg-gray-100 text-gray-400'
+                }`}
+            >
+              <motion.div
+                animate={isListening ? {
+                  scale: [1, 1.2, 1],
+                  opacity: [1, 0.5, 1]
+                } : {}}
+                transition={{ duration: 0.8, repeat: isListening ? Infinity : 0 }}
+              >
+                <FiMic className={isListening ? "text-red-500" : "text-gray-400"} />
+              </motion.div>
+            </motion.button>
+          </div>
         </div>
       </form>
 

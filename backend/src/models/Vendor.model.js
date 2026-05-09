@@ -48,6 +48,19 @@ const vendorSchema = new mongoose.Schema(
             bankName: { type: String, select: false },
             ifscCode: { type: String, select: false },
         },
+        paymentMethods: {
+            bankTransfer: { type: Boolean, default: true },
+            upi: { type: Boolean, default: false },
+            paypal: { type: Boolean, default: false },
+        },
+        upiId: { type: String },
+        paypalEmail: { type: String },
+        socialMedia: {
+            facebook: String,
+            instagram: String,
+            twitter: String,
+            linkedin: String,
+        },
         documents: {
             gst: String,
             pan: String,

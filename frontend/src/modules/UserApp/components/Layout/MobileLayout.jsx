@@ -3,11 +3,10 @@ import { useLocation } from 'react-router-dom';
 import MobileHeader from './MobileHeader';
 import DesktopHeader from './DesktopHeader';
 import MobileBottomNav from './MobileBottomNav';
-import MobileCartBar from './MobileCartBar';
 import CartDrawer from '../../../../shared/components/Cart/CartDrawer';
 import useMobileHeaderHeight from '../../hooks/useMobileHeaderHeight';
 
-const MobileLayout = ({ children, showBottomNav = true, showCartBar = true }) => {
+const MobileLayout = ({ children, showBottomNav = true }) => {
   const location = useLocation();
   const headerHeight = useMobileHeaderHeight();
   // Hide header and bottom nav on login, register, and verification pages
@@ -41,12 +40,10 @@ const MobileLayout = ({ children, showBottomNav = true, showCartBar = true }) =>
       {!isAuthPage && !isCheckoutPage && <DesktopHeader />}
       {shouldShowHeader && <MobileHeader />}
       <main
-        className={`min-h-screen w-full overflow-x-hidden ${shouldShowBottomNav ? 'pb-20' : ''} ${showCartBar ? 'pb-24' : ''}`}
-        style={{ paddingTop: shouldShowHeader ? `${headerHeight}px` : '0px' }}
-      >
+        className={`min-h-screen w-full overflow-x-hidden ${shouldShowBottomNav ? "pb-20" : ""}`}
+        style={{ paddingTop: shouldShowHeader ? `${headerHeight}px` : "0px" }}>
         {children}
       </main>
-      {showCartBar && <MobileCartBar />}
       {shouldShowBottomNav && <MobileBottomNav />}
       <CartDrawer />
     </>

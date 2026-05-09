@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiArrowLeft } from 'react-icons/fi';
@@ -19,8 +19,18 @@ const MobileRegister = () => {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
-  } = useForm();
+  } = useForm({
+    defaultValues: JSON.parse(localStorage.getItem('temp-register-data') || '{}')
+  });
+
+  const formData = watch();
+
+  // Save form data to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('temp-register-data', JSON.stringify(formData));
+  }, [formData]);
 
   const password = watch('password');
 
@@ -39,6 +49,7 @@ const MobileRegister = () => {
       const phone = data.phone;
 
       await registerUser(fullName, data.email, data.password, phone);
+      localStorage.removeItem('temp-register-data');
       toast.success('Registration successful!');
       // Navigate to verification page
       navigate('/verification', { state: { email: data.email } });

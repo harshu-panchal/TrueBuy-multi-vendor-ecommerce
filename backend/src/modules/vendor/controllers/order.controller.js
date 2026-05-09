@@ -179,7 +179,9 @@ export const getEarnings = asyncHandler(async (req, res) => {
         const orderRef = commission.orderId?._id || commission.orderId;
         const orderDisplayId = commission.orderId?.orderId || String(orderRef || '');
         const orderStatus = String(commission.orderId?.status || '').toLowerCase();
-        const effectiveStatus = orderStatus === 'cancelled' ? 'cancelled' : String(commission.status || 'pending');
+        const effectiveStatus = (orderStatus === 'cancelled' || orderStatus === 'returned')
+            ? 'cancelled'
+            : (String(commission.status || 'pending') === 'paid' || orderStatus === 'delivered' ? 'paid' : 'pending');
         return {
             ...commission,
             orderRef,
@@ -192,11 +194,13 @@ export const getEarnings = asyncHandler(async (req, res) => {
         const c = doc.toObject();
         const status = String(c.status || 'pending');
         const orderStatus = String(c.orderId?.status || '').toLowerCase();
-        const effectiveStatus = orderStatus === 'cancelled' ? 'cancelled' : status;
+        const effectiveStatus = (orderStatus === 'cancelled' || orderStatus === 'returned')
+            ? 'cancelled'
+            : (status === 'paid' || orderStatus === 'delivered' ? 'paid' : 'pending');
         const earnings = Number(c.vendorEarnings || 0);
         const commissionAmount = Number(c.commission || 0);
 
-        // Cancelled commissions should not contribute to active earnings totals.
+        // Cancelled/Returned commissions should not contribute to active earnings totals.
         if (effectiveStatus !== 'cancelled') {
             acc.totalEarnings += earnings;
             acc.totalCommission += commissionAmount;

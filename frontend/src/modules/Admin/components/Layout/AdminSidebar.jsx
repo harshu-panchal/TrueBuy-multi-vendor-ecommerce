@@ -215,6 +215,19 @@ const AdminSidebar = ({ isOpen, onClose }) => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      document.body.classList.add("modal-open");
+    } else {
+      document.body.classList.remove("modal-open");
+    }
+
+    return () => {
+      document.body.classList.remove("modal-open");
+    };
+  }, [isOpen, isMobile]);
+
   // Auto-close sidebar on mobile when route changes
   useEffect(() => {
     // Only close when route actually changes, not when sidebar opens

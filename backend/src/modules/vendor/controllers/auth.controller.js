@@ -250,6 +250,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
         'shippingMethods',
         'handlingTime',
         'processingTime',
+        'socialMedia',
     ];
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const vendor = await Vendor.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true }).select('-password -otp -otpExpiry');
@@ -258,16 +259,21 @@ export const updateProfile = asyncHandler(async (req, res) => {
 
 // PUT /api/vendor/auth/bank-details
 export const updateBankDetails = asyncHandler(async (req, res) => {
-    const { accountName, accountNumber, bankName, ifscCode } = req.body;
-    if (!accountName && !accountNumber && !bankName && !ifscCode) {
-        throw new ApiError(400, 'At least one bank detail field is required.');
-    }
+    const { accountName, accountNumber, bankName, ifscCode, upiId, paypalEmail, paymentMethods } = req.body;
 
     const updates = {};
     if (accountName) updates['bankDetails.accountName'] = accountName;
     if (accountNumber) updates['bankDetails.accountNumber'] = accountNumber;
     if (bankName) updates['bankDetails.bankName'] = bankName;
     if (ifscCode) updates['bankDetails.ifscCode'] = ifscCode;
+    
+    if (upiId !== undefined) updates.upiId = upiId;
+    if (paypalEmail !== undefined) updates.paypalEmail = paypalEmail;
+    if (paymentMethods) updates.paymentMethods = paymentMethods;
+
+    if (Object.keys(updates).length === 0) {
+        throw new ApiError(400, 'At least one field is required to update.');
+    }
 
     const vendor = await Vendor.findByIdAndUpdate(
         req.user.id,

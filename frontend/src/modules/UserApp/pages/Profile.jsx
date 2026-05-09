@@ -407,7 +407,14 @@ const MobileProfile = () => {
                                 value: 2,
                                 message: 'Name must be at least 2 characters',
                               },
+                              pattern: {
+                                value: /^[a-zA-Z\s]+$/,
+                                message: 'Full name can only contain alphabets and spaces',
+                              },
                             })}
+                            onInput={(e) => {
+                              e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, "");
+                            }}
                             className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 ${personalErrors.name
                               ? 'border-red-300 focus:border-red-500'
                               : 'border-gray-200 focus:border-primary-500'
@@ -476,9 +483,16 @@ const MobileProfile = () => {
                           <input
                             type="tel"
                             {...registerPersonal('phone', {
-                              validate: (value) =>
-                                !value || isValidPhone(value) || 'Please enter a valid phone number',
+                              required: 'Phone number is required',
+                              pattern: {
+                                value: /^[0-9]{10}$/,
+                                message: 'Phone number must be exactly 10 digits',
+                              },
                             })}
+                            onInput={(e) => {
+                              e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                            }}
+                            maxLength="10"
                             className={`w-full pl-12 pr-4 py-3 rounded-xl border-2 ${personalErrors.phone
                               ? 'border-red-300 focus:border-red-500'
                               : 'border-gray-200 focus:border-primary-500'

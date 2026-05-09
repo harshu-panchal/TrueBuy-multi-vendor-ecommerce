@@ -31,7 +31,7 @@ const DeliveryRegister = () => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^[0-9]{10}$/;
     const nameRegex = /^[a-zA-Z\s.]+$/;
-    const vehicleNumberRegex = /^[A-Z0-9-\s]+$/i;
+    const vehicleNumberRegex = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/i;
 
     if (!formData.name.trim()) {
       newErrors.name = "Full name is required";
@@ -59,7 +59,7 @@ const DeliveryRegister = () => {
     if (!formData.vehicleNumber.trim()) {
       newErrors.vehicleNumber = "Vehicle number is required";
     } else if (!vehicleNumberRegex.test(formData.vehicleNumber.trim())) {
-      newErrors.vehicleNumber = "Invalid vehicle number format";
+      newErrors.vehicleNumber = "Format: MH01AB1234 or MH01A1234";
     }
 
     if (!formData.password) {
@@ -235,7 +235,7 @@ const DeliveryRegister = () => {
                 <label className="text-sm font-medium text-gray-600 block px-1">Vehicle Number</label>
                 <div className="relative">
                   <FiTruck className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.vehicleNumber ? 'text-red-500' : 'text-gray-400'}`} />
-                  <input type="text" name="vehicleNumber" value={formData.vehicleNumber} onChange={handleChange} placeholder="ABC-1234" className={`w-full pl-12 pr-6 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.vehicleNumber ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
+                  <input type="text" name="vehicleNumber" value={formData.vehicleNumber} onChange={handleChange} placeholder="MH01AB1234" className={`w-full pl-12 pr-6 py-4 rounded-2xl transition-all outline-none text-gray-900 border ${errors.vehicleNumber ? 'border-red-500 bg-red-50 focus:border-red-600 focus:ring-red-100' : 'bg-gray-50 border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5'}`} />
                 </div>
                 {errors.vehicleNumber && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.vehicleNumber}</p>}
               </div>

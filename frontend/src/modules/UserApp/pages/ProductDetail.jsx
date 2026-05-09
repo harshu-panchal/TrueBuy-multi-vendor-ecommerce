@@ -204,6 +204,7 @@ const MobileProductDetail = () => {
     )
     : false;
   const productReviews = product ? sortReviews(product.id, "newest") : [];
+  const isOutOfStock = product.stock === "out_of_stock" || Number(product.stockQuantity || 0) <= 0;
 
   useEffect(() => {
     let active = true;
@@ -584,8 +585,8 @@ const MobileProductDetail = () => {
                         {product.reviewCount || 0} Reviews
                       </span>
                       <span className="text-gray-300">|</span>
-                      <span className="text-green-600 text-sm font-medium bg-green-50 px-2 py-1 rounded-lg">
-                        {product.stock === "in_stock" ? "In Stock" : product.stock === "low_stock" ? "Low Stock" : "Out of Stock"}
+                      <span className={`text-sm font-medium px-2 py-1 rounded-lg ${isOutOfStock ? "text-red-600 bg-red-50" : "text-green-600 bg-green-50"}`}>
+                        {isOutOfStock ? "Out of Stock" : product.stock === "low_stock" ? "Low Stock" : "In Stock"}
                       </span>
                     </div>
                   )}
@@ -660,14 +661,14 @@ const MobileProductDetail = () => {
                 <div className="hidden lg:grid grid-cols-5 gap-3 py-2">
                   <button
                     onClick={handleAddToCart}
-                    disabled={product.stock === "out_of_stock"}
-                    className={`col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${product.stock === "out_of_stock"
+                    disabled={isOutOfStock}
+                    className={`col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${isOutOfStock
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                       : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5"
                       }`}>
                     <FiShoppingBag className="text-xl" />
                     <span>
-                      {product.stock === "out_of_stock"
+                      {isOutOfStock
                         ? "Out of Stock"
                         : "Add to Cart"}
                     </span>
@@ -850,14 +851,14 @@ const MobileProductDetail = () => {
             </button>
             <button
               onClick={handleAddToCart}
-              disabled={product.stock === "out_of_stock"}
-              className={`flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 ${product.stock === "out_of_stock"
+              disabled={isOutOfStock}
+              className={`flex-1 py-4 rounded-xl font-semibold text-base transition-all duration-300 flex items-center justify-center gap-2 ${isOutOfStock
                 ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                 : "gradient-green text-white hover:shadow-glow-green"
                 }`}>
               <FiShoppingBag className="text-xl" />
               <span>
-                {product.stock === "out_of_stock"
+                {isOutOfStock
                   ? "Out of Stock"
                   : "Add to Cart"}
               </span>

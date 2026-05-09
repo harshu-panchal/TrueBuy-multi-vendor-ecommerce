@@ -4,13 +4,19 @@ export const registerSchema = Joi.object({
     name: Joi.string().trim().min(2).max(50).pattern(/^[a-zA-Z\s]+$/).required().messages({
         'string.pattern.base': 'Name can only contain alphabets and spaces.',
     }),
-    email: Joi.string().email().lowercase().required(),
+    email: Joi.string().trim().pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|in|org)$/).lowercase().required().messages({
+        'string.pattern.base': 'Email must be in a valid format and end with .com, .in, or .org',
+    }),
     password: Joi.string().min(6).required(),
-    phone: Joi.string().pattern(/^[0-9]{10}$/).optional(),
+    phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+        'string.pattern.base': 'Phone number must be exactly 10 digits.',
+    }),
 });
 
 export const loginSchema = Joi.object({
-    email: Joi.string().email().required(),
+    email: Joi.string().trim().pattern(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|in|org)$/).lowercase().required().messages({
+        'string.pattern.base': 'Invalid email format.',
+    }),
     password: Joi.string().required(),
 });
 

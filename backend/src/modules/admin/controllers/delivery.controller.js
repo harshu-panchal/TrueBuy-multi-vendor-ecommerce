@@ -160,7 +160,7 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
             $group: {
                 _id: null,
                 totalDeliveries: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
-                totalEarnings: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, '$shipping', 0] } },
+                totalShipping: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, '$shipping', 0] } },
                 cashInHand: {
                     $sum: {
                         $cond: [
@@ -180,7 +180,8 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
         }
     ]);
 
-    const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, totalEarnings: 0, cashInHand: 0 };
+    const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, totalShipping: 0, cashInHand: 0 };
+    const totalEarnings = (boyStats.totalDeliveries || 0) * 40 + (boyStats.totalShipping || 0);
 
     res.status(200).json(
         new ApiResponse(200, {
@@ -193,7 +194,7 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
                 aadharCard: buildDocUrl(req, boy.documents?.aadharCard || ''),
             },
             totalDeliveries: boyStats.totalDeliveries,
-            totalEarnings: boyStats.totalEarnings,
+            totalEarnings: totalEarnings,
             cashInHand: boyStats.cashInHand,
             stats: boyStats,
             recentOrders: orders

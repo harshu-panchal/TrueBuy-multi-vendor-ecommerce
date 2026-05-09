@@ -3,6 +3,7 @@ const runtimeDefaultApiBase =
   typeof window !== 'undefined' ? `${window.location.origin}/api` : '/api';
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || runtimeDefaultApiBase;
+export const SERVER_URL = API_BASE_URL.replace(/\/api\/?$/, '');
 
 // App Constants
 export const APP_NAME = 'Tru Buy';

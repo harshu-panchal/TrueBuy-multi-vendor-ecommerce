@@ -9,7 +9,17 @@ const deliveryBoySchema = new mongoose.Schema(
         phone: { type: String, required: true },
         address: { type: String, trim: true },
         vehicleType: { type: String, trim: true },
-        vehicleNumber: { type: String, trim: true },
+        vehicleNumber: {
+            type: String,
+            trim: true,
+            validate: {
+                validator: function (v) {
+                    // Format: 2 letters, 2 digits, 1-2 letters, 4 digits (e.g. MH01AB1234 or MH01A1234)
+                    return !v || /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/i.test(v);
+                },
+                message: (props) => `${props.value} is not a valid vehicle number! Format: MH01AB1234`,
+            },
+        },
         avatar: { type: String },
         applicationStatus: {
             type: String,
@@ -41,6 +51,12 @@ const deliveryBoySchema = new mongoose.Schema(
         totalDeliveries: { type: Number, default: 0 },
         rating: { type: Number, default: 0 },
         cashCollected: { type: Number, default: 0 },
+        bankDetails: {
+            accountHolderName: { type: String, trim: true },
+            accountNumber: { type: String, trim: true },
+            ifscCode: { type: String, trim: true },
+            bankName: { type: String, trim: true },
+        },
     },
     { timestamps: true }
 );

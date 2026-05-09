@@ -7,7 +7,7 @@ import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
-import { uploadDeliveryDocuments } from '../../../middlewares/upload.js';
+import { uploadDeliveryDocuments, uploadDeliveryAvatar } from '../../../middlewares/upload.js';
 import {
     loginSchema,
     registerSchema,
@@ -41,6 +41,7 @@ router.post('/auth/refresh', validate(refreshTokenSchema), authController.refres
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...deliveryAuth, authController.getProfile);
 router.put('/auth/profile', ...deliveryAuth, authController.updateProfile);
+router.patch('/auth/avatar', ...deliveryAuth, uploadDeliveryAvatar, authController.updateAvatar);
 
 // Orders
 router.get('/orders', ...deliveryAuth, orderController.getAssignedOrders);

@@ -187,7 +187,8 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
             {
                 $group: {
                     _id: null,
-                    totalDeliveryFees: { $sum: { $ifNull: ['$shipping', 0] } },
+                    totalDeliveries: { $sum: 1 },
+                    totalShipping: { $sum: { $ifNull: ['$shipping', 0] } },
                 },
             },
         ]),
@@ -208,8 +209,8 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
             Number(countByStatus.cancelled || 0) +
             Number(countByStatus.returned || 0),
         completedToday: Number(completedTodayCount || 0),
-        openOrders: Number(countByStatus.pending || 0) + Number(countByStatus.processing || 0),
-        earnings: Number(earningsStats?.[0]?.totalDeliveryFees || 0),
+        pendingOrders: Number(countByStatus.pending || 0) + Number(countByStatus.processing || 0),
+        earnings: Number((earningsStats?.[0]?.totalDeliveries || 0) * 40 + (earningsStats?.[0]?.totalShipping || 0)),
         recentOrders,
     };
 
@@ -235,7 +236,7 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
                 $group: {
                     _id: null,
                     totalDeliveries: { $sum: 1 },
-                    earnings: { $sum: { $ifNull: ['$shipping', 0] } },
+                    totalShipping: { $sum: { $ifNull: ['$shipping', 0] } },
                 },
             },
         ]),
@@ -258,7 +259,7 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
             {
                 totalDeliveries: Number(row.totalDeliveries || 0),
                 completedToday: Number(completedTodayCount || 0),
-                earnings: Number(row.earnings || 0),
+                earnings: Number((row.totalDeliveries || 0) * 40 + (row.totalShipping || 0)),
             },
             'Profile summary fetched.'
         )

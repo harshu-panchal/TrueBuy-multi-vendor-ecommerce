@@ -156,16 +156,16 @@ const MobileSearch = () => {
   };
 
   const handleVoiceSearch = () => {
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
       toast.error('Voice search is not supported in your browser');
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    recognition.lang = 'en-IN';
 
     setIsListening(true);
 
@@ -175,18 +175,35 @@ const MobileSearch = () => {
       setShowSuggestions(false);
       setIsListening(false);
       saveRecentSearch(transcript);
+      
+      // Auto trigger search after voice input
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set('q', transcript);
+      setSearchParams(newParams);
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
       setIsListening(false);
-      toast.error('Voice recognition error');
+      if (event.error === 'not-allowed') {
+        toast.error('Microphone permission denied');
+      } else if (event.error === 'network') {
+        toast.error('Network error during recognition');
+      } else {
+        toast.error('Voice recognition failed');
+      }
+      console.error('Speech recognition error:', event.error);
     };
 
     recognition.onend = () => {
       setIsListening(false);
     };
 
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error('Speech recognition start failed:', err);
+      setIsListening(false);
+    }
   };
 
   const categories = useMemo(() => {

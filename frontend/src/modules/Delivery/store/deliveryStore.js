@@ -289,6 +289,23 @@ export const useDeliveryAuthStore = create(
         }
       },
 
+      updateAvatar: async (formData) => {
+        set({ isLoading: true });
+        try {
+          const response = await api.patch('/delivery/auth/avatar', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+          });
+          const payload = unwrapApiData(response);
+          const current = get().deliveryBoy || {};
+          const deliveryBoy = normalizeDeliveryBoy({ ...current, avatar: payload.avatar });
+          set({ deliveryBoy, isLoading: false });
+          return deliveryBoy;
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       fetchOrders: async (options = {}) => {
         set({ isLoadingOrders: true });
         try {
@@ -338,7 +355,7 @@ export const useDeliveryAuthStore = create(
         return {
           totalOrders: Number(payload?.totalOrders || 0),
           completedToday: Number(payload?.completedToday || 0),
-          openOrders: Number(payload?.openOrders || 0),
+          pendingOrders: Number(payload?.pendingOrders || 0),
           earnings: Number(payload?.earnings || 0),
           recentOrders: recentRaw.map(normalizeOrder),
         };

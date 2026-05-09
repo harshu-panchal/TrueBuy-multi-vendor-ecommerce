@@ -22,6 +22,19 @@ const DeliveryLayout = () => {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
+  // Prevent body scroll when sidebar is open
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.classList.add("modal-open");
+    } else {
+      document.body.classList.remove("modal-open");
+    }
+
+    return () => {
+      document.body.classList.remove("modal-open");
+    };
+  }, [sidebarOpen]);
+
   const handleLogout = () => {
     logout();
     toast.success("Logged out successfully");

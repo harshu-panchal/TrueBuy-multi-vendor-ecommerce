@@ -512,6 +512,36 @@ export const placeOrder = asyncHandler(async (req, res) => {
     const responseMessage = idempotentReplay
         ? 'Duplicate order request ignored. Returning existing order.'
         : 'Order placed successfully.';
+
+    // Notify vendors for COD orders immediately
+    if (!idempotentReplay && (normalizedPaymentMethod === 'cod' || normalizedPaymentMethod === 'cash')) {
+        // Update order status to processing for COD
+        await Order.updateOne({ _id: order._id }, { 
+            $set: { 
+                status: 'processing',
+                'vendorItems.$[].status': 'processing'
+            } 
+        });
+
+        // Notify vendors
+        if (Array.isArray(order.vendorItems)) {
+            for (const vGroup of order.vendorItems) {
+                await createNotification({
+                    recipientId: vGroup.vendorId,
+                    recipientType: 'vendor',
+                    title: 'New Order Received',
+                    message: `You have received a new order ${order.orderId}.`,
+                    type: 'order',
+                    data: {
+                        orderId: String(order.orderId),
+                        amount: vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount,
+                        itemCount: vGroup.items.length
+                    }
+                });
+            }
+        }
+    }
+
     res.status(responseStatus).json(
         new ApiResponse(
             responseStatus,
@@ -672,6 +702,24 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     }
 
     await order.save();
+
+    // Notify vendors about the confirmed payment and new order
+    if (Array.isArray(order.vendorItems)) {
+        for (const vGroup of order.vendorItems) {
+            await createNotification({
+                recipientId: vGroup.vendorId,
+                recipientType: 'vendor',
+                title: 'New Order Received',
+                message: `You have received a new order ${order.orderId}. Payment confirmed.`,
+                type: 'order',
+                data: {
+                    orderId: String(order.orderId),
+                    amount: vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount,
+                    itemCount: vGroup.items.length
+                }
+            });
+        }
+    }
 
     res.status(200).json(new ApiResponse(200, {
         orderId: order.orderId,
