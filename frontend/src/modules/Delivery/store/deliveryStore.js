@@ -429,6 +429,23 @@ export const useDeliveryAuthStore = create(
         };
       },
 
+      // ─── Finance Actions ─────────────────────────────────────────────────────────
+
+      fetchFinanceSummary: async () => {
+        const response = await api.get('/delivery/finance/summary');
+        return unwrapApiData(response);
+      },
+
+      fetchWithdrawRequests: async (params = {}) => {
+        const response = await api.get('/delivery/finance/withdraw-requests', { params });
+        return unwrapApiData(response);
+      },
+
+      createWithdrawRequest: async (data) => {
+        const response = await api.post('/delivery/finance/withdraw-request', data);
+        return unwrapApiData(response);
+      },
+
       // Initialize delivery auth state from localStorage
       initialize: () => {
         const token = localStorage.getItem('delivery-token');

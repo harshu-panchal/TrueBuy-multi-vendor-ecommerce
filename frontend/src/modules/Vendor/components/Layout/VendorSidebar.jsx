@@ -72,6 +72,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Earnings Overview": "/vendor/earnings/overview",
       "Commission History": "/vendor/earnings/commission-history",
       "Settlement History": "/vendor/earnings/settlement-history",
+      "Withdrawals": "/vendor/earnings/withdrawals",
     },
     "/vendor/settings": {
       "Store Settings": "/vendor/settings/store",

@@ -322,3 +322,13 @@ export const updatePolicy = (type, content) =>
 export const getAdminNotifications = (params) => api.get('/admin/notifications', { params });
 export const markNotificationAsRead = (id) => api.put(`/admin/notifications/${id}/read`);
 export const markAllNotificationsAsRead = () => api.put('/admin/notifications/read-all');
+
+// ─── Finance Management ───────────────────────────────────────────────────────
+export const getAdminWithdrawRequests = (params = {}) =>
+    api.get('/admin/finance/withdraw-requests', { params });
+
+export const getAdminFinanceStats = () =>
+    api.get('/admin/finance/stats');
+
+export const processWithdrawRequest = (id, action, data = {}) =>
+    api.post(`/admin/finance/withdraw-request/${id}/${action}`, data);

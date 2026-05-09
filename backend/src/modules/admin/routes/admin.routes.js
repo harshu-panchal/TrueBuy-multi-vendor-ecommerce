@@ -15,6 +15,7 @@ import * as notificationController from '../controllers/notification.controller.
 import * as uploadController from '../controllers/upload.controller.js';
 import * as systemController from '../controllers/system.controller.js';
 import * as b2bController from '../controllers/b2b.controller.js';
+import * as financeController from '../controllers/finance.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -161,6 +162,11 @@ router.delete('/delivery-boys/:id', ...adminAuth, validate(deliveryBoyIdParamSch
 router.patch('/delivery-boys/:id/status', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryStatusSchema), deliveryController.updateDeliveryBoyStatus);
 router.patch('/delivery-boys/:id/application-status', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), validate(updateDeliveryApplicationStatusSchema), deliveryController.updateDeliveryBoyApplicationStatus);
 router.post('/delivery-boys/:id/settle-cash', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), validate(settleCashSchema), deliveryController.settleCash);
+
+// ─── Finance & Payouts ────────────────────────────────────────────────────────
+router.get('/finance/withdraw-requests', ...adminAuth, financeController.getWithdrawRequests);
+router.patch('/finance/withdraw-requests/:id', ...adminAuth, financeController.updateWithdrawRequestStatus);
+router.get('/finance/stats', ...adminAuth, financeController.getFinanceStats);
 
 // ─── Return Requests ──────────────────────────────────────────────────────────
 router.get('/return-requests', ...adminAuth, returnController.getAllReturnRequests);

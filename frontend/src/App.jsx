@@ -128,6 +128,7 @@ import OrderTrends from "./modules/Admin/pages/finance/OrderTrends";
 import PaymentBreakdown from "./modules/Admin/pages/finance/PaymentBreakdown";
 import TaxReports from "./modules/Admin/pages/finance/TaxReports";
 import RefundReports from "./modules/Admin/pages/finance/RefundReports";
+import AdminMoneyRequests from "./modules/Admin/pages/finance/WithdrawRequests";
 // Consolidated Settings pages
 import GeneralSettings from "./modules/Admin/pages/settings/GeneralSettings";
 import PaymentShippingSettings from "./modules/Admin/pages/settings/PaymentShippingSettings";
@@ -189,6 +190,7 @@ import DeliveryOrderDetail from "./modules/Delivery/pages/OrderDetail";
 import DeliveryReturnPickup from "./modules/Delivery/pages/ReturnPickup";
 import DeliveryProfile from "./modules/Delivery/pages/Profile";
 import DeliveryNotifications from "./modules/Delivery/pages/Notifications";
+import DeliveryFinance from "./modules/Delivery/pages/Finance";
 // Vendor Routes
 import VendorLogin from "./modules/Vendor/pages/Login";
 import VendorRegister from "./modules/Vendor/pages/Register";
@@ -605,6 +607,7 @@ const AppRoutes = () => {
         />
         <Route path="finance/tax-reports" element={<TaxReports />} />
         <Route path="finance/refund-reports" element={<RefundReports />} />
+        <Route path="finance/money-requests" element={<AdminMoneyRequests />} />
         <Route path="analytics" element={<Analytics />} />
         <Route
           path="settings"
@@ -655,6 +658,7 @@ const AppRoutes = () => {
         <Route path="orders/:id" element={<DeliveryOrderDetail />} />
         <Route path="return-pickup/:id" element={<DeliveryReturnPickup />} />
         <Route path="notifications" element={<DeliveryNotifications />} />
+        <Route path="finance" element={<DeliveryFinance />} />
         <Route path="profile" element={<DeliveryProfile />} />
       </Route>
       {/* Vendor Routes */}
@@ -697,6 +701,10 @@ const AppRoutes = () => {
         />
         <Route
           path="earnings/settlement-history"
+          element={<VendorEarnings />}
+        />
+        <Route
+          path="earnings/withdrawals"
           element={<VendorEarnings />}
         />
         <Route path="stock-management" element={<VendorStockManagement />} />

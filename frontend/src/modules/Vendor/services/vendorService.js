@@ -506,6 +506,28 @@ export const getVendorEarnings = () => api.get('/vendor/earnings');
 export const updateVendorBankDetails = (data) =>
     api.put('/vendor/auth/bank-details', data);
 
+// ─── FINANCE & WITHDRAWALS ─────────────────────────────────────────────────────
+
+/**
+ * Get vendor finance summary (withdrawable balance, pending requests, etc.)
+ */
+export const getVendorFinanceSummary = () =>
+    api.get('/vendor/finance/summary');
+
+/**
+ * Get vendor's own withdrawal requests
+ * @param {{ page?, limit? }} params
+ */
+export const getVendorWithdrawRequests = (params = {}) =>
+    api.get('/vendor/finance/withdraw-requests', { params });
+
+/**
+ * Create a new withdrawal request
+ * @param {{ amount: number, notes?: string }} data
+ */
+export const createVendorWithdrawRequest = (data) =>
+    api.post('/vendor/finance/withdraw-request', data);
+
 /**
  * Upload a single vendor image using multer + Cloudinary pipeline
  * @param {File} file

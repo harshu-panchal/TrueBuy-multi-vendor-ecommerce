@@ -13,6 +13,7 @@ import * as returnController from '../controllers/return.controller.js';
 import * as reviewController from '../controllers/review.controller.js';
 import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
+import * as financeController from '../controllers/finance.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -96,8 +97,11 @@ router.get('/performance/metrics', ...vendorAuth, performanceController.getPerfo
 // Analytics
 router.get('/analytics/overview', ...vendorAuth, analyticsController.getAnalyticsOverview);
 
-// Earnings
+// Earnings & Finance
 router.get('/earnings', ...vendorAuth, orderController.getEarnings);
+router.get('/finance/summary', ...vendorAuth, financeController.getFinanceSummary);
+router.get('/finance/withdraw-requests', ...vendorAuth, financeController.getMyWithdrawRequests);
+router.post('/finance/withdraw-request', ...vendorAuth, financeController.createWithdrawRequest);
 
 // Return requests
 router.get('/return-requests', ...vendorAuth, returnController.getVendorReturnRequests);
