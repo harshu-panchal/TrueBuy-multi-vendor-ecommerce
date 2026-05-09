@@ -376,6 +376,7 @@ const AllOrders = () => {
   const [orders, setOrders] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
+  const today = new Date().toISOString().split("T")[0];
   const [dateRange, setDateRange] = useState({
     startDate: "",
     endDate: "",
@@ -602,7 +603,7 @@ const AllOrders = () => {
     },
     {
       key: "total",
-      label: "Total ($)",
+      label: "Total",
       sortable: true,
       render: (value) => (
         <span className="font-bold text-gray-800">{formatCurrency(value)}</span>
@@ -610,7 +611,7 @@ const AllOrders = () => {
     },
     {
       key: "finalTotal",
-      label: "Final Total ($)",
+      label: "Final Total",
       sortable: true,
       render: (value, row) => {
         const finalTotal = calculateFinalTotal(row);
@@ -635,7 +636,7 @@ const AllOrders = () => {
       key: "date",
       label: "Order Date",
       sortable: true,
-      render: (value) => new Date(value).toLocaleString(),
+      render: (value) => formatDateTime(value),
     },
     {
       key: "actions",
@@ -802,10 +803,19 @@ const AllOrders = () => {
                 <input
                   type="date"
                   value={dateRange.startDate}
-                  onChange={(e) =>
-                    setDateRange({ ...dateRange, startDate: e.target.value })
-                  }
-                  max={dateRange.endDate || undefined}
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    if (newDate > today) {
+                      toast.error("Start date cannot be in the future");
+                      return;
+                    }
+                    if (dateRange.endDate && newDate > dateRange.endDate) {
+                      toast.error("Start date cannot be after end date");
+                      return;
+                    }
+                    setDateRange({ ...dateRange, startDate: newDate });
+                  }}
+                  max={dateRange.endDate || today}
                   className="w-full sm:w-auto pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base min-w-[140px]"
                   placeholder="Start Date"
                 />
@@ -815,10 +825,20 @@ const AllOrders = () => {
                 <input
                   type="date"
                   value={dateRange.endDate}
-                  onChange={(e) =>
-                    setDateRange({ ...dateRange, endDate: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const newDate = e.target.value;
+                    if (newDate > today) {
+                      toast.error("End date cannot be in the future");
+                      return;
+                    }
+                    if (dateRange.startDate && newDate < dateRange.startDate) {
+                      toast.error("End date cannot be before start date");
+                      return;
+                    }
+                    setDateRange({ ...dateRange, endDate: newDate });
+                  }}
                   min={dateRange.startDate || undefined}
+                  max={today}
                   className="w-full sm:w-auto px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm sm:text-base min-w-[140px]"
                   placeholder="End Date"
                 />
@@ -853,12 +873,12 @@ const AllOrders = () => {
                   },
                 },
                 {
-                  label: "Total ($)",
-                  accessor: (row) => formatCurrency(row.total || 0),
+                  label: "Total",
+                  accessor: (row) => row.total || 0,
                 },
                 {
-                  label: "Final Total ($)",
-                  accessor: (row) => formatCurrency(calculateFinalTotal(row)),
+                  label: "Final Total",
+                  accessor: (row) => calculateFinalTotal(row),
                 },
                 {
                   label: "Payment",

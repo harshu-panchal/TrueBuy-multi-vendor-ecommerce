@@ -28,11 +28,22 @@ const VendorNotificationWindow = ({ isOpen, onClose, position = "right" }) => {
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
       document.addEventListener("touchstart", handleClickOutside);
+      // Prevent background scrolling (body and dashboard main container)
+      document.body.style.overflow = "hidden";
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        mainContent.style.overflow = "hidden";
+      }
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("touchstart", handleClickOutside);
+      document.body.style.overflow = "unset";
+      const mainContent = document.querySelector('main');
+      if (mainContent) {
+        mainContent.style.overflow = "auto";
+      }
     };
   }, [isOpen, onClose]);
 

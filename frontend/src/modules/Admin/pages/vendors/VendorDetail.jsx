@@ -22,7 +22,7 @@ import { getAllOrders, getVendorCommissions } from "../../services/adminService"
 import Badge from "../../../../shared/components/Badge";
 import DataTable from "../../components/DataTable";
 import { formatPrice } from "../../../../shared/utils/helpers";
-// import { formatDateTime } from '../../../utils/adminHelpers';
+import { formatDate } from "../../utils/adminHelpers";
 import toast from "react-hot-toast";
 
 const VendorDetail = () => {
@@ -164,7 +164,7 @@ const VendorDetail = () => {
       key: "date",
       label: "Date",
       sortable: true,
-      render: (value) => new Date(value).toLocaleDateString(),
+      render: (value) => formatDate(value),
     },
     {
       key: "status",
@@ -193,7 +193,7 @@ const VendorDetail = () => {
         const vendorItem = row.vendorItems?.find(
           (vi) => isSameVendorId(vi.vendorId, vendor.id)
         );
-        return formatPrice(vendorItem?.subtotal || 0);
+        return formatPrice(vendorItem?.subtotal || 0, "₹", false);
       },
     },
     {
@@ -220,20 +220,20 @@ const VendorDetail = () => {
       key: "createdAt",
       label: "Date",
       sortable: true,
-      render: (value) => new Date(value).toLocaleDateString(),
+      render: (value) => formatDate(value),
     },
     {
       key: "subtotal",
       label: "Subtotal",
       sortable: true,
-      render: (value) => formatPrice(value),
+      render: (value) => formatPrice(value, "₹", false),
     },
     {
       key: "commission",
       label: "Commission",
       sortable: true,
       render: (value) => (
-        <span className="text-red-600">-{formatPrice(value)}</span>
+        <span className="text-red-600">-{formatPrice(value, "₹", false)}</span>
       ),
     },
     {
@@ -241,7 +241,7 @@ const VendorDetail = () => {
       label: "Vendor Earnings",
       sortable: true,
       render: (value) => (
-        <span className="text-green-600">{formatPrice(value)}</span>
+        <span className="text-green-600">{formatPrice(value, "₹", false)}</span>
       ),
     },
     {
@@ -388,7 +388,7 @@ const VendorDetail = () => {
                       <div>
                         <p className="text-xs text-gray-600">Join Date</p>
                         <p className="font-semibold text-gray-800">
-                          {new Date(vendor.joinDate).toLocaleDateString()}
+                          {formatDate(vendor.joinDate)}
                         </p>
                       </div>
                     </div>
@@ -413,8 +413,8 @@ const VendorDetail = () => {
                       </p>
                       <p className="text-2xl font-bold text-green-800">
                         {earningsSummary
-                          ? formatPrice(earningsSummary.totalEarnings)
-                          : formatPrice(0)}
+                          ? formatPrice(earningsSummary.totalEarnings, "₹", false)
+                          : formatPrice(0, "₹", false)}
                       </p>
                     </div>
                     <div className="bg-yellow-50 rounded-lg p-4">
@@ -423,8 +423,8 @@ const VendorDetail = () => {
                       </p>
                       <p className="text-2xl font-bold text-yellow-800">
                         {earningsSummary
-                          ? formatPrice(earningsSummary.pendingEarnings)
-                          : formatPrice(0)}
+                          ? formatPrice(earningsSummary.pendingEarnings, "₹", false)
+                          : formatPrice(0, "₹", false)}
                       </p>
                     </div>
                     <div className="bg-purple-50 rounded-lg p-4">

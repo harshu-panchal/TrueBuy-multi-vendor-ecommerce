@@ -96,7 +96,16 @@ const MobileRegister = () => {
                 <label className="text-sm font-medium text-gray-600 block px-1">First name</label>
                 <input
                   type="text"
-                  {...register('firstName', { required: 'First name is required' })}
+                  {...register('firstName', { 
+                    required: 'First name is required',
+                    pattern: {
+                      value: /^[A-Za-z\s]+$/,
+                      message: 'Only alphabets are allowed'
+                    }
+                  })}
+                  onInput={(e) => {
+                    e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, '');
+                  }}
                   className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                   placeholder="Vijay"
                 />
@@ -106,7 +115,16 @@ const MobileRegister = () => {
                 <label className="text-sm font-medium text-gray-600 block px-1">Last name</label>
                 <input
                   type="text"
-                  {...register('lastName', { required: 'Last name is required' })}
+                  {...register('lastName', { 
+                    required: 'Last name is required',
+                    pattern: {
+                      value: /^[A-Za-z\s]+$/,
+                      message: 'Only alphabets are allowed'
+                    }
+                  })}
+                  onInput={(e) => {
+                    e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, '');
+                  }}
                   className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                   placeholder="Bhuva"
                 />
@@ -146,8 +164,11 @@ const MobileRegister = () => {
                   type="tel"
                   {...register('phone', {
                     required: 'Phone number is required',
-                    validate: (value) => isValidPhone(value) || 'Please enter a valid phone number',
+                    validate: (value) => value.length === 10 || 'Phone number must be 10 digits',
                   })}
+                  onInput={(e) => {
+                    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
+                  }}
                   className="flex-1 px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                   placeholder="9876543210"
                 />

@@ -27,6 +27,18 @@ export const customerAddressParamsSchema = Joi.object({
     addressId: objectId.required(),
 });
 
+export const customerAddressUpdateSchema = Joi.object({
+    name: Joi.string().trim().max(50).optional(),
+    fullName: Joi.string().trim().max(100).optional(),
+    phone: Joi.string().trim().max(20).optional(),
+    address: Joi.string().trim().max(500).optional(),
+    city: Joi.string().trim().max(100).optional(),
+    state: Joi.string().trim().max(100).optional(),
+    zipCode: Joi.string().trim().max(20).optional(),
+    country: Joi.string().trim().max(100).optional(),
+    isDefault: Joi.boolean().optional(),
+}).min(1);
+
 export const customerOrdersQuerySchema = Joi.object({
     page: Joi.number().integer().min(1).optional(),
     limit: Joi.number().integer().min(1).max(200).optional(),

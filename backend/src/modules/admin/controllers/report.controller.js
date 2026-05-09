@@ -107,7 +107,7 @@ export const getInventoryReport = asyncHandler(async (req, res) => {
                     totalProducts: { $sum: 1 },
                     activeProducts: {
                         $sum: {
-                            $cond: [{ $ne: ['$isActive', false] }, 1, 0]
+                            $cond: [{ $eq: ['$isActive', true] }, 1, 0]
                         }
                     },
                     lowStock: {
@@ -133,9 +133,16 @@ export const getInventoryReport = asyncHandler(async (req, res) => {
         ]),
     ]);
 
-    const aggregated = summaryAgg?.[0] || {};
+    const aggregated = summaryAgg?.[0] || {
+        totalProducts: total,
+        activeProducts: 0,
+        lowStock: 0,
+        outOfStock: 0,
+        totalValue: 0
+    };
+
     const summary = {
-        totalProducts: Number(aggregated.totalProducts) || 0,
+        totalProducts: Number(aggregated.totalProducts || total) || 0,
         activeProducts: Number(aggregated.activeProducts) || 0,
         lowStock: Number(aggregated.lowStock) || 0,
         outOfStock: Number(aggregated.outOfStock) || 0,

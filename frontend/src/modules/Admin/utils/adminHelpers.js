@@ -1,33 +1,55 @@
 // Format currency for admin display
-export const formatCurrency = (amount) => {
+export const formatCurrency = (amount, includeSymbol = false) => {
+  const numAmount = Number(amount) || 0;
+  if (includeSymbol) {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(numAmount);
+  }
   return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(numAmount);
 };
 
-// Format date for admin display
+// Format date for admin display (Default: DD/MM/YYYY)
 export const formatDate = (date, options = {}) => {
+  if (!date) return '—';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+
+  // If no options provided, use DD/MM/YYYY
+  if (Object.keys(options).length === 0) {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
   const defaultOptions = {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     ...options,
   };
-  return new Date(date).toLocaleDateString('en-US', defaultOptions);
+  return d.toLocaleDateString('en-GB', defaultOptions); // en-GB uses DD/MM/YYYY
 };
 
 // Format date and time
 export const formatDateTime = (date) => {
-  return new Date(date).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  if (!date) return '—';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  
+  return `${day}/${month}/${year} ${time}`;
 };
 
 // Calculate percentage change
@@ -70,8 +92,8 @@ export const generateCSV = (data, headers, filename) => {
   // Combine header and data
   const csvContent = [headerRow, ...dataRows].join('\n');
 
-  // Create blob and download
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Create blob and download with BOM for Excel compatibility
+  const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
   

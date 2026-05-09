@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiCheck, FiSettings, FiChevronDown, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import { getOnlineCustomers } from '../../services/adminService';
+import { formatDateTime } from '../../utils/adminHelpers';
+import toast from 'react-hot-toast';
 
 const OnlineCustomers = () => {
   const [showSettings, setShowSettings] = useState(false);
@@ -26,7 +29,35 @@ const OnlineCustomers = () => {
     lastVisitedPage: true
   });
 
-  const [onlineData] = useState([]);
+  const [onlineData, setOnlineData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchOnlineCustomers = async () => {
+    setLoading(true);
+    try {
+      const response = await getOnlineCustomers();
+      if (response && response.success) {
+        const data = (response.data || []).map(item => ({
+          ...item,
+          lastActivity: formatDateTime(item?.lastActivity),
+          createdOn: formatDateTime(item?.createdOn)
+        }));
+        setOnlineData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching online customers:', error);
+      toast.error('Failed to fetch online customers');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOnlineCustomers();
+    // Refresh every 30 seconds for "online" feel
+    const interval = setInterval(fetchOnlineCustomers, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const columns = [
     {
@@ -117,7 +148,9 @@ const OnlineCustomers = () => {
         <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <button 
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200"
+              onClick={fetchOnlineCustomers}
+              disabled={loading}
+              className={`p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 ${loading ? 'animate-spin' : ''}`}
               title="Refresh"
             >
               <FiRefreshCw className="text-sm" />
@@ -141,6 +174,7 @@ const OnlineCustomers = () => {
             data={onlineData}
             columns={filteredColumns}
             pagination={false}
+            loading={loading}
             rowLines={tableSettings.rowLines}
             columnLines={tableSettings.columnLines}
             className={`${tableSettings.striped ? '[&_tbody_tr:nth-child(even)]:bg-gray-50/50' : ''} ${!tableSettings.hover ? '[&_tbody_tr]:hover:bg-transparent' : ''}`}
@@ -150,7 +184,7 @@ const OnlineCustomers = () => {
         {/* Footer info/pagination with Settings */}
         <div className="p-1 px-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4 relative">
           <div className="text-xs text-gray-400 font-medium order-2 sm:order-1">
-            Displaying items 0-0 of 0
+            Displaying {onlineData.length} active customers
           </div>
 
           <div className="flex items-center gap-2 order-1 sm:order-2 w-full sm:w-auto justify-end">

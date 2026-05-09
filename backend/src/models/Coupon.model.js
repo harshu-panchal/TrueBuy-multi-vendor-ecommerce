@@ -13,6 +13,7 @@ const couponSchema = new mongoose.Schema(
         isActive: { type: Boolean, default: true },
         startsAt: { type: Date },
         expiresAt: { type: Date },
+        countdownThreshold: { type: Number, default: 24, min: 0 },
     },
     { timestamps: true }
 );

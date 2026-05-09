@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { FiSearch, FiMapPin, FiTrash2 } from 'react-icons/fi';
+import { FiSearch, FiMapPin, FiTrash2, FiEdit } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import DataTable from '../../components/DataTable';
 import Pagination from '../../components/Pagination';
 import ConfirmModal from '../../components/ConfirmModal';
 import toast from 'react-hot-toast';
-import { deleteCustomerAddress, getCustomerAddresses } from '../../services/adminService';
+import { deleteCustomerAddress, getCustomerAddresses, updateCustomerAddress } from '../../services/adminService';
+import AddressFormModal from '../../components/Customers/AddressFormModal';
 
 const Addresses = () => {
   const [addresses, setAddresses] = useState([]);
@@ -18,6 +19,8 @@ const Addresses = () => {
     pages: 0,
   });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
+  const [addressModal, setAddressModal] = useState({ isOpen: false, address: null });
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -136,6 +139,13 @@ const Addresses = () => {
       render: (_, row) => (
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setAddressModal({ isOpen: true, address: row })}
+            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Edit"
+          >
+            <FiEdit />
+          </button>
+          <button
             onClick={() => setDeleteModal({ isOpen: true, id: row.id })}
             className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             title="Delete"
@@ -146,6 +156,38 @@ const Addresses = () => {
       ),
     },
   ];
+
+  const handleUpdateAddress = async (formData) => {
+    if (!addressModal.address) return;
+    setIsSubmitting(true);
+    try {
+      await updateCustomerAddress(
+        addressModal.address.customerId || addressModal.address.userId,
+        addressModal.address.id,
+        formData
+      );
+      toast.success('Address updated successfully');
+      
+      // Refresh addresses list
+      const response = await getCustomerAddresses({
+        page: currentPage,
+        limit: itemsPerPage,
+        search: searchQuery || undefined,
+      });
+      const rows = (response?.data?.addresses || []).map((addr) => ({
+        ...addr,
+        id: addr._id || addr.id,
+        customerId: addr.customerId || addr.userId,
+      }));
+      setAddresses(rows);
+      
+      setAddressModal({ isOpen: false, address: null });
+    } catch (error) {
+      // Error handled by interceptor
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <motion.div
@@ -196,6 +238,14 @@ const Addresses = () => {
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+      />
+
+      <AddressFormModal
+        isOpen={addressModal.isOpen}
+        onClose={() => setAddressModal({ isOpen: false, address: null })}
+        address={addressModal.address}
+        onSave={handleUpdateAddress}
+        isSubmitting={isSubmitting}
       />
     </motion.div>
   );

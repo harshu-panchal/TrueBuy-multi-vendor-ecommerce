@@ -264,11 +264,24 @@ router.get('/vendors/all', asyncHandler(async (req, res) => {
         .select('-password -otp -otpExpiry')
         .sort({ rating: -1, reviewCount: -1, createdAt: -1 })
         .skip(skip)
-        .limit(numericLimit);
+        .limit(numericLimit)
+        .lean();
+
+    const vendorIds = vendors.map(v => v._id);
+    const productCounts = await Product.aggregate([
+        { $match: { vendorId: { $in: vendorIds }, isActive: true } },
+        { $group: { _id: '$vendorId', count: { $sum: 1 } } }
+    ]);
+
+    const countMap = new Map(productCounts.map(item => [String(item._id), item.count]));
+
     const total = await Vendor.countDocuments(filter);
 
     res.status(200).json(new ApiResponse(200, {
-        vendors: vendors.map(toPublicVendor),
+        vendors: vendors.map(v => ({
+            ...toPublicVendor(v),
+            totalProducts: countMap.get(String(v._id)) || 0
+        })),
         total,
         page: numericPage,
         pages: Math.ceil(total / numericLimit)

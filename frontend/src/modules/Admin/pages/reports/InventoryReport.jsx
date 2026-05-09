@@ -24,11 +24,17 @@ const InventoryReport = () => {
         while (page <= totalPages) {
           const response = await adminService.getInventoryReport({ page, limit: 200 });
           const payload = response?.data || {};
-          allProducts.push(...(payload.products || []));
+          
+          const pageProducts = Array.isArray(payload)
+            ? payload
+            : (payload.products || []);
+            
+          allProducts.push(...pageProducts);
+          
           if (page === 1) {
             setSummary(payload.summary || { totalProducts: 0, activeProducts: 0, lowStock: 0, outOfStock: 0, totalValue: 0 });
           }
-          totalPages = payload.pages || 1;
+          totalPages = Number(payload.pages || 1);
           page += 1;
         }
 

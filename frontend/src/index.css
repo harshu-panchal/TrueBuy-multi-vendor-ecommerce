@@ -311,6 +311,10 @@ body::-webkit-scrollbar {
     will-change: transform, opacity, filter;
   }
 
+  .modal-open {
+    overflow: hidden !important;
+  }
+
   .shimmer {
     background: linear-gradient(
       90deg,

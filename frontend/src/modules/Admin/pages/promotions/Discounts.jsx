@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiFilter, 
@@ -15,7 +15,6 @@ import {
   FiHash,
   FiLayout,
   FiTrendingUp,
-  FiDollarSign,
   FiTag,
   FiArrowLeft,
   FiSave,
@@ -25,9 +24,14 @@ import {
   FiUsers,
   FiShoppingCart,
   FiBox,
-  FiAlertCircle
+  FiAlertCircle,
+  FiRefreshCw
 } from 'react-icons/fi';
+// import { IndianRupee } from 'lucide-react';
 import DataTable from '../../components/DataTable';
+import { formatDate, formatCurrency } from '../../utils/adminHelpers';
+import { getAllCoupons, deleteCoupon } from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const RuleForm = ({ onBack, onSave }) => {
   const [formData, setFormData] = useState({
@@ -305,12 +309,18 @@ const DiscountForm = ({ onBack, onSave }) => {
 
             <div className="space-y-2 flex flex-col justify-end">
               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1 flex items-center gap-1.5">
-                {formData.usePercentage ? <FiPercent /> : <FiDollarSign />} {formData.usePercentage ? 'Discount Percentage' : 'Discount Amount'}
+                {formData.usePercentage ? <FiPercent /> : <FiSearch className="hidden" />} {formData.usePercentage ? 'Discount Percentage' : 'Discount Amount'}
               </label>
               <input
                 type="number"
                 value={formData.usePercentage ? formData.discountPercentage : formData.discountAmount}
-                onChange={(e) => setFormData({...formData, [formData.usePercentage ? 'discountPercentage' : 'discountAmount']: parseFloat(e.target.value)})}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  const normalized = isNaN(val) ? 0 : Math.max(0, val);
+                  const finalVal = formData.usePercentage ? Math.min(100, normalized) : normalized;
+                  setFormData({...formData, [formData.usePercentage ? 'discountPercentage' : 'discountAmount']: finalVal});
+                }}
+                min="0"
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-black focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
               />
             </div>
@@ -334,6 +344,7 @@ const DiscountForm = ({ onBack, onSave }) => {
               <input
                 type="date"
                 value={formData.endDate}
+                min={formData.startDate}
                 onChange={(e) => setFormData({...formData, endDate: e.target.value})}
                 className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary-500 outline-none shadow-sm"
               />
@@ -347,7 +358,11 @@ const DiscountForm = ({ onBack, onSave }) => {
                 <input
                   type="number"
                   value={formData.countdownThreshold}
-                  onChange={(e) => setFormData({...formData, countdownThreshold: parseInt(e.target.value)})}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    setFormData({...formData, countdownThreshold: isNaN(val) ? 0 : Math.max(0, val)});
+                  }}
+                  min="0"
                   className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-primary-500 outline-none shadow-sm pr-10"
                 />
                 <FiClock className="absolute right-3 top-3.5 text-gray-400 group-hover:text-primary-500 transition-colors" />
@@ -554,6 +569,36 @@ const Discounts = () => {
 
   // Mock Data
   const [discounts, setDiscounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDiscounts = async () => {
+    setLoading(true);
+    try {
+      const response = await getAllCoupons();
+      if (response && response.success) {
+        const normalized = (response.data?.coupons || []).map(c => {
+          const isPercentage = c.type === 'percentage';
+          return {
+            ...c,
+            id: c._id || c.id || Math.random().toString(36).substr(2, 9),
+            usePercentage: isPercentage,
+            discountPercentage: isPercentage ? c.value : 0,
+            discountAmount: !isPercentage ? c.value : 0
+          };
+        });
+        setDiscounts(normalized);
+      }
+    } catch (error) {
+      console.error('Error fetching discounts:', error);
+      toast.error('Failed to fetch discounts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDiscounts();
+  }, []);
 
   const discountTypes = [
     'All',
@@ -568,7 +613,8 @@ const Discounts = () => {
   // Filtering Logic
   const filteredData = useMemo(() => {
     return discounts.filter(item => {
-      const matchName = item.name.toLowerCase().includes(filters.name.toLowerCase());
+      const name = item.name || '';
+      const matchName = name.toLowerCase().includes((filters.name || '').toLowerCase());
       const matchType = filters.type === 'All' || item.type === filters.type;
       const matchPercentage = filters.usePercentage === 'Unspecified' 
         || (filters.usePercentage === 'Yes' && item.usePercentage)
@@ -599,15 +645,26 @@ const Discounts = () => {
     setSelectedIds(newSelected);
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (window.confirm(`Permanently delete ${selectedIds.size} discounts?`)) {
-      setDiscounts(discounts.filter(d => !selectedIds.has(d.id)));
-      setSelectedIds(new Set());
+      try {
+        await Promise.all(Array.from(selectedIds).map(id => deleteCoupon(id)));
+        toast.success('Selected discounts deleted');
+        fetchDiscounts();
+        setSelectedIds(new Set());
+      } catch (error) {
+        toast.error('Failed to delete some discounts');
+      }
     }
   };
 
   const handleSaveDiscount = (formData, continueEditing) => {
+    // Date validation
+    if (formData.startDate && formData.endDate && new Date(formData.startDate) >= new Date(formData.endDate)) {
+      toast.error('End date must be after start date');
+      return;
+    }
     console.log('Saving discount:', formData);
     const newDiscount = {
       id: (discounts.length + 1).toString(),
@@ -649,8 +706,8 @@ const Discounts = () => {
     { key: 'name', label: 'Name', hidden: !visibleColumns.name, render: (v) => <span className="font-bold text-gray-800 tracking-tight">{v}</span> },
     { key: 'type', label: 'Discount Type', hidden: !visibleColumns.type, render: (v) => <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 border border-gray-100 rounded px-2 py-1">{v}</span> },
     { key: 'rules', label: 'No. of Rules', hidden: !visibleColumns.rules, render: (v) => <span className="px-2 py-0.5 bg-primary-50 rounded text-xs font-black text-primary-600">{v}</span> },
-    { key: 'startDate', label: 'Start Date', hidden: !visibleColumns.startDate, render: (v) => <span className="text-xs font-medium text-gray-500 flex items-center gap-1"><FiCalendar className="text-gray-300" /> {v || '—'}</span> },
-    { key: 'endDate', label: 'End Date', hidden: !visibleColumns.endDate, render: (v) => <span className="text-xs font-medium text-gray-500 flex items-center gap-1"><FiCalendar className="text-gray-300" /> {v || '—'}</span> },
+    { key: 'startDate', label: 'Start Date', hidden: !visibleColumns.startDate, render: (v) => <span className="text-xs font-medium text-gray-500 flex items-center gap-1"><FiCalendar className="text-gray-300" /> {formatDate(v)}</span> },
+    { key: 'endDate', label: 'End Date', hidden: !visibleColumns.endDate, render: (v) => <span className="text-xs font-medium text-gray-500 flex items-center gap-1"><FiCalendar className="text-gray-300" /> {formatDate(v)}</span> },
     { 
       key: 'usePercentage', 
       label: 'Use %', 
@@ -658,7 +715,7 @@ const Discounts = () => {
       render: (v) => v ? <FiCheck className="text-green-600 text-lg mx-auto" /> : <FiX className="text-gray-300 mx-auto" /> 
     },
     { key: 'discountPercentage', label: 'Discount Percentage', hidden: !visibleColumns.percentage, render: (v, row) => row.usePercentage ? <span className="text-xs font-black text-green-600">{v}%</span> : <span className="text-gray-300">—</span> },
-    { key: 'discountAmount', label: 'Discount Amount', hidden: !visibleColumns.amount, render: (v, row) => !row.usePercentage ? <span className="text-xs font-black text-primary-600">${v}</span> : <span className="text-gray-300">—</span> },
+    { key: 'discountAmount', label: 'Discount Amount', hidden: !visibleColumns.amount, render: (v, row) => !row.usePercentage ? <span className="text-xs font-black text-primary-600">{v}</span> : <span className="text-gray-300">—</span> },
     { 
       key: 'requiresCoupon', 
       label: 'Requires Coupon', 
@@ -709,6 +766,14 @@ const Discounts = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={fetchDiscounts}
+              disabled={loading}
+              className={`p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 ${loading ? 'animate-spin' : ''}`}
+              title="Refresh"
+            >
+              <FiRefreshCw className="text-sm" />
+            </button>
             <button
               onClick={() => setShowFilter(!showFilter)}
               className={`px-4 py-2 rounded-xl border transition-all text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-sm ${
@@ -806,6 +871,7 @@ const Discounts = () => {
             data={filteredData}
             columns={filteredColumns}
             pagination={true}
+            loading={loading}
             itemsPerPage={10}
             rowLines={tableSettings.rowLines}
             columnLines={tableSettings.columnLines}

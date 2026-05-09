@@ -361,7 +361,10 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
                       type="number"
                       name="order"
                       value={formData.order}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value);
+                        setFormData({ ...formData, order: isNaN(val) ? 0 : Math.max(0, val) });
+                      }}
                       min="0"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                     />

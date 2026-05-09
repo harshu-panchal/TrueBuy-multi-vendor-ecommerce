@@ -1,4 +1,5 @@
 import { useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiAlertTriangle, FiX } from 'react-icons/fi';
 import Button from './Button';
@@ -7,6 +8,17 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
   const location = useLocation();
   const isAppRoute = location.pathname.startsWith('/app');
   
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('modal-open');
+    } else {
+      document.body.classList.remove('modal-open');
+    }
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const typeStyles = {

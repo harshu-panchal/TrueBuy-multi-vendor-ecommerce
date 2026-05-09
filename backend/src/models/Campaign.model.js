@@ -13,7 +13,7 @@ const campaignSchema = new mongoose.Schema(
         status: { type: String, enum: ['draft', 'active', 'completed'], default: 'draft' },
         isActive: { type: Boolean, default: true },
         discountType: { type: String, enum: ['percentage', 'fixed'], default: 'percentage' },
-        discountValue: { type: Number, default: 0 },
+        discountValue: { type: Number, default: 0, min: 0 },
         startDate: { type: Date },
         endDate: { type: Date },
         productIds: [{ type: mongoose.Schema.Types.Mixed }],
@@ -21,6 +21,7 @@ const campaignSchema = new mongoose.Schema(
         autoCreateBanner: { type: Boolean, default: true },
         pageConfig: {
             showCountdown: { type: Boolean, default: true },
+            countdownThreshold: { type: Number, default: 24, min: 0 },
             countdownType: { type: String, default: 'campaign_end' },
             viewModes: [{ type: String }],
             defaultViewMode: { type: String, default: 'grid' },

@@ -298,3 +298,31 @@ export const sendTestPush = async ({ recipientId, recipientType, notificationId,
 
     return result;
 };
+export const schedulePushNotification = async ({
+    notificationId,
+    recipients = [],
+    title,
+    body,
+    data = {},
+    type = 'system',
+    scheduledAt,
+    recipientType = 'broadcast',
+}) => {
+    const log = await NotificationLog.create({
+        notificationId,
+        channel: 'push',
+        recipientType,
+        recipientId: null,
+        title,
+        body,
+        data: {
+            ...data,
+            recipients, // Store recipients for later processing
+            type,
+        },
+        status: 'scheduled',
+        scheduledAt,
+    });
+
+    return { log, scheduled: true };
+};
