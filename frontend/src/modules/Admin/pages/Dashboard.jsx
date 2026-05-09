@@ -105,8 +105,6 @@ const Dashboard = () => {
         customerGrowthRes,
         recentOrdersRes,
       ] = await Promise.allSettled([
-        getDashboardStats(period),
-        getRevenueData(apiPeriod),
         getDashboardStats(params),
         getRevenueData(apiPeriod, params),
         getOrderStatusBreakdown(),
