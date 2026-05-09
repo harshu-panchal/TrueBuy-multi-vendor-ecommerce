@@ -232,7 +232,8 @@ const DeliveryDashboard = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: index * 0.1 }}
-                className={`${stat.bgColor} rounded-xl p-4`}
+                onClick={() => stat.label === 'Earnings' && navigate('/delivery/finance')}
+                className={`${stat.bgColor} rounded-xl p-4 ${stat.label === 'Earnings' ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <Icon className={`${stat.textColor} text-xl`} />

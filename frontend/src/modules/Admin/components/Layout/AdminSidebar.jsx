@@ -148,6 +148,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Payment Breakdown": "/admin/finance/payment-breakdown",
       "Tax Reports": "/admin/finance/tax-reports",
       "Refund Reports": "/admin/finance/refund-reports",
+      "Money Requests": "/admin/finance/money-requests",
     },
     "/admin/cms": {
       "Topics": "/admin/cms/topics",

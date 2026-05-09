@@ -3,6 +3,7 @@ import * as authController from '../controllers/auth.controller.js';
 import * as orderController from '../controllers/order.controller.js';
 import * as b2bOrderController from '../controllers/b2bOrder.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
+import * as financeController from '../controllers/finance.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -53,6 +54,9 @@ if (!IS_PRODUCTION) {
 }
 router.patch('/orders/:id/status', ...deliveryAuth, orderController.updateDeliveryStatus);
 router.post('/orders/:id/resend-delivery-otp', ...deliveryAuth, orderController.resendDeliveryOtp);
+router.get('/finance/summary', ...deliveryAuth, financeController.getFinanceSummary);
+router.get('/finance/withdraw-requests', ...deliveryAuth, financeController.getMyWithdrawRequests);
+router.post('/finance/withdraw-request', ...deliveryAuth, financeController.createWithdrawRequest);
 
 // B2B Orders (assigned via admin B2B panel)
 router.get('/b2b/orders', ...deliveryAuth, b2bOrderController.getAssignedB2BOrders);

@@ -114,7 +114,8 @@
         "children":  [
                          "Earnings Overview",
                          "Commission History",
-                         "Settlement History"
+                         "Settlement History",
+                         "Withdrawals"
                      ]
     },
     {

@@ -15,6 +15,7 @@ const WholesaleProducts = () => {
     productsPages,
     fetchWholesaleProducts,
     setActiveSeller,
+    addToCart,
   } = useVendorB2BStore();
 
   const [search, setSearch] = useState('');
@@ -109,8 +110,13 @@ const WholesaleProducts = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         setActiveSeller(String(p.vendorId));
+                        await addToCart({
+                          sellerVendorId: String(p.vendorId),
+                          productId: String(p._id || p.id),
+                          quantity: Number(p.minOrderQty || 1),
+                        });
                         navigate('/vendor/wholesale/cart');
                       }}
                       className="inline-flex items-center justify-center h-10 px-4 rounded-xl bg-primary-600 text-white font-bold text-sm shadow-sm hover:bg-primary-700 hover:shadow-glow-primary transition-all active:scale-95"
