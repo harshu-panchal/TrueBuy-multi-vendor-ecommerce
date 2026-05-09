@@ -263,7 +263,7 @@ export const getProfile = asyncHandler(async (req, res) => {
 
 // PUT /api/delivery/auth/profile
 export const updateProfile = asyncHandler(async (req, res) => {
-    const { name, phone, email, vehicleType, vehicleNumber, currentLocation, isAvailable, status } = req.body;
+    const { name, phone, email, vehicleType, vehicleNumber, currentLocation, isAvailable, status, bankDetails } = req.body;
     const update = {};
 
     if (typeof name === 'string') {
@@ -292,6 +292,15 @@ export const updateProfile = asyncHandler(async (req, res) => {
     if (typeof vehicleType === 'string') update.vehicleType = vehicleType.trim();
     if (typeof vehicleNumber === 'string') update.vehicleNumber = vehicleNumber.trim();
     if (typeof currentLocation === 'object' && currentLocation !== null) update.currentLocation = currentLocation;
+    
+    if (typeof bankDetails === 'object' && bankDetails !== null) {
+        update.bankDetails = {
+            accountHolderName: String(bankDetails.accountHolderName || '').trim(),
+            accountNumber: String(bankDetails.accountNumber || '').trim(),
+            ifscCode: String(bankDetails.ifscCode || '').trim(),
+            bankName: String(bankDetails.bankName || '').trim(),
+        };
+    }
 
     if (typeof status === 'string') {
         const normalized = status.toLowerCase();
@@ -312,4 +321,21 @@ export const updateProfile = asyncHandler(async (req, res) => {
         { new: true, runValidators: true }
     );
     res.status(200).json(new ApiResponse(200, deliveryBoy, 'Profile updated.'));
+});
+
+// PATCH /api/delivery/auth/avatar
+export const updateAvatar = asyncHandler(async (req, res) => {
+    if (!req.file) throw new ApiError(400, 'Please upload an image.');
+
+    const avatarPath = `/uploads/delivery-avatars/${req.file.filename}`;
+    
+    const deliveryBoy = await DeliveryBoy.findByIdAndUpdate(
+        req.user.id,
+        { avatar: avatarPath },
+        { new: true, runValidators: true }
+    );
+
+    if (!deliveryBoy) throw new ApiError(404, 'Delivery partner not found.');
+
+    res.status(200).json(new ApiResponse(200, { avatar: deliveryBoy.avatar }, 'Avatar updated successfully.'));
 });

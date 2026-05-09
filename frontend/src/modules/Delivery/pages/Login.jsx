@@ -98,7 +98,7 @@ const DeliveryLogin = () => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="delivery@delivery.com"
+                placeholder="delivery@example.com"
                 className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                 required
               />
@@ -158,20 +158,7 @@ const DeliveryLogin = () => {
                 {isLoading ? 'Signing in...' : 'Sign In to Dashboard'}
               </button>
 
-              {/* Demo Credentials */}
-              <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                <p className="text-sm text-gray-700 font-semibold mb-2">Demo Credentials:</p>
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500 flex justify-between">
-                    <span>Email:</span>
-                    <span className="font-medium text-gray-700">delivery@delivery.com</span>
-                  </p>
-                  <p className="text-xs text-gray-500 flex justify-between">
-                    <span>Password:</span>
-                    <span className="font-medium text-gray-700">delivery123</span>
-                  </p>
-                </div>
-              </div>
+
 
               <div className="text-center">
                 <p className="text-gray-500 text-sm">

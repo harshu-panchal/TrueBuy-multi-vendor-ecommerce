@@ -41,15 +41,15 @@ export const calculateDiscount = (originalPrice, discountedPrice) => {
  * Validate email
  */
 export const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|in|org)$/;
   return emailRegex.test(email);
 };
 
 /**
- * Validate phone number (Indian format)
+ * Validate phone number
  */
 export const isValidPhone = (phone) => {
-  const phoneRegex = /^[6-9]\d{9}$/;
+  const phoneRegex = /^[0-9]{10}$/;
   return phoneRegex.test(phone.replace(/\D/g, ""));
 };
 

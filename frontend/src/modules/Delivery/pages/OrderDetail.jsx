@@ -225,10 +225,7 @@ const DeliveryOrderDetail = () => {
               <FiNavigation />
               <span>{order.distance}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <FiClock />
-              <span>{order.estimatedTime}</span>
-            </div>
+
           </div>
           {order.instructions && (
             <div className="mt-3 p-3 bg-yellow-50 rounded-xl border border-yellow-200">

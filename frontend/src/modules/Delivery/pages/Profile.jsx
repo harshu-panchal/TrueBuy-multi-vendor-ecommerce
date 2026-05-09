@@ -2,14 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
-import { FiUser, FiMail, FiPhone, FiTruck, FiEdit2, FiSave, FiX, FiLogOut } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiTruck, FiEdit2, FiSave, FiX, FiLogOut, FiCreditCard, FiCamera } from 'react-icons/fi';
 import PageTransition from '../../../shared/components/PageTransition';
 import toast from 'react-hot-toast';
 import { formatPrice } from '../../../shared/utils/helpers';
+import { SERVER_URL } from '../../../shared/utils/constants';
 
 const DeliveryProfile = () => {
   const navigate = useNavigate();
-  const { deliveryBoy, updateProfile, fetchProfile, fetchProfileSummary, isLoading, logout } = useDeliveryAuthStore();
+  const { deliveryBoy, updateProfile, updateAvatar, fetchProfile, fetchProfileSummary, isLoading, logout } = useDeliveryAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [profileMetrics, setProfileMetrics] = useState({
@@ -23,6 +24,12 @@ const DeliveryProfile = () => {
     phone: deliveryBoy?.phone || '',
     vehicleType: deliveryBoy?.vehicleType || '',
     vehicleNumber: deliveryBoy?.vehicleNumber || '',
+    bankDetails: {
+      accountHolderName: deliveryBoy?.bankDetails?.accountHolderName || '',
+      accountNumber: deliveryBoy?.bankDetails?.accountNumber || '',
+      ifscCode: deliveryBoy?.bankDetails?.ifscCode || '',
+      bankName: deliveryBoy?.bankDetails?.bankName || '',
+    },
   });
 
   const loadProfile = useCallback(async () => {
@@ -59,14 +66,32 @@ const DeliveryProfile = () => {
       phone: deliveryBoy?.phone || '',
       vehicleType: deliveryBoy?.vehicleType || '',
       vehicleNumber: deliveryBoy?.vehicleNumber || '',
+      bankDetails: {
+        accountHolderName: deliveryBoy?.bankDetails?.accountHolderName || '',
+        accountNumber: deliveryBoy?.bankDetails?.accountNumber || '',
+        ifscCode: deliveryBoy?.bankDetails?.ifscCode || '',
+        bankName: deliveryBoy?.bankDetails?.bankName || '',
+      },
     });
   }, [deliveryBoy]);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    if (name.startsWith('bank.')) {
+      const field = name.split('.')[1];
+      setFormData({
+        ...formData,
+        bankDetails: {
+          ...formData.bankDetails,
+          [field]: value
+        }
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value,
+      });
+    }
   };
 
   const handleSave = async () => {
@@ -82,13 +107,23 @@ const DeliveryProfile = () => {
       toast.error('Phone is required');
       return;
     }
+    if (!formData.vehicleNumber?.trim()) {
+      toast.error('Vehicle number is required');
+      return;
+    }
+    const vehicleNumberRegex = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/i;
+    if (!vehicleNumberRegex.test(formData.vehicleNumber.trim())) {
+      toast.error('Invalid Vehicle Number! Format: MH01AB1234');
+      return;
+    }
     try {
       await updateProfile({
         name: formData.name.trim(),
         email: formData.email.trim().toLowerCase(),
         phone: formData.phone.trim(),
         vehicleType: formData.vehicleType?.trim() || '',
-        vehicleNumber: formData.vehicleNumber?.trim() || '',
+        vehicleNumber: formData.vehicleNumber?.trim().toUpperCase() || '',
+        bankDetails: formData.bankDetails,
       });
       setIsEditing(false);
       toast.success('Profile updated successfully');
@@ -104,6 +139,12 @@ const DeliveryProfile = () => {
       phone: deliveryBoy?.phone || '',
       vehicleType: deliveryBoy?.vehicleType || '',
       vehicleNumber: deliveryBoy?.vehicleNumber || '',
+      bankDetails: {
+        accountHolderName: deliveryBoy?.bankDetails?.accountHolderName || '',
+        accountNumber: deliveryBoy?.bankDetails?.accountNumber || '',
+        ifscCode: deliveryBoy?.bankDetails?.ifscCode || '',
+        bankName: deliveryBoy?.bankDetails?.bankName || '',
+      },
     });
     setIsEditing(false);
   };
@@ -112,6 +153,40 @@ const DeliveryProfile = () => {
     logout();
     toast.success('Logged out successfully');
     navigate('/delivery/login');
+  };
+
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size should be less than 2MB');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+      await updateAvatar(formData);
+      toast.success('Profile photo updated');
+    } catch {
+      // Error toast handled by API interceptor
+    }
+  };
+
+  const getAvatarUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    // Since we added a proxy for /uploads in vite.config.js, we can use relative paths
+    if (path.startsWith('/uploads')) return path;
+    const baseUrl = SERVER_URL || 'http://localhost:5000';
+    return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
   };
 
   const stats = [
@@ -166,8 +241,36 @@ const DeliveryProfile = () => {
             )}
           </div>
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 gradient-green rounded-full flex items-center justify-center text-3xl font-bold">
-              {deliveryBoy?.name?.charAt(0) || 'D'}
+            <div className="relative group">
+              <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-3xl font-bold border-2 border-white/30 overflow-hidden">
+                {deliveryBoy?.avatar ? (
+                  <img 
+                    src={getAvatarUrl(deliveryBoy.avatar)} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                    onLoad={(e) => { e.target.style.opacity = 1; }}
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      // If it fails, we might want to show the initial, but since we hide the img,
+                      // the parent div will show the initial if we handle it there.
+                    }}
+                    style={{ opacity: 0, transition: 'opacity 0.3s' }}
+                  />
+                ) : null}
+                {(!deliveryBoy?.avatar || !getAvatarUrl(deliveryBoy.avatar)) && (deliveryBoy?.name?.charAt(0) || 'D')}
+              </div>
+              {isEditing && (
+                <label className="absolute bottom-0 right-0 p-1.5 bg-white text-primary-600 rounded-full shadow-lg cursor-pointer hover:bg-gray-100 transition-colors border-2 border-primary-600">
+                  <FiCamera className="text-xs" />
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*" 
+                    onChange={handleAvatarChange}
+                    disabled={isLoading}
+                  />
+                </label>
+              )}
             </div>
             <div>
               <p className="text-xl font-semibold">{deliveryBoy?.name || 'Delivery Boy'}</p>
@@ -300,11 +403,95 @@ const DeliveryProfile = () => {
                 name="vehicleNumber"
                 value={formData.vehicleNumber}
                 onChange={handleChange}
+                placeholder="MH01AB1234"
                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none"
               />
             ) : (
               <p className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">{formData.vehicleNumber}</p>
             )}
+          </div>
+        </motion.div>
+
+        {/* Bank Details */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-white rounded-2xl p-4 shadow-sm space-y-4"
+        >
+          <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <FiCreditCard className="text-primary-600" />
+            Bank Details
+          </h2>
+
+          <div className="grid grid-cols-1 gap-4">
+            {/* Account Holder */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Account Holder Name</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="bank.accountHolderName"
+                  value={formData.bankDetails.accountHolderName}
+                  onChange={handleChange}
+                  placeholder="As per bank records"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none"
+                />
+              ) : (
+                <p className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">{formData.bankDetails.accountHolderName || 'Not added'}</p>
+              )}
+            </div>
+
+            {/* Bank Name */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Bank Name</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="bank.bankName"
+                  value={formData.bankDetails.bankName}
+                  onChange={handleChange}
+                  placeholder="e.g. HDFC Bank"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none"
+                />
+              ) : (
+                <p className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">{formData.bankDetails.bankName || 'Not added'}</p>
+              )}
+            </div>
+
+            {/* Account Number */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Account Number</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="bank.accountNumber"
+                  value={formData.bankDetails.accountNumber}
+                  onChange={handleChange}
+                  placeholder="Enter account number"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none"
+                />
+              ) : (
+                <p className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800">{formData.bankDetails.accountNumber || 'Not added'}</p>
+              )}
+            </div>
+
+            {/* IFSC Code */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">IFSC Code</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  name="bank.ifscCode"
+                  value={formData.bankDetails.ifscCode}
+                  onChange={handleChange}
+                  placeholder="e.g. HDFC0001234"
+                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none uppercase"
+                />
+              ) : (
+                <p className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800 uppercase">{formData.bankDetails.ifscCode || 'Not added'}</p>
+              )}
+            </div>
           </div>
         </motion.div>
 

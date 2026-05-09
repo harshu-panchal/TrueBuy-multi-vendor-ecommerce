@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FiMenu, FiBell, FiLogOut, FiShoppingBag } from "react-icons/fi";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
@@ -6,20 +6,57 @@ import { useVendorNotificationStore } from "../../store/vendorNotificationStore"
 import toast from "react-hot-toast";
 import Button from "../../../Admin/components/Button";
 import VendorNotificationWindow from "./VendorNotificationWindow";
+import NewOrderModal from "../Orders/NewOrderModal";
 import { appLogo } from "../../../../data/logos";
 
 const VendorHeader = ({ onMenuClick, sidebarOpen }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { vendor, logout } = useVendorAuthStore();
-  const { unreadCount, fetchNotifications } = useVendorNotificationStore();
+  const { notifications, unreadCount, fetchNotifications } = useVendorNotificationStore();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [newOrderModal, setNewOrderModal] = useState({ isOpen: false, data: null });
+  const prevNotificationsRef = useRef([]);
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(() => fetchNotifications(), 60000);
+    const interval = setInterval(() => fetchNotifications(), 30000); // Poll every 30s
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Detect new order notifications
+  useEffect(() => {
+    if (notifications.length > 0 && prevNotificationsRef.current.length > 0) {
+      // Find new order notifications that weren't in the previous list
+      const newOrders = notifications.filter(n => 
+        n.type === 'order' && 
+        !n.isRead && 
+        !prevNotificationsRef.current.some(prev => prev._id === n._id) &&
+        (n.title.toLowerCase().includes('new order') || n.message.toLowerCase().includes('new order'))
+      );
+
+      if (newOrders.length > 0) {
+        const latestOrder = newOrders[0];
+        setNewOrderModal({
+          isOpen: true,
+          data: {
+            orderId: latestOrder.orderId || latestOrder.data?.orderId,
+            amount: latestOrder.data?.amount,
+            itemCount: latestOrder.data?.itemCount
+          }
+        });
+        
+        // Play notification sound
+        try {
+          const audio = new Audio('/notification-sound.mp3');
+          audio.play();
+        } catch (e) {
+          console.log("Audio play failed");
+        }
+      }
+    }
+    prevNotificationsRef.current = notifications;
+  }, [notifications]);
 
   const handleLogout = () => {
     logout();
@@ -129,6 +166,11 @@ const VendorHeader = ({ onMenuClick, sidebarOpen }) => {
           </Button>
         </div>
       </div>
+      <NewOrderModal
+        isOpen={newOrderModal.isOpen}
+        onClose={() => setNewOrderModal({ ...newOrderModal, isOpen: false })}
+        orderData={newOrderModal.data}
+      />
     </header>
   );
 };

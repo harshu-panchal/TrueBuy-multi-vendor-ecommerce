@@ -127,7 +127,7 @@ const MobileLogin = () => {
                   })}
                   className={`w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900 ${errors.email ? 'border-red-500 bg-red-50/10' : ''
                     }`}
-                  placeholder="vijaybhuva901@gmail.com"
+                  placeholder="customer@example.com"
                 />
               </div>
               {errors.email && (

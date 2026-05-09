@@ -90,7 +90,7 @@ const MobileCheckout = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.(com|in|org)$/;
     const phoneRegex = /^[0-9]{10}$/;
     const zipRegex = /^[0-9]{5,6}$/;
     const nameRegex = /^[a-zA-Z\s.]+$/;

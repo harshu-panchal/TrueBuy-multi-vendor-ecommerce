@@ -106,6 +106,19 @@ const VendorSidebar = ({ isOpen, onClose }) => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      document.body.classList.add("modal-open");
+    } else {
+      document.body.classList.remove("modal-open");
+    }
+
+    return () => {
+      document.body.classList.remove("modal-open");
+    };
+  }, [isOpen, isMobile]);
+
   // Auto-close sidebar on mobile when route changes
   useEffect(() => {
     if (window.innerWidth < 1024) {
@@ -227,7 +240,7 @@ const VendorSidebar = ({ isOpen, onClose }) => {
               <div className="ml-4 mt-1 pl-4 border-l-2 border-slate-600 space-y-1">
                 {item.children.map((child, index) => {
                   const childRoute = getChildRoute(item.route, child);
-                  
+
                   return (
                     <NavLink
                       key={index}

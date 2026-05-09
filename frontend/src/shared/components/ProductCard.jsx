@@ -28,6 +28,8 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
     isInWishlist,
   } = useWishlistStore();
   const hasNoVariant = (cartItem) => !getVariantSignature(cartItem?.variant || {});
+  const isOutOfStock = product.stock === "out_of_stock" || Number(product.stockQuantity || 0) <= 0;
+
   const isFavorite = isInWishlist(product.id);
   const isInCart = items.some(
     (item) => item.id === product.id && hasNoVariant(item)
@@ -228,6 +230,15 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
                 e.target.src = getPlaceholderImage(400, 500, "Product");
               }}
             />
+            {/* Out of Stock Overlay */}
+            {isOutOfStock && (
+              <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-20 flex items-center justify-center">
+                <div className="bg-red-600 text-white text-[10px] md:text-xs font-black px-4 py-2 rounded-xl shadow-xl transform -rotate-12 border-2 border-white uppercase tracking-widest animate-pulse">
+                  Sold Out
+                </div>
+              </div>
+            )}
+
             {/* Hover Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
           </Link>
@@ -385,15 +396,15 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
               ref={buttonRef}
               type="button"
               onClick={handleAddToCart}
-              disabled={product.stock === "out_of_stock" || isAdding}
+              disabled={isOutOfStock || isAdding}
               whileTap={{ scale: 0.95 }}
-              className={`w-full py-2.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 shadow-sm ${product.stock === "out_of_stock"
+              className={`w-full py-2.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 shadow-sm ${isOutOfStock
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                 : "bg-[#0f172a] text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/10 active:scale-[0.98]"
                 }`}
             >
               <FiShoppingBag size={14} />
-              <span>{product.stock === "out_of_stock" ? "Out of Stock" : "Add to Cart"}</span>
+              <span>{isOutOfStock ? "Out of Stock" : "Add to Cart"}</span>
             </motion.button>
           </div>
         </div>

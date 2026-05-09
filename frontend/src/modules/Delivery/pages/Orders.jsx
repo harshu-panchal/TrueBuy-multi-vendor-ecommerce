@@ -228,10 +228,7 @@ const DeliveryOrders = () => {
                       <FiPackage />
                       <span>{Array.isArray(order.items) ? order.items.length : (typeof order.items === 'number' ? order.items : 0)} items</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <FiClock />
-                      <span>{order.estimatedTime || '-'}</span>
-                    </div>
+
                     <div className="flex items-center gap-1">
                       <FiNavigation />
                       <span>{order.distance || '-'}</span>

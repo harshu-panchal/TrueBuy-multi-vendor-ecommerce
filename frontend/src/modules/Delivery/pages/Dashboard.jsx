@@ -19,7 +19,7 @@ const DeliveryDashboard = () => {
   const [stats, setStats] = useState({
     totalOrders: 0,
     completedToday: 0,
-    openOrders: 0,
+    pendingOrders: 0,
     earnings: 0,
   });
   const { returnRequests, fetchReturnRequests } = useReturnStore();
@@ -42,8 +42,8 @@ const DeliveryDashboard = () => {
     },
     {
       icon: FiClock,
-      label: 'Open Orders',
-      value: stats.openOrders,
+      label: 'Pending Orders',
+      value: stats.pendingOrders,
       color: 'bg-yellow-500',
       bgColor: 'bg-yellow-50',
       textColor: 'text-yellow-700',
@@ -68,7 +68,7 @@ const DeliveryDashboard = () => {
       setStats({
         totalOrders: Number(summary.totalOrders || 0),
         completedToday: Number(summary.completedToday || 0),
-        openOrders: Number(summary.openOrders || 0),
+        pendingOrders: Number(summary.pendingOrders || 0),
         earnings: Number(summary.earnings || 0),
       });
     } catch {
@@ -77,7 +77,7 @@ const DeliveryDashboard = () => {
       setStats({
         totalOrders: 0,
         completedToday: 0,
-        openOrders: 0,
+        pendingOrders: 0,
         earnings: 0,
       });
     } finally {

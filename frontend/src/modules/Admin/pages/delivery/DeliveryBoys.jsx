@@ -8,6 +8,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import AnimatedSelect from '../../components/AnimatedSelect';
 import Pagination from '../../components/Pagination';
 import { useDeliveryStore } from '../../../../shared/store/deliveryStore';
+import toast from 'react-hot-toast';
 
 const DeliveryBoys = () => {
   const location = useLocation();
@@ -47,6 +48,13 @@ const DeliveryBoys = () => {
   }, [searchQuery, statusFilter, applicationFilter]);
 
   const handleSave = async (boyData) => {
+    if (boyData.vehicleNumber) {
+      const vehicleNumberRegex = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/i;
+      if (!vehicleNumberRegex.test(boyData.vehicleNumber.trim())) {
+        toast.error('Invalid Vehicle Number! Format: MH01AB1234');
+        return;
+      }
+    }
     const currentApplicationStatus =
       (editingBoy && editingBoy.applicationStatus) || boyData.applicationStatus || 'approved';
     const payload = {
@@ -463,6 +471,12 @@ const DeliveryBoys = () => {
                       status: formData.get('status'),
                       totalDeliveries: parseInt(formData.get('totalDeliveries') || '0'),
                       rating: parseFloat(formData.get('rating') || '0'),
+                      bankDetails: {
+                        accountHolderName: formData.get('bank_accountHolderName'),
+                        bankName: formData.get('bank_bankName'),
+                        accountNumber: formData.get('bank_accountNumber'),
+                        ifscCode: formData.get('bank_ifscCode'),
+                      }
                     });
                   }}
                   className="space-y-4"
@@ -525,9 +539,9 @@ const DeliveryBoys = () => {
                     type="text"
                     name="vehicleNumber"
                     defaultValue={editingBoy.vehicleNumber || ''}
-                    placeholder="Vehicle Number"
+                    placeholder="Vehicle Number (e.g. MH01AB1234)"
                     required
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
                   />
                   <AnimatedSelect
                     name="status"
@@ -539,6 +553,40 @@ const DeliveryBoys = () => {
                     ]}
                     required
                   />
+
+                  <div className="pt-2 border-t border-gray-100">
+                    <p className="text-sm font-semibold text-gray-800 mb-3">Bank Details</p>
+                    <div className="grid grid-cols-1 gap-3">
+                      <input
+                        type="text"
+                        name="bank_accountHolderName"
+                        defaultValue={editingBoy?.bankDetails?.accountHolderName || ''}
+                        placeholder="Account Holder Name"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        name="bank_bankName"
+                        defaultValue={editingBoy?.bankDetails?.bankName || ''}
+                        placeholder="Bank Name"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        name="bank_accountNumber"
+                        defaultValue={editingBoy?.bankDetails?.accountNumber || ''}
+                        placeholder="Account Number"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                      <input
+                        type="text"
+                        name="bank_ifscCode"
+                        defaultValue={editingBoy?.bankDetails?.ifscCode || ''}
+                        placeholder="IFSC Code"
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
+                      />
+                    </div>
+                  </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="submit"
