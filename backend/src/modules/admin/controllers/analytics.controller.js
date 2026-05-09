@@ -7,20 +7,40 @@ import Product from '../../../models/Product.model.js';
 
 // GET /api/admin/analytics/dashboard
 export const getDashboardStats = asyncHandler(async (req, res) => {
+    const { startDate, endDate } = req.query;
     const activeOrderFilter = { isDeleted: { $ne: true } };
     
-    // For calculating month-over-month changes
-    const now = new Date();
-    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+    let currentRange = {};
+    let prevRange = {};
+    const isFiltered = !!(startDate && endDate);
+
+    if (isFiltered) {
+        const start = new Date(startDate);
+        const end = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+        const duration = end.getTime() - start.getTime();
+        
+        const prevStart = new Date(start.getTime() - duration - 1);
+        const prevEnd = new Date(start.getTime() - 1);
+
+        currentRange = { $gte: start, $lte: end };
+        prevRange = { $gte: prevStart, $lte: prevEnd };
+    } else {
+        // Default MoM logic if no dates provided
+        const now = new Date();
+        const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+        currentRange = { $gte: currentMonthStart };
+        prevRange = { $gte: lastMonthStart, $lte: lastMonthEnd };
+    }
 
     const [
-        totalOrders, totalUsers, totalVendors, totalProducts, revenueAgg, pendingOrders,
-        currMonthOrders, lastMonthOrders,
-        currMonthUsers, lastMonthUsers,
-        currMonthProducts, lastMonthProducts,
-        currMonthRevenueAgg, lastMonthRevenueAgg
+        totalOrdersCount, totalUsersCount, totalVendorsCount, totalProductsCount, lifetimeRevenueAgg, pendingOrders,
+        periodOrders, prevPeriodOrders,
+        periodUsers, prevPeriodUsers,
+        periodProducts, prevPeriodProducts,
+        periodRevenueAgg, prevPeriodRevenueAgg
     ] = await Promise.all([
         Order.countDocuments(activeOrderFilter),
         User.countDocuments({ role: 'customer' }),
@@ -29,19 +49,19 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         Order.aggregate([{ $match: { ...activeOrderFilter, status: { $ne: 'cancelled' } } }, { $group: { _id: null, total: { $sum: '$total' } } }]),
         Order.countDocuments({ ...activeOrderFilter, status: 'pending' }),
         
-        // Current Month stats
-        Order.countDocuments({ ...activeOrderFilter, createdAt: { $gte: currentMonthStart } }),
-        Order.countDocuments({ ...activeOrderFilter, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }),
-        User.countDocuments({ role: 'customer', createdAt: { $gte: currentMonthStart } }),
-        User.countDocuments({ role: 'customer', createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }),
-        Product.countDocuments({ isActive: true, createdAt: { $gte: currentMonthStart } }),
-        Product.countDocuments({ isActive: true, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } }),
+        // Period stats
+        Order.countDocuments({ ...activeOrderFilter, createdAt: currentRange }),
+        Order.countDocuments({ ...activeOrderFilter, createdAt: prevRange }),
+        User.countDocuments({ role: 'customer', createdAt: currentRange }),
+        User.countDocuments({ role: 'customer', createdAt: prevRange }),
+        Product.countDocuments({ isActive: true, createdAt: currentRange }),
+        Product.countDocuments({ isActive: true, createdAt: prevRange }),
         Order.aggregate([
-            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: { $gte: currentMonthStart } } },
+            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: currentRange } },
             { $group: { _id: null, total: { $sum: '$total' } } }
         ]),
         Order.aggregate([
-            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: { $gte: lastMonthStart, $lte: lastMonthEnd } } },
+            { $match: { ...activeOrderFilter, status: { $ne: 'cancelled' }, createdAt: prevRange } },
             { $group: { _id: null, total: { $sum: '$total' } } }
         ]),
     ]);
@@ -51,20 +71,22 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
         return Number((((current - previous) / previous) * 100).toFixed(1));
     };
 
-    const currRev = currMonthRevenueAgg[0]?.total || 0;
-    const lastRev = lastMonthRevenueAgg[0]?.total || 0;
+    const periodRev = periodRevenueAgg[0]?.total || 0;
+    const prevRev = prevPeriodRevenueAgg[0]?.total || 0;
 
     res.status(200).json(new ApiResponse(200, {
-        totalOrders,
-        totalUsers,
-        totalVendors,
-        totalProducts,
-        totalRevenue: revenueAgg[0]?.total || 0,
+        // When filtered, return period-specific totals. Otherwise return lifetime totals.
+        totalOrders: isFiltered ? periodOrders : totalOrdersCount,
+        totalUsers: isFiltered ? periodUsers : totalUsersCount,
+        totalVendors: totalVendorsCount,
+        totalProducts: isFiltered ? periodProducts : totalProductsCount,
+        totalRevenue: isFiltered ? periodRev : (lifetimeRevenueAgg[0]?.total || 0),
+        
         pendingOrders,
-        ordersChange: calculateChange(currMonthOrders, lastMonthOrders),
-        customersChange: calculateChange(currMonthUsers, lastMonthUsers),
-        productsChange: calculateChange(currMonthProducts, lastMonthProducts),
-        revenueChange: calculateChange(currRev, lastRev)
+        ordersChange: calculateChange(periodOrders, prevPeriodOrders),
+        customersChange: calculateChange(periodUsers, prevPeriodUsers),
+        productsChange: calculateChange(periodProducts, prevPeriodProducts),
+        revenueChange: calculateChange(periodRev, prevRev)
     }, 'Dashboard stats fetched.'));
 });
 
