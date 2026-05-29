@@ -65,6 +65,11 @@ export const verifyReferral = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findById(vendorId);
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     
+    // Stale referral protection: only allow during initial onboarding
+    if (vendor.status !== 'pending') {
+        throw new ApiError(400, 'Referral verification is only allowed during initial registration.');
+    }
+
     // Prevent duplicate verification abuse
     if (vendor.referralVerified) {
         throw new ApiError(400, 'Referral already verified for this vendor.');

@@ -44,7 +44,7 @@ const vendorAuth = [authenticate, authorize('vendor'), enforceAccountStatus];
 
 // Auth
 router.post('/auth/register', authLimiter, validate(registerSchema), authController.register);
-router.post('/auth/verify-referral', validate(verifyReferralSchema), authController.verifyReferral);
+router.post('/auth/verify-referral', authLimiter, validate(verifyReferralSchema), authController.verifyReferral);
 router.post('/auth/verify-otp', validate(verifyOtpSchema), authController.verifyOTP);
 router.post('/auth/resend-otp', validate(resendOtpSchema), authController.resendOTP);
 router.post('/auth/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.forgotPassword);
