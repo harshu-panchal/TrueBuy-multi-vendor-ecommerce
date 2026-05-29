@@ -81,6 +81,10 @@ const vendorSchema = new mongoose.Schema(
         refreshTokenHash: { type: String, select: false },
         refreshTokenExpiresAt: { type: Date, select: false },
         joinDate: { type: Date, default: Date.now },
+        // MLM Referral verification fields
+        referralCode: { type: String, trim: true, sparse: true, index: true },
+        referralVerified: { type: Boolean, default: false },
+        referralData: { type: mongoose.Schema.Types.Mixed },
         // B2B Wholesale permissions (admin-controlled; additive)
         b2bPermissions: {
             canBuyWholesale: { type: Boolean, default: true },
