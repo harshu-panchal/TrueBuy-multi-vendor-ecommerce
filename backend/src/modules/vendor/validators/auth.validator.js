@@ -67,18 +67,16 @@ export const resetPasswordSchema = Joi.object({
 });
 
 export const updateBankDetailsSchema = Joi.object({
-    accountName: Joi.string().trim().min(2).max(100).pattern(/^[^\d]+$/).required().messages({
+    accountName: Joi.string().trim().min(2).max(100).required().messages({
         'string.empty': 'Account holder name is required.',
         'string.min': 'Account holder name must be at least 2 characters.',
-        'string.pattern.base': 'Account holder name should not contain digits.',
     }),
     accountNumber: Joi.string().pattern(/^\d+$/).required().messages({
         'string.pattern.base': 'Account number must contain only digits.',
         'string.empty': 'Account number is required.',
     }),
-    bankName: Joi.string().trim().min(2).max(100).pattern(/^[^\d]+$/).required().messages({
+    bankName: Joi.string().trim().min(2).max(100).required().messages({
         'string.empty': 'Bank name is required.',
-        'string.pattern.base': 'Bank name should not contain digits.',
     }),
     ifscCode: Joi.string().pattern(/^[A-Z]{4}0[A-Z0-9]{6}$/).required().messages({
         'string.pattern.base': 'Invalid IFSC format: 4 alphabets, 5th "0", last 6 alphanumeric (e.g., SBIN0001234).',
@@ -103,9 +101,7 @@ export const updateVendorProfileSchema = Joi.object({
         'string.pattern.base': 'Full name can only contain alphabets and spaces.',
     }),
     storeName: Joi.string().trim().min(2).max(100).optional(),
-    storeLogo: Joi.string().trim().pattern(/^[^\d]+$/).allow('').optional().messages({
-        'string.pattern.base': 'Store logo URL should not contain digits.',
-    }),
+    storeLogo: Joi.string().trim().allow('').optional(),
     storeDescription: Joi.string().trim().max(500).allow('').optional(),
     gstNumber: Joi.string().trim().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i).allow(null, '').optional().messages({
         'string.pattern.base': 'Invalid GST number format (e.g., 22AAAAA0000A1Z5)',

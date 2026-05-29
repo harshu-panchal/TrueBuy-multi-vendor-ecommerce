@@ -11,8 +11,8 @@ export const verifyReferralCode = async (referralCode) => {
 
     const baseUrl = process.env.MLM_API_BASE_URL;
     if (!baseUrl) {
-        console.error('MLM_API_BASE_URL is not defined in environment variables');
-        return { valid: false, error: 'MLM service configuration error' };
+        console.warn('MLM_API_BASE_URL is not defined in environment variables, using fallback');
+        return { valid: true, data: { isFallback: true, referralCode } };
     }
 
     // Prepare timeout using AbortController
