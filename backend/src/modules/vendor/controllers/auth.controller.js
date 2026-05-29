@@ -13,6 +13,7 @@ import {
     persistRefreshSession,
     rotateRefreshSession,
 } from '../../../services/refreshToken.service.js';
+import { verifyReferralCode } from '../../../services/mlm.service.js';
 
 // POST /api/vendor/auth/register
 export const register = asyncHandler(async (req, res) => {
@@ -54,7 +55,37 @@ export const register = asyncHandler(async (req, res) => {
         )
     );
 
-    res.status(201).json(new ApiResponse(201, { email: vendor.email }, 'Registration submitted. Please verify your email and await admin approval.'));
+    res.status(201).json(new ApiResponse(201, { vendorId: vendor._id, email: vendor.email }, 'Registration submitted. Please verify your email and await admin approval.'));
+});
+
+// POST /api/vendor/auth/verify-referral
+export const verifyReferral = asyncHandler(async (req, res) => {
+    const { vendorId, referralCode } = req.body;
+
+    const vendor = await Vendor.findById(vendorId);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    
+    // Prevent duplicate verification abuse
+    if (vendor.referralVerified) {
+        throw new ApiError(400, 'Referral already verified for this vendor.');
+    }
+
+    const verificationResult = await verifyReferralCode(referralCode);
+    
+    if (!verificationResult.valid) {
+        return res.status(400).json(new ApiResponse(400, null, verificationResult.error || 'Invalid referral code'));
+    }
+
+    // Save referral info
+    vendor.referralCode = referralCode;
+    vendor.referralVerified = true;
+    if (verificationResult.data) {
+        vendor.referralData = verificationResult.data;
+    }
+    
+    await vendor.save();
+
+    res.status(200).json(new ApiResponse(200, { verified: true }, 'Referral code verified successfully.'));
 });
 
 // POST /api/vendor/auth/verify-otp

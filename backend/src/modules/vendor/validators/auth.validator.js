@@ -135,3 +135,12 @@ export const updateVendorProfileSchema = Joi.object({
         }),
     }).optional(),
 });
+
+export const verifyReferralSchema = Joi.object({
+    vendorId: Joi.string().required().messages({
+        'string.empty': 'Vendor ID is required.',
+    }),
+    referralCode: Joi.string().trim().required().messages({
+        'string.empty': 'Referral code is required.',
+    }),
+});
