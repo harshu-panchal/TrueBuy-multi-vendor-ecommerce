@@ -20,6 +20,7 @@ const VendorRegister = () => {
     confirmPassword: '',
     storeName: '',
     storeDescription: '',
+    gstNumber: '',
     address: {
       street: '',
       city: '',
@@ -103,6 +104,7 @@ const VendorRegister = () => {
         phone: formData.phone.trim(),
         storeName: formData.storeName.trim(),
         storeDescription: formData.storeDescription.trim(),
+        gstNumber: formData.gstNumber.trim(),
         address: formData.address,
       });
 
@@ -233,6 +235,17 @@ const VendorRegister = () => {
                     placeholder="Describe your store..."
                     rows={3}
                     className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900 resize-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-600 px-1">GST Number (Optional)</label>
+                  <input
+                    type="text"
+                    name="gstNumber"
+                    value={formData.gstNumber}
+                    onChange={handleChange}
+                    placeholder="22AAAAA0000A1Z5"
+                    className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900 uppercase"
                   />
                 </div>
               </div>

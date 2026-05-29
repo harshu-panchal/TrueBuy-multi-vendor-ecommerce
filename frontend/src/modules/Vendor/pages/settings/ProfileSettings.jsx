@@ -9,6 +9,7 @@ const ProfileSettings = () => {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
+    gstNumber: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -21,6 +22,7 @@ const ProfileSettings = () => {
         ...prev,
         name: vendor.name || '',
         phone: vendor.phone || '',
+        gstNumber: vendor.gstNumber || '',
       }));
     }
   }, [vendor]);
@@ -38,6 +40,7 @@ const ProfileSettings = () => {
       await updateProfile({
         name: formData.name,
         phone: formData.phone,
+        gstNumber: formData.gstNumber,
       });
       toast.success('Profile updated successfully');
     } catch {
@@ -176,6 +179,20 @@ const ProfileSettings = () => {
                     maxLength="10"
                     required
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    GST Number
+                  </label>
+                  <input
+                    type="text"
+                    name="gstNumber"
+                    value={formData.gstNumber || ''}
+                    onChange={handleChange}
+                    placeholder="22AAAAA0000A1Z5"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all uppercase"
                   />
                 </div>
               </div>

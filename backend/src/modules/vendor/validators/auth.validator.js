@@ -13,6 +13,9 @@ export const registerSchema = Joi.object({
     }),
     storeName: Joi.string().trim().min(2).max(100).required(),
     storeDescription: Joi.string().trim().max(500).allow('').optional(),
+    gstNumber: Joi.string().trim().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i).allow('').optional().messages({
+        'string.pattern.base': 'Invalid GST number format (e.g., 22AAAAA0000A1Z5)',
+    }),
     address: Joi.object({
         street: Joi.string().allow('').optional(),
         city: Joi.string().allow('').optional(),
@@ -104,6 +107,9 @@ export const updateVendorProfileSchema = Joi.object({
         'string.pattern.base': 'Store logo URL should not contain digits.',
     }),
     storeDescription: Joi.string().trim().max(500).allow('').optional(),
+    gstNumber: Joi.string().trim().pattern(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i).allow(null, '').optional().messages({
+        'string.pattern.base': 'Invalid GST number format (e.g., 22AAAAA0000A1Z5)',
+    }),
     phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
         'string.pattern.base': 'Phone number must be exactly 10 digits.',
     }),

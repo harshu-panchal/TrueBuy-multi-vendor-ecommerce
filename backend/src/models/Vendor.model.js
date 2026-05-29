@@ -67,6 +67,12 @@ const vendorSchema = new mongoose.Schema(
             aadhar: String,
             businessLicense: String,
         },
+        gstNumber: {
+            type: String,
+            default: null,
+            trim: true,
+            uppercase: true,
+        },
         otp: { type: String, select: false },
         otpExpiry: { type: Date, select: false },
         resetOtp: { type: String, select: false },

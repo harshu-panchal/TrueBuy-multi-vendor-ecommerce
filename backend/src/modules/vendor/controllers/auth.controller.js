@@ -16,7 +16,7 @@ import {
 
 // POST /api/vendor/auth/register
 export const register = asyncHandler(async (req, res) => {
-    const { name, email, password, phone, storeName, storeDescription, address } = req.body;
+    const { name, email, password, phone, storeName, storeDescription, address, gstNumber } = req.body;
 
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const existing = await Vendor.findOne({ email: normalizedEmail });
@@ -29,6 +29,7 @@ export const register = asyncHandler(async (req, res) => {
         phone: String(phone || '').trim(),
         storeName: String(storeName || '').trim(),
         storeDescription: String(storeDescription || '').trim(),
+        gstNumber: gstNumber ? String(gstNumber).trim().toUpperCase() : null,
         address,
         status: 'pending'
     });
@@ -243,6 +244,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
         'storeName',
         'storeDescription',
         'storeLogo',
+        'gstNumber',
         'address',
         'shippingEnabled',
         'freeShippingThreshold',
