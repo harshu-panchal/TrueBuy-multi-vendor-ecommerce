@@ -67,6 +67,7 @@ export const useVendorAuthStore = create(
 
           return {
             success: true,
+            vendorId: data?.vendorId || data?.data?.vendorId,
             message:
               data?.message ||
               "Registration successful! Please check your email for the OTP.",

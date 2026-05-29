@@ -109,8 +109,8 @@ const VendorRegister = () => {
       });
 
       toast.success(result.message || 'Registration successful!');
-      // Navigate to verification page
-      navigate('/vendor/verification', { state: { email: formData.email } });
+      // Navigate to referral verification page first
+      navigate('/vendor/referral', { state: { email: formData.email, vendorId: result.vendorId } });
     } catch (error) {
       toast.error(error.message || 'Registration failed. Please try again.');
     }
