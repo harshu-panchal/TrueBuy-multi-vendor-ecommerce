@@ -194,6 +194,7 @@ import DeliveryFinance from "./modules/Delivery/pages/Finance";
 // Vendor Routes
 import VendorLogin from "./modules/Vendor/pages/Login";
 import VendorRegister from "./modules/Vendor/pages/Register";
+import VendorReferral from "./modules/Vendor/pages/Referral";
 import VendorVerification from "./modules/Vendor/pages/Verification";
 import VendorForgotPassword from "./modules/Vendor/pages/ForgotPassword";
 import VendorResetPassword from "./modules/Vendor/pages/ResetPassword";
@@ -664,6 +665,7 @@ const AppRoutes = () => {
       {/* Vendor Routes */}
       <Route path="/vendor/login" element={<VendorLogin />} />
       <Route path="/vendor/register" element={<VendorRegister />} />
+      <Route path="/vendor/referral" element={<VendorReferral />} />
       <Route path="/vendor/verification" element={<VendorVerification />} />
       <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
       <Route path="/vendor/reset-password" element={<VendorResetPassword />} />
