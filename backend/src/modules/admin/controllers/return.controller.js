@@ -31,11 +31,19 @@ const normalizeReturnRequest = (request) => ({
     id: request._id,
     customer: request.userId
         ? {
-            name: request.userId.name,
-            email: request.userId.email,
-            phone: request.userId.phone
+            name: request.userId?.name || 'Deleted Customer',
+            email: request.userId?.email || 'N/A',
+            phone: request.userId?.phone || ''
         }
-        : { name: 'Guest', email: 'N/A' },
+        : { name: 'Deleted Customer', email: 'N/A', phone: '' },
+    vendor: request.vendorId
+        ? {
+            name: request.vendorId?.name || request.vendorId?.storeName || request.vendorId?.shopName || 'Deleted Vendor',
+            title: request.vendorId?.title || request.vendorId?.storeName || request.vendorId?.shopName || request.vendorId?.name || 'Deleted Vendor',
+            email: request.vendorId?.email || 'N/A',
+        }
+        : { name: 'Deleted Vendor', title: 'Deleted Vendor', email: 'N/A' },
+    deliveryBoyId: request.assignedDeliveryBoy || request.deliveryBoyId || null,
     orderId: request.orderId?.orderId || 'N/A',
     orderRefId: request.orderId?._id || null,
     requestDate: request.createdAt,
@@ -96,7 +104,10 @@ export const getAllReturnRequests = asyncHandler(async (req, res) => {
 
     const returnRequests = await ReturnRequest.find(filter)
         .populate('userId', 'name email phone')
-        .populate('orderId', 'orderId total')
+        .populate('orderId', 'orderId total items')
+        .populate('productId', 'name title image price')
+        .populate('vendorId', 'name storeName shopName title email')
+        .populate('assignedDeliveryBoy', 'name email phone')
         .sort({ createdAt: -1 })
         .skip((numericPage - 1) * numericLimit)
         .limit(numericLimit);
@@ -128,7 +139,9 @@ export const getReturnRequestById = asyncHandler(async (req, res) => {
     const request = await ReturnRequest.findById(req.params.id)
         .populate('userId', 'name email phone')
         .populate('orderId', 'orderId total createdAt items')
-        .populate('vendorId', 'shopName email');
+        .populate('productId', 'name title image price')
+        .populate('vendorId', 'name storeName shopName title email')
+        .populate('assignedDeliveryBoy', 'name email phone');
 
     if (!request) {
         throw new ApiError(404, 'Return request not found');
@@ -152,7 +165,10 @@ export const updateReturnRequestStatus = asyncHandler(async (req, res) => {
 
     const request = await ReturnRequest.findById(req.params.id)
         .populate('userId', 'name email phone')
-        .populate('orderId', 'orderId total items');
+        .populate('orderId', 'orderId total items')
+        .populate('productId', 'name title image price')
+        .populate('vendorId', 'name storeName shopName title email')
+        .populate('assignedDeliveryBoy', 'name email phone');
 
     if (!request) {
         throw new ApiError(404, 'Return request not found');
@@ -191,10 +207,10 @@ export const updateReturnRequestStatus = asyncHandler(async (req, res) => {
             ...request._doc,
             id: request._id,
             customer: request.userId ? {
-                name: request.userId.name,
-                email: request.userId.email,
-                phone: request.userId.phone
-            } : { name: 'Guest', email: 'N/A' },
+                name: request.userId?.name || 'Deleted Customer',
+                email: request.userId?.email || 'N/A',
+                phone: request.userId?.phone || ''
+            } : { name: 'Deleted Customer', email: 'N/A', phone: '' },
             orderId: request.orderId?.orderId || 'N/A',
             requestDate: request.createdAt
         };
