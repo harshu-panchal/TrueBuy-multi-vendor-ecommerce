@@ -8,7 +8,36 @@ import StatusBadge from '../../../shared/components/Badge';
 import AnimatedSelect from '../components/AnimatedSelect';
 import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
 import { useReturnStore } from '../../../shared/store/returnStore';
+import { getAllDeliveryBoys } from '../services/adminService';
 import toast from 'react-hot-toast';
+
+const fetchAssignableDeliveryBoys = async () => {
+  const first = await getAllDeliveryBoys({
+    page: 1,
+    limit: 100,
+    status: 'active',
+    applicationStatus: 'approved',
+  });
+
+  const firstRows = first?.data?.deliveryBoys || [];
+  const totalPages = Number(first?.data?.pagination?.pages || 1);
+  if (totalPages <= 1) return firstRows;
+
+  const requests = [];
+  for (let page = 2; page <= totalPages; page += 1) {
+    requests.push(
+      getAllDeliveryBoys({
+        page,
+        limit: 100,
+        status: 'active',
+        applicationStatus: 'approved',
+      })
+    );
+  }
+
+  const results = await Promise.all(requests);
+  return firstRows.concat(results.flatMap((res) => res?.data?.deliveryBoys || []));
+};
 
 const ReturnRequests = () => {
   const navigate = useNavigate();
@@ -20,10 +49,35 @@ const ReturnRequests = () => {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
+  const [deliveryBoys, setDeliveryBoys] = useState([]);
 
   useEffect(() => {
     fetchReturnRequests({ role: 'admin', page: 1, limit: 100 }).catch(() => null);
   }, [fetchReturnRequests]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDeliveryBoys = async () => {
+      try {
+        const rows = await fetchAssignableDeliveryBoys();
+        if (isMounted) {
+          setDeliveryBoys(rows);
+        }
+      } catch (error) {
+        console.error('[Admin ReturnRequests] failed to fetch delivery boys', error);
+        if (isMounted) {
+          setDeliveryBoys([]);
+        }
+      }
+    };
+
+    loadDeliveryBoys();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredRequests = useMemo(() => {
     let filtered = returnRequests;
@@ -45,12 +99,14 @@ const ReturnRequests = () => {
 
   const handleOpenAssign = (request) => {
     setSelectedRequest(request);
+    setSelectedDeliveryBoyId('');
     setIsAssignModalOpen(true);
   };
 
   const handleConfirmAssignment = async () => {
     if (!selectedRequest || !selectedDeliveryBoyId) return;
-    const success = await assignDeliveryToReturn(selectedRequest.id, selectedDeliveryBoyId);
+    const requestId = String(selectedRequest.id || selectedRequest._id || '');
+    const success = await assignDeliveryToReturn(requestId, selectedDeliveryBoyId);
     if (success) {
       setIsAssignModalOpen(false);
       setSelectedRequest(null);
@@ -101,6 +157,11 @@ const ReturnRequests = () => {
       approved,
     };
   }, [filteredRequests]);
+
+  const isAssignableStatus = (status) => {
+    const normalized = String(status || '').toLowerCase();
+    return normalized === 'approved' || normalized === 'approved_by_vendor';
+  };
 
   return (
     <motion.div
@@ -303,7 +364,7 @@ const ReturnRequests = () => {
                       AWAITING SELLER APPROVAL
                     </div>
                   )}
-                  {(req.status === 'approved' || req.status === 'APPROVED_BY_VENDOR') && !req.deliveryBoyId && !req.assignedDeliveryBoy && (
+                  {isAssignableStatus(req.status) && !req.deliveryBoyId && !req.assignedDeliveryBoy && (
                     <button 
                       onClick={() => handleOpenAssign(req)}
                       className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-700 transition-colors flex items-center gap-2"
@@ -312,7 +373,7 @@ const ReturnRequests = () => {
                       Assign Pickup
                     </button>
                   )}
-                  {(req.status === 'approved' || req.status === 'APPROVED_BY_VENDOR') && (req.deliveryBoyId || req.assignedDeliveryBoy) && (
+                  {isAssignableStatus(req.status) && (req.deliveryBoyId || req.assignedDeliveryBoy) && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl border border-blue-200 text-xs font-bold">
                       <FiTruck />
                       PICKUP ASSIGNED
@@ -360,9 +421,10 @@ const ReturnRequests = () => {
                   onChange={(e) => setSelectedDeliveryBoyId(e.target.value)}
                   options={[
                     { value: '', label: 'Select Delivery Boy' },
-                    { value: 'DB-001', label: 'Rahul Singh (+91 98XXX XXX01)' },
-                    { value: 'DB-002', label: 'Amit Kumar (+91 98XXX XXX02)' },
-                    { value: 'DB-003', label: 'Suresh Raina (+91 98XXX XXX03)' },
+                    ...deliveryBoys.map((boy) => ({
+                      value: String(boy.id || boy._id),
+                      label: `${boy.name} (${boy.phone || 'N/A'})`,
+                    })),
                   ]}
                 />
                 

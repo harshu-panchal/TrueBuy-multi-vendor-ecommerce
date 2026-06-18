@@ -5,11 +5,40 @@ import StatusBadge from '../../../shared/components/Badge';
 import AnimatedSelect from '../components/AnimatedSelect';
 import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
 import { useReturnStore } from '../../../shared/store/returnStore';
+import { getAllDeliveryBoys } from '../services/adminService';
 import { 
   FiArrowLeft, FiCheck, FiX, FiPhone, FiMail, FiPackage, 
   FiCalendar, FiRefreshCw, FiShoppingBag, FiDollarSign, 
   FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser, FiCamera, FiImage, FiCheckCircle, FiSearch
 } from 'react-icons/fi';
+
+const fetchAssignableDeliveryBoys = async () => {
+  const first = await getAllDeliveryBoys({
+    page: 1,
+    limit: 100,
+    status: 'active',
+    applicationStatus: 'approved',
+  });
+
+  const firstRows = first?.data?.deliveryBoys || [];
+  const totalPages = Number(first?.data?.pagination?.pages || 1);
+  if (totalPages <= 1) return firstRows;
+
+  const requests = [];
+  for (let page = 2; page <= totalPages; page += 1) {
+    requests.push(
+      getAllDeliveryBoys({
+        page,
+        limit: 100,
+        status: 'active',
+        applicationStatus: 'approved',
+      })
+    );
+  }
+
+  const results = await Promise.all(requests);
+  return firstRows.concat(results.flatMap((res) => res?.data?.deliveryBoys || []));
+};
 
 const ReturnRequestDetail = () => {
   const navigate = useNavigate();
@@ -30,6 +59,7 @@ const ReturnRequestDetail = () => {
   const [status, setStatus] = useState('');
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState('');
+  const [deliveryBoys, setDeliveryBoys] = useState([]);
   const statusTransitions = {
     pending: ['approved', 'rejected'],
     approved: ['processing', 'completed', 'inspection_pending'],
@@ -104,6 +134,30 @@ const ReturnRequestDetail = () => {
       isMounted = false;
     };
   }, [id, fetchReturnRequestById]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadDeliveryBoys = async () => {
+      try {
+        const rows = await fetchAssignableDeliveryBoys();
+        if (isMounted) {
+          setDeliveryBoys(rows);
+        }
+      } catch (error) {
+        console.error('[Admin ReturnRequestDetail] failed to fetch delivery boys', error);
+        if (isMounted) {
+          setDeliveryBoys([]);
+        }
+      }
+    };
+
+    loadDeliveryBoys();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleStatusUpdate = async (newStatus, action = '') => {
     const statusData = { status: newStatus };
@@ -207,6 +261,8 @@ const ReturnRequestDetail = () => {
   const customerEmail = rawCustomerEmail && rawCustomerEmail !== 'N/A' ? rawCustomerEmail : '';
   const customerPhone = customer?.phone || returnRequest?.userId?.phone || '';
   const deliveryPartner = returnRequest?.deliveryBoyId || returnRequest?.assignedDeliveryBoy;
+  const normalizedStatus = String(returnRequest?.status || '').toLowerCase();
+  const canAssignPickup = normalizedStatus === 'approved' || normalizedStatus === 'approved_by_vendor';
   const allowedNextStatuses = statusTransitions[returnRequest?.status] || [];
   const editableStatusOptions = [returnRequest?.status, ...allowedNextStatuses].filter(Boolean).map((value) => ({
     value,
@@ -284,7 +340,7 @@ const ReturnRequestDetail = () => {
                   Edit Status
                 </button>
               )}
-              {returnRequest.status === 'approved' && !deliveryPartner && (
+              {canAssignPickup && !deliveryPartner && (
                 <button
                   onClick={() => setIsAssignModalOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
@@ -806,9 +862,10 @@ const ReturnRequestDetail = () => {
                   onChange={(e) => setSelectedDeliveryBoyId(e.target.value)}
                   options={[
                     { value: '', label: 'Select Delivery Boy' },
-                    { value: 'DB-001', label: 'Rahul Singh (+91 98XXX XXX01)' },
-                    { value: 'DB-002', label: 'Amit Kumar (+91 98XXX XXX02)' },
-                    { value: 'DB-003', label: 'Suresh Raina (+91 98XXX XXX03)' },
+                    ...deliveryBoys.map((boy) => ({
+                      value: String(boy.id || boy._id),
+                      label: `${boy.name} (${boy.phone || 'N/A'})`,
+                    })),
                   ]}
                 />
                 
