@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StatusBadge from '../../../shared/components/Badge';
@@ -9,8 +9,7 @@ import { getAllDeliveryBoys } from '../services/adminService';
 import { 
   FiArrowLeft, FiCheck, FiX, FiPhone, FiMail, FiPackage, 
   FiCalendar, FiRefreshCw, FiShoppingBag, FiDollarSign, 
-  FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser, FiCamera, FiImage, FiCheckCircle, FiSearch
-  FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser, FiCamera, FiImage, FiCheckCircle, FiSearch
+  FiAlertCircle, FiEdit, FiClock, FiTruck, FiUser, FiCamera, FiImage, FiCheckCircle 
 } from 'react-icons/fi';
 
 const fetchAssignableDeliveryBoys = async () => {
@@ -54,10 +53,6 @@ const ReturnRequestDetail = () => {
     resolveInspectionFailure
   } = useReturnStore();
   const [returnRequest, setReturnRequest] = useState(null);
-  const [isLoadingDetail, setIsLoadingDetail] = useState(true);
-  const [detailError, setDetailError] = useState('');
-  const [isLoadingDetail, setIsLoadingDetail] = useState(true);
-  const [detailError, setDetailError] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState('');
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -77,119 +72,17 @@ const ReturnRequestDetail = () => {
   };
 
   useEffect(() => {
-    let isMounted = true;
-
-    let isMounted = true;
-
     const loadDetail = async () => {
-      setIsLoadingDetail(true);
-      setDetailError('');
-
-      try {
-        const data = await fetchReturnRequestById(id, 'admin');
-        console.log('[Admin ReturnRequestDetail] fetched return request', data);
-
-        if (!data) {
-          console.warn('[Admin ReturnRequestDetail] return request not found or empty', { id, data });
-          if (isMounted) {
-            setReturnRequest(null);
-            setDetailError('Return request not found.');
-          }
-          return;
-        }
-
-        console.log('[Admin ReturnRequestDetail] populated references', {
-          customer: data?.customer,
-          userId: data?.userId,
-          vendor: data?.vendor,
-          vendorId: data?.vendorId,
-          productId: data?.productId,
-          deliveryBoyId: data?.deliveryBoyId,
-          assignedDeliveryBoy: data?.assignedDeliveryBoy,
-          items: data?.items,
-        });
-
-        if (!data?.customer || !data?.customer?.name || !data?.customer?.email) {
-          console.warn('[Admin ReturnRequestDetail] missing customer fields', {
-            customer: data?.customer,
-            userId: data?.userId,
-          });
-        }
-
-        if (isMounted) {
-          setReturnRequest(data);
-          setStatus(data?.status || '');
-        }
-      } catch (error) {
-        console.error('[Admin ReturnRequestDetail] failed to fetch return request', error);
-        if (isMounted) {
-          setDetailError('Unable to load return request details.');
-          setReturnRequest(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingDetail(false);
-        }
+      const data = await fetchReturnRequestById(id, 'admin');
+      if (data) {
+        setReturnRequest(data);
+        setStatus(data.status);
+      } else {
+        navigate('/admin/return-requests');
       }
     };
-
-      setIsLoadingDetail(true);
-      setDetailError('');
-
-      try {
-        const data = await fetchReturnRequestById(id, 'admin');
-        console.log('[Admin ReturnRequestDetail] fetched return request', data);
-
-        if (!data) {
-          console.warn('[Admin ReturnRequestDetail] return request not found or empty', { id, data });
-          if (isMounted) {
-            setReturnRequest(null);
-            setDetailError('Return request not found.');
-          }
-          return;
-        }
-
-        console.log('[Admin ReturnRequestDetail] populated references', {
-          customer: data?.customer,
-          userId: data?.userId,
-          vendor: data?.vendor,
-          vendorId: data?.vendorId,
-          productId: data?.productId,
-          deliveryBoyId: data?.deliveryBoyId,
-          assignedDeliveryBoy: data?.assignedDeliveryBoy,
-          items: data?.items,
-        });
-
-        if (!data?.customer || !data?.customer?.name || !data?.customer?.email) {
-          console.warn('[Admin ReturnRequestDetail] missing customer fields', {
-            customer: data?.customer,
-            userId: data?.userId,
-          });
-        }
-
-        if (isMounted) {
-          setReturnRequest(data);
-          setStatus(data?.status || '');
-        }
-      } catch (error) {
-        console.error('[Admin ReturnRequestDetail] failed to fetch return request', error);
-        if (isMounted) {
-          setDetailError('Unable to load return request details.');
-          setReturnRequest(null);
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingDetail(false);
-        }
-      }
-    };
-
     loadDetail();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [id, fetchReturnRequestById]);
+  }, [id, navigate, fetchReturnRequestById]);
 
   useEffect(() => {
     let isMounted = true;
@@ -225,8 +118,7 @@ const ReturnRequestDetail = () => {
     } else if (newStatus === 'completed' && !action) {
       statusData.refundStatus = 'processed';
     } else if (newStatus === 'approved' && !action) {
-      if (returnRequest?.refundStatus !== 'processed') {
-      if (returnRequest?.refundStatus !== 'processed') {
+      if (returnRequest.refundStatus !== 'processed') {
         statusData.refundStatus = 'pending';
       }
     }
@@ -244,8 +136,7 @@ const ReturnRequestDetail = () => {
   };
 
   const handleStatusSave = () => {
-    if (status !== returnRequest?.status) {
-    if (status !== returnRequest?.status) {
+    if (status !== returnRequest.status) {
       handleStatusUpdate(status);
     } else {
       setIsEditing(false);
@@ -286,8 +177,7 @@ const ReturnRequestDetail = () => {
     return statusMap[status] || 'pending';
   };
 
-  if (isLoadingDetail) {
-  if (isLoadingDetail) {
+  if (!returnRequest) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Loading...</p>
@@ -295,35 +185,10 @@ const ReturnRequestDetail = () => {
     );
   }
 
-  if (!returnRequest) {
-    return (
-      <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 text-center">
-        <FiAlertCircle className="mx-auto text-3xl text-amber-500 mb-3" />
-        <h2 className="text-lg font-bold text-gray-800 mb-1">Return request unavailable</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          {detailError || 'This return request may have been deleted or is no longer available.'}
-        </p>
-        <button
-          onClick={() => navigate('/admin/return-requests')}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
-        >
-          Back to Return Requests
-        </button>
-      </div>
-    );
-  }
-
-  const items = Array.isArray(returnRequest?.items) ? returnRequest.items : [];
-  const customer = returnRequest?.customer || {};
-  const customerName = customer?.name || returnRequest?.userId?.name || 'Deleted Customer';
-  const rawCustomerEmail = customer?.email || returnRequest?.userId?.email || '';
-  const customerEmail = rawCustomerEmail && rawCustomerEmail !== 'N/A' ? rawCustomerEmail : '';
-  const customerPhone = customer?.phone || returnRequest?.userId?.phone || '';
-  const deliveryPartner = returnRequest?.deliveryBoyId || returnRequest?.assignedDeliveryBoy;
-  const normalizedStatus = String(returnRequest?.status || '').toLowerCase();
+  const normalizedStatus = String(returnRequest.status || '').toLowerCase();
   const canAssignPickup = normalizedStatus === 'approved' || normalizedStatus === 'approved_by_vendor';
-  const allowedNextStatuses = statusTransitions[returnRequest?.status] || [];
-  const editableStatusOptions = [returnRequest?.status, ...allowedNextStatuses].filter(Boolean).map((value) => ({
+  const allowedNextStatuses = statusTransitions[returnRequest.status] || [];
+  const editableStatusOptions = [returnRequest.status, ...allowedNextStatuses].map((value) => ({
     value,
     label: value.charAt(0).toUpperCase() + value.slice(1),
   }));
@@ -399,7 +264,7 @@ const ReturnRequestDetail = () => {
                   Edit Status
                 </button>
               )}
-              {canAssignPickup && !deliveryPartner && (
+              {canAssignPickup && !returnRequest.deliveryBoyId && (
                 <button
                   onClick={() => setIsAssignModalOpen(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-semibold"
@@ -466,8 +331,7 @@ const ReturnRequestDetail = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Items</p>
-                <p className="font-semibold text-gray-800">{items.length}</p>
-                <p className="font-semibold text-gray-800">{items.length}</p>
+                <p className="font-semibold text-gray-800">{returnRequest.items.length}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-0.5">Refund Status</p>
@@ -519,29 +383,15 @@ const ReturnRequestDetail = () => {
           <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
             <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
               <FiPackage className="text-primary-600 text-base" />
-              Items Being Returned ({items.length})
-              Items Being Returned ({items.length})
+              Items Being Returned ({returnRequest.items.length})
             </h2>
             <div className="space-y-2">
-              {items.length === 0 ? (
-                <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-500">
-                  No return items found. The related product may have been deleted.
-                </div>
-              ) : items.map((item, index) => (
-                <div key={item?.id || item?._id || index} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
-                  {item?.image && (
-              {items.length === 0 ? (
-                <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-500">
-                  No return items found. The related product may have been deleted.
-                </div>
-              ) : items.map((item, index) => (
-                <div key={item?.id || item?._id || index} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
-                  {item?.image && (
+              {returnRequest.items.map((item, index) => (
+                <div key={item.id || index} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
+                  {item.image && (
                     <img
-                      src={item?.image}
-                      alt={item?.name || item?.title || 'Product'}
-                      src={item?.image}
-                      alt={item?.name || item?.title || 'Product'}
+                      src={item.image}
+                      alt={item.name || 'Product'}
                       className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
                       onError={(e) => {
                         e.target.src = 'https://via.placeholder.com/100x100?text=Product';
@@ -549,25 +399,20 @@ const ReturnRequestDetail = () => {
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm text-gray-800 truncate">{item?.name || item?.title || 'Deleted Product'}</p>
-                    <p className="font-semibold text-sm text-gray-800 truncate">{item?.name || item?.title || 'Deleted Product'}</p>
+                    <p className="font-semibold text-sm text-gray-800 truncate">{item.name || 'Unknown Product'}</p>
                     <div className="flex items-center gap-3 mt-1">
                       <p className="text-xs text-gray-600">
-                        {formatCurrency(item?.price || 0)} × {item?.quantity || 1}
-                        {formatCurrency(item?.price || 0)} × {item?.quantity || 1}
+                        {formatCurrency(item.price || 0)} × {item.quantity || 1}
                       </p>
-                      {item?.reason && (
-                      {item?.reason && (
+                      {item.reason && (
                         <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">
-                          {item?.reason}
-                          {item?.reason}
+                          {item.reason}
                         </span>
                       )}
                     </div>
                   </div>
                   <p className="font-bold text-sm text-gray-800">
-                    {formatCurrency((item?.price || 0) * (item?.quantity || 1))}
-                    {formatCurrency((item?.price || 0) * (item?.quantity || 1))}
+                    {formatCurrency((item.price || 0) * (item.quantity || 1))}
                   </p>
                 </div>
               ))}
@@ -686,46 +531,28 @@ const ReturnRequestDetail = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-gray-500 mb-1">Name</p>
-                <p className="font-semibold text-sm text-gray-800">{customer?.name || customerName}</p>
-                <p className="font-semibold text-sm text-gray-800">{customer?.name || customerName}</p>
+                <p className="font-semibold text-sm text-gray-800">{returnRequest.customer.name}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500 mb-1">Email</p>
-                {customerEmail ? (
-                  <a
-                    href={`mailto:${customerEmail}`}
-                    className="font-semibold text-xs text-blue-600 hover:text-blue-800 break-all"
-                  >
-                    {customerEmail}
-                  </a>
-                ) : (
-                  <p className="font-semibold text-xs text-gray-500">Email unavailable</p>
-                )}
-                {customerEmail ? (
-                  <a
-                    href={`mailto:${customerEmail}`}
-                    className="font-semibold text-xs text-blue-600 hover:text-blue-800 break-all"
-                  >
-                    {customerEmail}
-                  </a>
-                ) : (
-                  <p className="font-semibold text-xs text-gray-500">Email unavailable</p>
-                )}
+                <a
+                  href={`mailto:${returnRequest.customer.email}`}
+                  className="font-semibold text-xs text-blue-600 hover:text-blue-800 break-all"
+                >
+                  {returnRequest.customer.email}
+                </a>
               </div>
-              {(customer?.phone || customerPhone) && (
-              {(customer?.phone || customerPhone) && (
+              {returnRequest.customer.phone && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
                     <FiPhone className="text-xs" />
                     Phone
                   </p>
                   <a
-                    href={`tel:${customer?.phone || customerPhone}`}
-                    href={`tel:${customer?.phone || customerPhone}`}
+                    href={`tel:${returnRequest.customer.phone}`}
                     className="font-semibold text-sm text-gray-800 hover:text-blue-600"
                   >
-                    {customer?.phone || customerPhone}
-                    {customer?.phone || customerPhone}
+                    {returnRequest.customer.phone}
                   </a>
                 </div>
               )}
@@ -736,8 +563,7 @@ const ReturnRequestDetail = () => {
         {/* Sidebar */}
         <div className="space-y-4">
           {/* Logistics Information */}
-          {deliveryPartner && (
-          {deliveryPartner && (
+          {returnRequest.deliveryBoyId && (
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
                 <FiTruck className="text-primary-600 text-base" />
@@ -752,15 +578,11 @@ const ReturnRequestDetail = () => {
                     <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest leading-none">Assigned Rider</p>
                   </div>
                   <p className="text-sm font-bold text-gray-800">
-                    {typeof deliveryPartner === 'object' 
-                      ? deliveryPartner?.name || 'Deleted Rider'
-                      : deliveryPartner === 'DB-001' ? 'Rahul Singh' : "Rider ID: " + deliveryPartner}
-                    {typeof deliveryPartner === 'object' 
-                      ? deliveryPartner?.name || 'Deleted Rider'
-                      : deliveryPartner === 'DB-001' ? 'Rahul Singh' : "Rider ID: " + deliveryPartner}
+                    {typeof returnRequest.deliveryBoyId === 'object' 
+                      ? returnRequest.deliveryBoyId.name 
+                      : returnRequest.deliveryBoyId === 'DB-001' ? 'Rahul Singh' : "Rider ID: " + returnRequest.deliveryBoyId}
                   </p>
-                  <p className="text-[10px] text-gray-500 font-medium">ID: {typeof deliveryPartner === 'object' ? deliveryPartner?.id || deliveryPartner?._id || 'N/A' : deliveryPartner}</p>
-                  <p className="text-[10px] text-gray-500 font-medium">ID: {typeof deliveryPartner === 'object' ? deliveryPartner?.id || deliveryPartner?._id || 'N/A' : deliveryPartner}</p>
+                  <p className="text-[10px] text-gray-500 font-medium">ID: {typeof returnRequest.deliveryBoyId === 'object' ? returnRequest.deliveryBoyId.id : returnRequest.deliveryBoyId}</p>
                 </div>
               </div>
 
@@ -814,8 +636,7 @@ const ReturnRequestDetail = () => {
                 <span className="text-gray-600">Items Total</span>
                 <span className="font-semibold">
                   {formatCurrency(
-                    items.reduce((sum, item) => sum + (item?.price || 0) * (item?.quantity || 1), 0)
-                    items.reduce((sum, item) => sum + (item?.price || 0) * (item?.quantity || 1), 0)
+                    returnRequest.items.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
                   )}
                 </span>
               </div>
@@ -906,28 +727,15 @@ const ReturnRequestDetail = () => {
                 View Original Order
               </Link>
               <button
-                onClick={() => {
-                  if (customerEmail) {
-                    window.location.href = `mailto:${customerEmail}`;
-                  }
-                }}
-                disabled={!customerEmail}
-                onClick={() => {
-                  if (customerEmail) {
-                    window.location.href = `mailto:${customerEmail}`;
-                  }
-                }}
-                disabled={!customerEmail}
+                onClick={() => window.location.href = `mailto:${returnRequest.customer.email}`}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold"
               >
                 <FiMail className="text-sm" />
                 Email Customer
               </button>
-              {(customer?.phone || customerPhone) && (
-              {(customer?.phone || customerPhone) && (
+              {returnRequest.customer.phone && (
                 <button
-                  onClick={() => window.location.href = `tel:${customer?.phone || customerPhone}`}
-                  onClick={() => window.location.href = `tel:${customer?.phone || customerPhone}`}
+                  onClick={() => window.location.href = `tel:${returnRequest.customer.phone}`}
                   className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold"
                 >
                   <FiPhone className="text-sm" />
