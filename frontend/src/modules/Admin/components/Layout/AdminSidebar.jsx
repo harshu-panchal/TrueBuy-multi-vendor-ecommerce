@@ -163,10 +163,10 @@ const getChildRoute = (parentRoute, childName) => {
       "Content & Features": "/admin/settings/content-features",
       "Notifications & SEO": "/admin/settings/notifications-seo",
     },
-    "/admin/policies": {
-      "Privacy Policy": "/admin/policies/privacy-policy",
-      "Refund Policy": "/admin/policies/refund-policy",
-      "Terms & Conditions": "/admin/policies/terms-conditions",
+    "/admin/legal": {
+      "Privacy Policy": "/admin/legal/privacy",
+      "Refund Policy": "/admin/legal/refund",
+      "Terms & Conditions": "/admin/legal/terms",
     },
     "/admin/firebase": {
       "Push Config": "/admin/firebase/push-config",

@@ -32,6 +32,15 @@ const MobileResetPassword = () => {
       toast.error('Please fill both password fields.');
       return;
     }
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters.');
+      return;
+    }
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]+$/;
+    if (!passwordRegex.test(formData.password)) {
+      toast.error('Password must contain at least one letter, one number, and one special character (no spaces).');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match.');
       return;

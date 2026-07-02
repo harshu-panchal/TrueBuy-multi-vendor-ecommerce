@@ -64,4 +64,3 @@ We may revise these terms of service at any time without notice. By using this w
 };
 
 export default TermsConditions;
-

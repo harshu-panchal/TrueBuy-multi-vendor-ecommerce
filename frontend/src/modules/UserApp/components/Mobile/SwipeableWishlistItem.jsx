@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FiShoppingBag, FiTrash2 } from "react-icons/fi";
 import { useWishlistStore } from "../../../../shared/store/wishlistStore";
@@ -13,6 +13,7 @@ import LazyImage from "../../../../shared/components/LazyImage";
 import useSwipeGesture from "../../hooks/useSwipeGesture";
 
 const SwipeableWishlistItem = ({ item, index, onMoveToCart, onRemove }) => {
+  const navigate = useNavigate();
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isDeleted, setIsDeleted] = useState(false);
   const deletedItemRef = useRef(null);
@@ -124,10 +125,16 @@ const SwipeableWishlistItem = ({ item, index, onMoveToCart, onRemove }) => {
               </button>
             ) : (
               <button
-                onClick={() => onMoveToCart(item)}
+                onClick={() => {
+                  if (item.hasVariants) {
+                    navigate(`/product/${item.id}`);
+                  } else {
+                    onMoveToCart(item);
+                  }
+                }}
                 className="flex-1 py-2 sm:py-2.5 gradient-green text-white rounded-xl font-semibold text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap hover:shadow-glow-green transition-all">
                 <FiShoppingBag className="text-sm sm:text-base" />
-                Add to Cart
+                {item.hasVariants ? "Select Options" : "Add to Cart"}
               </button>
             )}
             <button

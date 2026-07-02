@@ -227,6 +227,34 @@ const getProductDetail = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, product, 'Product detail.'));
 });
 
+// GET /api/products/:id/stock
+router.get('/products/:id/stock', asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id).select('stockQuantity variants.stockMap');
+    if (!product) throw new ApiError(404, 'Product not found.');
+    
+    let availableStock = Number(product.stockQuantity || 0);
+    const variantKey = String(req.query.variantKey || '').trim();
+    
+    if (variantKey && product.variants?.stockMap) {
+        let variantStock = Number(product.variants.stockMap.get(variantKey));
+        
+        if (!Number.isFinite(variantStock)) {
+            for (const [key, val] of product.variants.stockMap.entries()) {
+                if (String(key).toLowerCase() === variantKey.toLowerCase()) {
+                    variantStock = Number(val);
+                    break;
+                }
+            }
+        }
+
+        if (Number.isFinite(variantStock)) {
+            availableStock = Math.max(0, variantStock);
+        }
+    }
+    
+    res.status(200).json(new ApiResponse(200, { availableStock }, 'Stock fetched.'));
+}));
+
 // GET /api/products/:id
 router.get('/products/:id', getProductDetail);
 

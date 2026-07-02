@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import {
   FiHome,
   FiPackage,
@@ -10,6 +11,41 @@ import {
 
 const VendorBottomNav = () => {
   const location = useLocation();
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    const checkKeyboard = () => {
+      setTimeout(() => {
+        const activeElement = document.activeElement;
+        const isInputFocused = activeElement && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeElement.tagName);
+        
+        // On Android, window resizes. On iOS, visual viewport changes.
+        // The most reliable cross-platform way is checking if an input is focused.
+        setIsKeyboardOpen(isInputFocused);
+      }, 50); // Small delay to let focus events settle
+    };
+
+    // Check on window resize (Android keyboard typically triggers this)
+    window.addEventListener('resize', checkKeyboard);
+    
+    // Check on focus events (iOS keyboard typically triggers this)
+    window.addEventListener('focusin', checkKeyboard);
+    window.addEventListener('focusout', checkKeyboard);
+    
+    // Also listen to visualViewport if available (modern mobile browsers)
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', checkKeyboard);
+    }
+
+    return () => {
+      window.removeEventListener('resize', checkKeyboard);
+      window.removeEventListener('focusin', checkKeyboard);
+      window.removeEventListener('focusout', checkKeyboard);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', checkKeyboard);
+      }
+    };
+  }, []);
 
   const navItems = [
     { path: "/vendor/dashboard", icon: FiHome, label: "Home" },
@@ -43,7 +79,7 @@ const VendorBottomNav = () => {
 
   const navContent = (
     <nav 
-      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[9999] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] lg:hidden"
+      className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[9999] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] lg:hidden ${isKeyboardOpen ? 'hidden' : ''}`}
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}

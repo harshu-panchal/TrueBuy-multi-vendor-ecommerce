@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiTruck, FiMapPin, FiFileText } from 'react-icons/fi';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiUser, FiPhone, FiTruck, FiMapPin, FiFileText, FiX } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { appLogo } from '../../../data/logos';
@@ -29,7 +29,7 @@ const DeliveryRegister = () => {
   const validateForm = () => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^[0-9]{10}$/;
+    const phoneRegex = /^[6-9][0-9]{9}$/;
     const nameRegex = /^[a-zA-Z\s.]+$/;
     const vehicleNumberRegex = /^[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}$/i;
 
@@ -49,7 +49,7 @@ const DeliveryRegister = () => {
     if (!cleanPhone) {
       newErrors.phone = "Phone number is required";
     } else if (!phoneRegex.test(cleanPhone)) {
-      newErrors.phone = "Enter a valid 10-digit number";
+      newErrors.phone = "Must be a valid 10-digit number starting with 6, 7, 8, or 9";
     }
 
     if (!formData.address.trim()) {
@@ -97,7 +97,13 @@ const DeliveryRegister = () => {
       }
       return;
     }
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    let newValue = value;
+    if (name === 'phone') {
+      newValue = value.replace(/\D/g, '').slice(0, 10);
+    }
+    
+    setFormData((prev) => ({ ...prev, [name]: newValue }));
     if (errors[name]) {
       setErrors(prev => {
         const next = { ...prev };
@@ -251,18 +257,42 @@ const DeliveryRegister = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Driving License *</label>
-                <div className="relative group">
-                  <FiFileText className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.drivingLicense ? 'text-red-500' : 'text-gray-400 group-hover:text-black'}`} />
-                  <input type="file" name="drivingLicense" onChange={handleChange} accept=".pdf,image/*" required className={`w-full pl-12 pr-4 py-4 rounded-2xl transition-all outline-none text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer border-2 border-dashed ${errors.drivingLicense ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-black bg-gray-50'}`} />
-                </div>
+                {!formData.drivingLicense ? (
+                  <div className="relative group">
+                    <FiFileText className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.drivingLicense ? 'text-red-500' : 'text-gray-400 group-hover:text-black'}`} />
+                    <input type="file" name="drivingLicense" onChange={handleChange} accept="image/*" capture="environment" required className={`w-full pl-12 pr-4 py-4 rounded-2xl transition-all outline-none text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer border-2 border-dashed ${errors.drivingLicense ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-black bg-gray-50'}`} />
+                  </div>
+                ) : (
+                  <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center group">
+                    <img src={URL.createObjectURL(formData.drivingLicense)} alt="Driving License Preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => setFormData(prev => ({...prev, drivingLicense: null}))} className="absolute top-2 right-2 bg-black/50 hover:bg-red-500 text-white p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm shadow-lg">
+                      <FiX size={16} />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-3 truncate pt-8">
+                      {formData.drivingLicense.name}
+                    </div>
+                  </div>
+                )}
                 {errors.drivingLicense && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.drivingLicense}</p>}
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-600 block px-1">Aadhar Card *</label>
-                <div className="relative group">
-                  <FiFileText className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.aadharCard ? 'text-red-500' : 'text-gray-400 group-hover:text-black'}`} />
-                  <input type="file" name="aadharCard" onChange={handleChange} accept=".pdf,image/*" required className={`w-full pl-12 pr-4 py-4 rounded-2xl transition-all outline-none text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer border-2 border-dashed ${errors.aadharCard ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-black bg-gray-50'}`} />
-                </div>
+                {!formData.aadharCard ? (
+                  <div className="relative group">
+                    <FiFileText className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.aadharCard ? 'text-red-500' : 'text-gray-400 group-hover:text-black'}`} />
+                    <input type="file" name="aadharCard" onChange={handleChange} accept="image/*" capture="environment" required className={`w-full pl-12 pr-4 py-4 rounded-2xl transition-all outline-none text-gray-600 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer border-2 border-dashed ${errors.aadharCard ? 'border-red-500 bg-red-50' : 'border-gray-200 hover:border-black bg-gray-50'}`} />
+                  </div>
+                ) : (
+                  <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center group">
+                    <img src={URL.createObjectURL(formData.aadharCard)} alt="Aadhar Card Preview" className="w-full h-full object-cover" />
+                    <button type="button" onClick={() => setFormData(prev => ({...prev, aadharCard: null}))} className="absolute top-2 right-2 bg-black/50 hover:bg-red-500 text-white p-2 rounded-full transition-all opacity-0 group-hover:opacity-100 backdrop-blur-sm shadow-lg">
+                      <FiX size={16} />
+                    </button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent text-white text-xs p-3 truncate pt-8">
+                      {formData.aadharCard.name}
+                    </div>
+                  </div>
+                )}
                 {errors.aadharCard && <p className="text-red-500 text-xs mt-1 ml-1 font-medium">{errors.aadharCard}</p>}
               </div>
             </div>

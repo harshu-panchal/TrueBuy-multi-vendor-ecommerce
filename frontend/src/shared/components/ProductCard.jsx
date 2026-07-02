@@ -17,6 +17,13 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
   const navigate = useNavigate();
   const [activeColorIdx, setActiveColorIdx] = useState(0);
 
+  const hasDynamicAxes =
+    Array.isArray(product?.variants?.attributes) &&
+    product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
+  const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
+  const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
+  const hasVariants = hasDynamicAxes || hasSizeVariants || hasColorVariants;
+
   const productLink = `/product/${product.id}`;
   const { items, addItem, removeItem } = useCartStore();
   const triggerCartAnimation = useUIStore(
@@ -51,13 +58,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
       e.stopPropagation();
     }
 
-    const hasDynamicAxes =
-      Array.isArray(product?.variants?.attributes) &&
-      product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
-    const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
-    const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
-    if (hasDynamicAxes || hasSizeVariants || hasColorVariants) {
-      toast.error("Please select variant on product page");
+    if (hasVariants) {
       navigate(productLink);
       return;
     }
@@ -404,7 +405,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
                 }`}
             >
               <FiShoppingBag size={14} />
-              <span>{isOutOfStock ? "Out of Stock" : "Add to Cart"}</span>
+              <span>{isOutOfStock ? "Out of Stock" : hasVariants ? "View Details" : "Add to Cart"}</span>
             </motion.button>
           </div>
         </div>

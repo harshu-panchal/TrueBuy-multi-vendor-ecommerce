@@ -48,7 +48,7 @@ const DeliveryLogin = () => {
       toast.success('Login successful!');
       navigate('/delivery/dashboard', { replace: true });
     } catch (error) {
-      toast.error(error.message || 'Invalid credentials');
+      console.error('Login failed:', error);
     }
   };
 
@@ -167,6 +167,11 @@ const DeliveryLogin = () => {
                     Register here
                   </Link>
                 </p>
+                <div className="mt-6 flex items-center justify-center gap-4 text-xs text-gray-400">
+                  <Link to="/privacy" className="hover:text-black hover:underline transition-colors">Privacy Policy</Link>
+                  <span>&bull;</span>
+                  <Link to="/terms" className="hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
+                </div>
               </div>
             </div>
           </form>

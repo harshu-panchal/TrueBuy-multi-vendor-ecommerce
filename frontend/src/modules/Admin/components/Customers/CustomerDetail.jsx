@@ -22,6 +22,14 @@ const CustomerDetail = ({ customer, onClose, onUpdate, startEditing = false }) =
     setIsEditing(Boolean(startEditing));
   }, [startEditing]);
 
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, []);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });

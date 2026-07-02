@@ -6,7 +6,7 @@ import Product from '../../../models/Product.model.js';
 import mongoose from 'mongoose';
 
 const wishlistPopulate = 'items.productId';
-const wishlistSelect = 'name price image stock unit rating originalPrice isActive';
+const wishlistSelect = 'name price image stock unit rating originalPrice isActive variants';
 
 // GET /api/user/wishlist
 export const getWishlist = asyncHandler(async (req, res) => {

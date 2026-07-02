@@ -14,6 +14,7 @@ const DeliveryForgotPassword = () => {
   const [email, setEmail] = useState('');
   const [step, setStep] = useState('request');
   const [codes, setCodes] = useState(Array(OTP_LENGTH).fill(''));
+  const [timer, setTimer] = useState(0);
   const inputRefs = useRef([]);
 
   useEffect(() => {
@@ -21,6 +22,16 @@ const DeliveryForgotPassword = () => {
       inputRefs.current[0].focus();
     }
   }, [step]);
+
+  useEffect(() => {
+    let interval;
+    if (step === 'verify' && timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [step, timer]);
 
   const handleRequestOtp = async (e) => {
     if (e) e.preventDefault();
@@ -33,6 +44,7 @@ const DeliveryForgotPassword = () => {
       await forgotPassword(email.trim().toLowerCase());
       toast.success('If the email exists, reset OTP has been sent.');
       setStep('verify');
+      setTimer(60);
     } catch {
       // Global API interceptor shows toast
     }
@@ -146,11 +158,11 @@ const DeliveryForgotPassword = () => {
                   <button
                     type="button"
                     onClick={handleRequestOtp}
-                    disabled={isLoading}
+                    disabled={isLoading || timer > 0}
                     className="text-sm text-primary-600 hover:text-primary-700 font-medium disabled:text-gray-400 inline-flex items-center gap-2"
                   >
-                    <FiRefreshCw />
-                    Resend OTP
+                    <FiRefreshCw className={isLoading ? "animate-spin" : ""} />
+                    {timer > 0 ? `Resend OTP in ${timer}s` : 'Resend OTP'}
                   </button>
                   <button
                     type="button"

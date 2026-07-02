@@ -109,7 +109,11 @@ const DeliveryBoys = () => {
       key: 'id',
       label: 'ID',
       sortable: true,
-      render: (value) => <span className="font-semibold text-gray-800">{value}</span>,
+      render: (value) => (
+        <span className="text-sm font-semibold text-gray-800 font-mono" title={value}>
+          {value?.length > 10 ? `${value.substring(0, 4)}...${value.substring(value.length - 4)}` : value}
+        </span>
+      ),
     },
     {
       key: 'name',

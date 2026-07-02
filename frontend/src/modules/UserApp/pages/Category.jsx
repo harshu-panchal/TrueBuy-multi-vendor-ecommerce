@@ -260,7 +260,7 @@ const MobileCategory = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="w-full pb-24 bg-gray-50/30">
+        <div className="w-full bg-gray-50/30">
           {/* Header */}
           <div className="w-full bg-white border-b border-gray-200">
             <div className="w-full px-4 py-4">

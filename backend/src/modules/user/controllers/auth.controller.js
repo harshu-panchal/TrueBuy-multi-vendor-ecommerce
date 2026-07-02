@@ -67,18 +67,29 @@ const ensureStaticDeliveryOtp = async (userDoc, options = {}) => {
 
 // POST /api/user/auth/register
 export const register = asyncHandler(async (req, res) => {
-    const { name, email, password, phone } = req.body;
+    const { name, email, password, phone, referralCode } = req.body;
     const normalizedEmail = String(email || '').trim().toLowerCase();
     const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
 
     const existing = await User.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(409, 'Email already registered.');
 
+    let referredBy = null;
+    if (referralCode) {
+        const referrer = await User.findOne({ referralCode: String(referralCode).trim().toUpperCase() });
+        if (referrer) {
+            referredBy = referrer._id;
+            referrer.referralPoints = (referrer.referralPoints || 0) + 50;
+            await referrer.save({ validateBeforeSave: false });
+        }
+    }
+
     const user = await User.create({
         name: String(name || '').trim(),
         email: normalizedEmail,
         password,
         ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+        ...(referredBy ? { referredBy } : {}),
     });
     await sendOTP(user, 'email_verification');
 
@@ -103,7 +114,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokens({ id: user._id, role: 'customer', email: user.email });
     await persistRefreshSession(user, refreshToken);
-    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, user: { id: user._id, name: user.name, email: user.email } }, 'Email verified successfully.'));
+    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, user: { id: user._id, name: user.name, email: user.email, referralCode: user.referralCode, referralPoints: user.referralPoints } }, 'Email verified successfully.'));
 });
 
 // POST /api/user/auth/login
@@ -122,10 +133,15 @@ export const login = asyncHandler(async (req, res) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) throw new ApiError(401, 'Invalid email or password.');
     await ensureStaticDeliveryOtp(user);
+    
+    // Backfill referral code for existing users
+    if (!user.referralCode) {
+        await user.save({ validateBeforeSave: false });
+    }
 
     const { accessToken, refreshToken } = generateTokens({ id: user._id, role: 'customer', email: user.email });
     await persistRefreshSession(user, refreshToken);
-    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar } }, 'Login successful.'));
+    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, user: { id: user._id, name: user.name, email: user.email, avatar: user.avatar, referralCode: user.referralCode, referralPoints: user.referralPoints } }, 'Login successful.'));
 });
 
 // POST /api/user/auth/refresh
@@ -137,6 +153,11 @@ export const refresh = asyncHandler(async (req, res) => {
     if (!user) throw new ApiError(401, 'Invalid refresh token.');
     if (!user.isActive) throw new ApiError(403, 'Your account has been deactivated.');
     if (!user.isVerified) throw new ApiError(403, 'Please verify your email first.');
+
+    // Backfill referral code for existing users
+    if (!user.referralCode) {
+        await user.save({ validateBeforeSave: false });
+    }
 
     const tokens = await rotateRefreshSession(
         user,
@@ -266,6 +287,12 @@ export const resetPassword = asyncHandler(async (req, res) => {
 export const getProfile = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) throw new ApiError(404, 'User not found.');
+
+    // Backfill referral code for existing users
+    if (!user.referralCode) {
+        await user.save({ validateBeforeSave: false });
+    }
+
     res.status(200).json(new ApiResponse(200, user, 'Profile fetched.'));
 });
 

@@ -87,7 +87,10 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     const calculateChange = (current, previous) => {
         if (previous === 0) return current > 0 ? 100 : 0;
-        return Number((((current - previous) / previous) * 100).toFixed(1));
+        let change = Number((((current - previous) / previous) * 100).toFixed(1));
+        if (change > 100) change = 100;
+        if (change < -100) change = -100;
+        return change;
     };
 
     const periodRev = periodRevenueAgg[0]?.total || 0;

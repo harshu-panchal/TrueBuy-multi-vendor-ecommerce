@@ -93,7 +93,7 @@ export const uploadDocumentSingle = (fieldName) =>
 // Multiple named document uploads (used for delivery registration docs)
 export const uploadDeliveryDocuments = (fields) =>
     multer({
-        storage: deliveryDocumentStorage,
+        storage: imageDiskStorage,
         fileFilter: (req, file, cb) => {
             if (ALLOWED_DOCUMENT_MIME_TYPES.includes(file.mimetype)) {
                 cb(null, true);
@@ -112,15 +112,7 @@ export const uploadDeliveryDocuments = (fields) =>
 
 // Single delivery partner avatar upload
 export const uploadDeliveryAvatar = multer({
-    storage: multer.diskStorage({
-        destination: (req, file, cb) => {
-            cb(null, DELIVERY_AVATAR_DIR);
-        },
-        filename: (req, file, cb) => {
-            const ext = path.extname(file.originalname || '').toLowerCase();
-            cb(null, `${req.user?.id || 'anonymous'}-${Date.now()}${ext}`);
-        }
-    }),
+    storage: imageDiskStorage,
     fileFilter: (req, file, cb) => {
         if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
             cb(null, true);

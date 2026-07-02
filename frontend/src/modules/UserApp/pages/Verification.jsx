@@ -14,6 +14,14 @@ const MobileVerification = () => {
   const { verifyOTP, resendOTP, pendingEmail, isLoading } = useAuthStore();
   const [codes, setCodes] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef([]);
+  const [resendCooldown, setResendCooldown] = useState(60);
+
+  // Clear any lingering error toasts when navigating away from the OTP page
+  useEffect(() => {
+    return () => {
+      toast.dismiss();
+    };
+  }, []);
 
   const email =
     String(location.state?.email || pendingEmail || searchParams.get('email') || '')
@@ -80,11 +88,22 @@ const MobileVerification = () => {
     }
   };
 
+  // Timer effect for resend cooldown
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setInterval(() => {
+        setResendCooldown((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [resendCooldown]);
+
   const handleResend = async () => {
-    if (!email) return;
+    if (!email || resendCooldown > 0) return;
     try {
       await resendOTP(email);
       toast.success('Verification code sent to your email');
+      setResendCooldown(60); // Reset timer to 60s after resend
     } catch (error) {
       toast.error(error?.message || 'Failed to resend code. Please try again.');
     }
@@ -103,7 +122,10 @@ const MobileVerification = () => {
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               {/* Back Button */}
               <button
-                onClick={() => navigate(-1)}
+                onClick={() => {
+                  toast.dismiss();
+                  navigate(-1);
+                }}
                 className="mb-6 flex items-center text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <FiArrowLeft className="mr-2" size={20} />
@@ -172,9 +194,10 @@ const MobileVerification = () => {
                   Didn't receive the code?{' '}
                   <button
                     onClick={handleResend}
-                    className="text-primary-600 hover:text-primary-700 font-semibold"
+                    disabled={resendCooldown > 0}
+                    className="text-primary-600 hover:text-primary-700 font-semibold disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
-                    Resend
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend'}
                   </button>
                 </p>
               </div>

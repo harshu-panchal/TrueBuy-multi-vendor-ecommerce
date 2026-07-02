@@ -13,6 +13,14 @@ import { getVariantSignature } from "../../../../shared/utils/variant";
 const ProductListItem = ({ product, index, isFlashSale = false }) => {
   const navigate = useNavigate();
   const productLink = `/product/${product.id}`;
+
+  const hasDynamicAxes =
+    Array.isArray(product?.variants?.attributes) &&
+    product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
+  const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
+  const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
+  const hasVariants = hasDynamicAxes || hasSizeVariants || hasColorVariants;
+
   const { items, addItem, removeItem } = useCartStore();
   const triggerCartAnimation = useUIStore(
     (state) => state.triggerCartAnimation
@@ -34,13 +42,7 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
       e.stopPropagation();
     }
 
-    const hasDynamicAxes =
-      Array.isArray(product?.variants?.attributes) &&
-      product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
-    const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
-    const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
-    if (hasDynamicAxes || hasSizeVariants || hasColorVariants) {
-      toast.error("Please select variant on product page");
+    if (hasVariants) {
       navigate(productLink);
       return;
     }
@@ -188,8 +190,8 @@ const ProductListItem = ({ product, index, isFlashSale = false }) => {
                 : "gradient-green text-white hover:shadow-glow-green"
                 }`}>
               <FiShoppingBag className="text-xs md:text-base" />
-              <span className="hidden sm:inline">Add to Cart</span>
-              <span className="sm:hidden">Add</span>
+              <span className="hidden sm:inline">{hasVariants ? "View Details" : "Add to Cart"}</span>
+              <span className="sm:hidden">{hasVariants ? "View" : "Add"}</span>
             </button>
           </div>
         </div>

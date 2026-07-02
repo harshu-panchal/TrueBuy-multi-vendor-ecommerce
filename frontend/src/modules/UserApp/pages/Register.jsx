@@ -8,6 +8,7 @@ import { isValidEmail, isValidPhone } from '../../../shared/utils/helpers';
 import toast from 'react-hot-toast';
 import MobileLayout from "../components/Layout/MobileLayout";
 import PageTransition from '../../../shared/components/PageTransition';
+import customLogo from '../../../assets/tru_buy-removebg-preview.png';
 
 const MobileRegister = () => {
   const navigate = useNavigate();
@@ -48,14 +49,21 @@ const MobileRegister = () => {
       // Backend stores a normalized 10-digit phone value.
       const phone = data.phone;
 
-      await registerUser(fullName, data.email, data.password, phone);
+      await registerUser(fullName, data.email, data.password, phone, data.referralCode);
       localStorage.removeItem('temp-register-data');
       toast.success('Registration successful!');
       // Navigate to verification page
       navigate('/verification', { state: { email: data.email } });
     } catch (error) {
-      toast.error(error.message || 'Registration failed. Please try again.');
+      console.error('Registration failed:', error);
     }
+  };
+
+  const handleInputFocus = (e) => {
+    // Small delay to allow mobile keyboard to appear before scrolling
+    setTimeout(() => {
+      e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
   };
 
   return (
@@ -86,8 +94,9 @@ const MobileRegister = () => {
               backgroundPosition: '0 0, 30px 30px'
             }}>
           </div>
-
-          <h1 className="z-10 text-4xl font-bold text-white lg:hidden">Sign Up</h1>
+          <div className="relative z-10 flex flex-col items-center justify-center -mt-16">
+            <img src={customLogo} alt="TrueBuy Logo" className="h-32 lg:h-40 w-auto object-contain drop-shadow-2xl transform scale-150" />
+          </div>
         </div>
 
         {/* Register Card */}
@@ -161,10 +170,10 @@ const MobileRegister = () => {
             {/* Phone Field */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-600 block px-1">Phone Number</label>
-              <div className="flex gap-3">
+              <div className="flex gap-2 sm:gap-3">
                 <select
                   {...register('countryCode', { required: true })}
-                  className="w-24 px-4 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black transition-all outline-none text-sm text-gray-900"
+                  className="w-20 sm:w-24 px-2 sm:px-4 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black transition-all outline-none text-sm text-gray-900"
                 >
                   <option value="+91">+91</option>
                   <option value="+1">+1</option>
@@ -175,12 +184,18 @@ const MobileRegister = () => {
                   type="tel"
                   {...register('phone', {
                     required: 'Phone number is required',
-                    validate: (value) => value.length === 10 || 'Phone number must be 10 digits',
+                    validate: (value, formValues) => {
+                      if (value.length !== 10) return 'Phone number must be 10 digits';
+                      if (formValues.countryCode === '+91' && !/^[6-9]/.test(value)) {
+                        return 'Invalid Indian mobile number. Must start with 6, 7, 8, or 9.';
+                      }
+                      return true;
+                    },
                   })}
                   onInput={(e) => {
                     e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
                   }}
-                  className="flex-1 px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
+                  className="flex-1 min-w-0 px-4 sm:px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                   placeholder="9876543210"
                 />
               </div>
@@ -196,7 +211,12 @@ const MobileRegister = () => {
                   {...register('password', {
                     required: 'Password is required',
                     minLength: { value: 6, message: 'Minimum 6 characters' },
+                    pattern: {
+                      value: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]+$/,
+                      message: 'Password must contain at least one letter, one number, and one special character (no spaces)'
+                    }
                   })}
+                  onFocus={handleInputFocus}
                   className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900"
                   placeholder="••••••••"
                 />
@@ -209,6 +229,17 @@ const MobileRegister = () => {
                 </button>
               </div>
               {errors.password && <p className="text-xs text-red-500 mt-1 px-2">{errors.password.message}</p>}
+            </div>
+
+            {/* Referral Code Field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-600 block px-1">Referral Code (Optional)</label>
+              <input
+                type="text"
+                {...register('referralCode')}
+                className="w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900 uppercase"
+                placeholder="e.g. TRB123456"
+              />
             </div>
 
             {/* Action Buttons */}
@@ -227,6 +258,15 @@ const MobileRegister = () => {
                   <Link to="/login" className="text-black font-bold hover:underline">
                     Sign In
                   </Link>
+                </p>
+              </div>
+
+              <div className="text-center mt-4 pt-4 border-t border-gray-100">
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  By creating an account, you agree to our <br />
+                  <Link to="/terms" className="text-gray-600 hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
+                  {' '}and{' '}
+                  <Link to="/privacy" className="text-gray-600 hover:text-black hover:underline transition-colors">Privacy Policy</Link>
                 </p>
               </div>
             </div>

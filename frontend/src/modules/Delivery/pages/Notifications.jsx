@@ -56,12 +56,13 @@ const DeliveryNotifications = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={() => fetchNotifications(1)}
-              className="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50"
+              disabled={isLoading}
+              className="px-3 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50"
               type="button"
             >
               <span className="inline-flex items-center gap-1">
-                <FiRefreshCw />
-                Refresh
+                <FiRefreshCw className={isLoading ? "animate-spin" : ""} />
+                {isLoading ? "Refreshing..." : "Refresh"}
               </span>
             </button>
             <button

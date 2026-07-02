@@ -102,7 +102,7 @@ const VendorDashboard = () => {
       color: "bg-blue-500",
       bgColor: "bg-blue-50",
       textColor: "text-blue-700",
-      link: "/vendor/products",
+      link: "/vendor/products/manage-products",
     },
     {
       icon: FiShoppingBag,

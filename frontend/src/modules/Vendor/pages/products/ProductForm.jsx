@@ -182,6 +182,7 @@ const ProductForm = () => {
       brandId: normalizedBrandId || null,
       stock: product.stock || "in_stock",
       stockQuantity: product.stockQuantity || "",
+      lowStockThreshold: product.lowStockThreshold || "",
       totalAllowedQuantity: product.totalAllowedQuantity || "",
       minimumOrderQuantity: product.minimumOrderQuantity || "",
       warrantyPeriod: product.warrantyPeriod || "",
@@ -520,6 +521,9 @@ const ProductForm = () => {
     const parsedWholesaleMoq = formData.isWholesale
       ? parseInt(formData.minOrderQty || "1", 10)
       : null;
+    const parsedLowStockThreshold = formData.lowStockThreshold
+      ? parseInt(formData.lowStockThreshold, 10)
+      : 10;
 
     if (!Number.isFinite(parsedPrice) || !Number.isFinite(parsedStockQuantity)) {
       toast.error("Please enter valid numeric values");
@@ -577,6 +581,7 @@ const ProductForm = () => {
       price: parsedPrice,
       originalPrice: parsedOriginalPrice,
       stockQuantity: parsedStockQuantity,
+      lowStockThreshold: parsedLowStockThreshold,
       totalAllowedQuantity: parsedTotalAllowedQuantity,
       minimumOrderQuantity: parsedMinimumOrderQuantity,
       categoryId: finalCategoryId,
@@ -994,7 +999,7 @@ const ProductForm = () => {
         {/* Inventory */}
         <div>
           <h2 className="text-base font-bold text-gray-800 mb-2">Inventory</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1">
                 Stock Quantity <span className="text-red-500">*</span>
@@ -1025,6 +1030,24 @@ const ProductForm = () => {
                   { value: 'out_of_stock', label: 'Out of Stock' },
                 ]}
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Low Stock Alert Threshold
+              </label>
+              <input
+                type="number"
+                name="lowStockThreshold"
+                value={formData.lowStockThreshold}
+                onChange={handleChange}
+                min="0"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                placeholder="10"
+              />
+              <p className="mt-1 text-[11px] text-gray-500">
+                Alerts when stock falls below this number.
+              </p>
             </div>
           </div>
         </div>

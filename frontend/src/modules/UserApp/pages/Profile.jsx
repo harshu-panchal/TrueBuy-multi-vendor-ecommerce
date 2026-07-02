@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiCopy } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiCopy, FiGift, FiShare2, FiFileText, FiShield } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -15,8 +15,9 @@ import { useUserNotificationStore } from '../store/userNotificationStore';
 
 const MobileProfile = () => {
   const navigate = useNavigate();
-  const { user, updateProfile, uploadProfileAvatar, changePassword, logout, isLoading } = useAuthStore();
-  const avatarInputRef = useRef(null);
+  const { user, fetchProfile, updateProfile, uploadProfileAvatar, changePassword, logout, isLoading } = useAuthStore();
+  const menuAvatarInputRef = useRef(null);
+  const personalAvatarInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'personal', 'password'
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
@@ -59,6 +60,8 @@ const MobileProfile = () => {
       setIsDesktop(window.innerWidth >= 1024);
     };
     window.addEventListener('resize', handleResize);
+    // Fetch latest profile on mount to ensure fresh data (e.g. referralCode)
+    fetchProfile();
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
@@ -142,7 +145,11 @@ const MobileProfile = () => {
   };
 
   const handleAvatarPick = () => {
-    avatarInputRef.current?.click();
+    if (activeTab === 'menu') {
+      menuAvatarInputRef.current?.click();
+    } else {
+      personalAvatarInputRef.current?.click();
+    }
   };
 
   const handleAvatarChange = async (event) => {
@@ -184,22 +191,19 @@ const MobileProfile = () => {
       link: '/notifications',
       badge: unreadNotificationCount > 0 ? unreadNotificationCount : null,
     },
+    { id: 'referral', label: 'Refer & Earn', icon: FiGift, color: 'text-pink-600', bg: 'bg-pink-50' },
     { id: 'password', label: 'Change Password', icon: FiLock, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { id: 'terms', label: 'Terms & Conditions', icon: FiFileText, color: 'text-gray-600', bg: 'bg-gray-100', link: '/terms' },
+    { id: 'privacy', label: 'Privacy Policy', icon: FiShield, color: 'text-gray-600', bg: 'bg-gray-100', link: '/privacy' },
   ];
 
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-          <div className="w-full pb-24 lg:pb-12 max-w-7xl mx-auto min-h-screen bg-gray-50">
+          <div className="w-full lg:pb-12 max-w-7xl mx-auto min-h-screen bg-gray-50">
             {/* Desktop Header */}
             <div className="hidden lg:block px-4 py-8">
               <div className="flex items-center gap-4">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-200 rounded-full transition-colors bg-white shadow-sm border border-gray-200"
-                >
-                  <FiArrowLeft className="text-xl text-gray-700" />
-                </button>
                 <div>
                   <h1 className="text-3xl font-bold text-gray-800">My Profile</h1>
                   <p className="text-gray-500 mt-1">Manage your personal information and security settings</p>
@@ -209,14 +213,16 @@ const MobileProfile = () => {
 
             <div className="lg:hidden px-4 py-4 bg-white border-b border-gray-200 sticky top-0 z-30">
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => activeTab === 'menu' ? navigate(-1) : setActiveTab('menu')}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <FiArrowLeft className="text-xl text-gray-700" />
-                </button>
+                {activeTab !== 'menu' && (
+                  <button
+                    onClick={() => setActiveTab('menu')}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <FiArrowLeft className="text-xl text-gray-700" />
+                  </button>
+                )}
                 <h1 className="text-xl font-bold text-gray-800">
-                  {activeTab === 'menu' ? 'My Account' : activeTab === 'personal' ? 'Personal Info' : 'Security'}
+                  {activeTab === 'menu' ? 'My Account' : activeTab === 'personal' ? 'Personal Info' : activeTab === 'referral' ? 'Refer & Earn' : 'Security'}
                 </h1>
               </div>
             </div>
@@ -237,6 +243,16 @@ const MobileProfile = () => {
                       Personal Info
                     </button>
                     <button
+                      onClick={() => setActiveTab('referral')}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium ${activeTab === 'referral'
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                    >
+                      <FiGift className="text-lg" />
+                      Refer & Earn
+                    </button>
+                    <button
                       onClick={() => setActiveTab('password')}
                       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium ${activeTab === 'password'
                         ? 'bg-primary-50 text-primary-700'
@@ -246,6 +262,20 @@ const MobileProfile = () => {
                       <FiLock className="text-lg" />
                       Password
                     </button>
+                    <Link
+                      to="/terms"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium text-gray-600 hover:bg-gray-50"
+                    >
+                      <FiFileText className="text-lg" />
+                      Terms & Conditions
+                    </Link>
+                    <Link
+                      to="/privacy"
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium text-gray-600 hover:bg-gray-50"
+                    >
+                      <FiShield className="text-lg" />
+                      Privacy Policy
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -261,16 +291,33 @@ const MobileProfile = () => {
                   >
                     {/* User Profile Summary Card */}
                     <div className="glass-card rounded-2xl p-6 flex flex-col items-center text-center shadow-sm">
-                      <div className="w-20 h-20 rounded-full gradient-green flex items-center justify-center text-white text-3xl font-bold mb-4 shadow-lg">
-                        {user?.avatar ? (
-                          <img
-                            src={user.avatar}
-                            alt={user?.name || 'User'}
-                            className="w-20 h-20 rounded-full object-cover"
-                          />
-                        ) : (
-                          user?.name?.charAt(0).toUpperCase() || 'U'
-                        )}
+                      <div className="relative mb-4">
+                        <div className="w-20 h-20 rounded-full gradient-green flex items-center justify-center text-white text-3xl font-bold shadow-lg overflow-hidden">
+                          {user?.avatar ? (
+                            <img
+                              src={user.avatar}
+                              alt={user?.name || 'User'}
+                              className="w-20 h-20 rounded-full object-cover"
+                            />
+                          ) : (
+                            user?.name?.charAt(0).toUpperCase() || 'U'
+                          )}
+                        </div>
+                        <input
+                          ref={menuAvatarInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          onChange={handleAvatarChange}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAvatarPick}
+                          disabled={isLoading}
+                          className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white hover:bg-primary-700 transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          <FiCamera className="text-sm" />
+                        </button>
                       </div>
                       <h2 className="text-xl font-extrabold text-gray-800 mb-1">{user?.name}</h2>
                       <p className="text-gray-500 text-sm mb-4 font-medium">{user?.email}</p>
@@ -371,7 +418,7 @@ const MobileProfile = () => {
                           )}
                         </div>
                         <input
-                          ref={avatarInputRef}
+                          ref={personalAvatarInputRef}
                           type="file"
                           accept="image/jpeg,image/png,image/webp,image/gif"
                           onChange={handleAvatarChange}
@@ -634,6 +681,10 @@ const MobileProfile = () => {
                                 value: 6,
                                 message: 'Password must be at least 6 characters',
                               },
+                              pattern: {
+                                value: /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]+$/,
+                                message: 'Password must contain at least one letter, one number, and one special character (no spaces)'
+                              }
                             })}
                             className={`w-full pl-12 pr-12 py-3 rounded-xl border-2 ${passwordErrors.newPassword
                               ? 'border-red-300 focus:border-red-500'
@@ -704,6 +755,77 @@ const MobileProfile = () => {
                         {isLoading ? 'Changing Password...' : 'Change Password'}
                       </button>
                     </form>
+                  </motion.div>
+                )}
+
+                {/* Refer & Earn Tab */}
+                {activeTab === 'referral' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="glass-card rounded-2xl p-4 lg:p-8"
+                  >
+                    <div className="text-center mb-8">
+                      <div className="w-20 h-20 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
+                        <FiGift className="text-4xl text-pink-500" />
+                      </div>
+                      <h2 className="text-2xl font-extrabold text-gray-800">Refer & Earn</h2>
+                      <p className="text-gray-500 mt-2 text-sm max-w-xs mx-auto">
+                        Share your referral code with friends. When they sign up, you earn 50 points!
+                      </p>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-3xl p-6 mb-8 border border-pink-100 flex flex-col items-center relative overflow-hidden">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-pink-200/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                      <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-200/20 rounded-full -ml-16 -mb-16 blur-2xl"></div>
+                      <p className="text-gray-600 text-sm font-bold mb-2 relative z-10">Your Reward Balance</p>
+                      <h3 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-purple-600 relative z-10 flex items-end gap-1">
+                        {user?.referralPoints || 0} <span className="text-lg font-bold text-gray-500 pb-1">Pts</span>
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <label className="block text-sm font-bold text-gray-700">Your Referral Code</label>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 rounded-2xl border-2 border-dashed border-pink-200 bg-pink-50/50 px-4 py-4 text-center font-mono text-xl sm:text-2xl font-bold text-gray-800 uppercase tracking-widest shadow-sm">
+                          {user?.referralCode || 'N/A'}
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (user?.referralCode) {
+                              navigator.clipboard.writeText(user.referralCode);
+                              toast.success('Referral code copied!');
+                            }
+                          }}
+                          className="p-4 sm:p-5 rounded-2xl bg-gray-900 text-white hover:bg-black transition-all shadow-md active:scale-95 flex items-center justify-center"
+                          title="Copy Code"
+                        >
+                          <FiCopy className="text-xl" />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={async () => {
+                          if (navigator.share && user?.referralCode) {
+                            try {
+                              await navigator.share({
+                                title: 'Join TrueBuy!',
+                                text: `Sign up on TrueBuy using my referral code: ${user.referralCode} to get started!`,
+                                url: window.location.origin + '/register',
+                              });
+                            } catch (err) {
+                              console.log('Share error:', err);
+                            }
+                          } else {
+                            toast.error('Sharing not supported on this device');
+                          }
+                        }}
+                        className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 hover:opacity-90 transition-all mt-6 shadow-xl shadow-pink-500/20 active:scale-[0.98]"
+                      >
+                        <FiShare2 className="text-xl" />
+                        Share with Friends
+                      </button>
+                    </div>
                   </motion.div>
                 )}
               </div>

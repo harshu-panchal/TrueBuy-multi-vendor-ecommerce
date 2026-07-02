@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import MobileLayout from '../components/Layout/MobileLayout';
 import PageTransition from '../../../shared/components/PageTransition';
 import { appLogo } from '../../../data/logos';
+import customLogo from '../../../assets/tru_buy-removebg-preview.png';
 
 const MobileLogin = () => {
   const navigate = useNavigate();
@@ -73,8 +74,15 @@ const MobileLogin = () => {
         });
         return;
       }
-      toast.error(error.message || 'Login failed. Please try again.');
+      console.error('Login failed:', error);
     }
+  };
+
+  const handleInputFocus = (e) => {
+    // Small delay to allow mobile keyboard to appear before scrolling
+    setTimeout(() => {
+      e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 300);
   };
 
   return (
@@ -97,7 +105,9 @@ const MobileLogin = () => {
               backgroundPosition: '0 0, 30px 30px'
             }}>
           </div>
-
+          <div className="relative z-10 flex flex-col items-center justify-center -mt-16">
+            <img src={customLogo} alt="TrueBuy Logo" className="h-32 lg:h-40 w-auto object-contain drop-shadow-2xl transform scale-150" />
+          </div>
         </div>
 
         {/* Login Card */}
@@ -125,6 +135,7 @@ const MobileLogin = () => {
                     validate: (value) =>
                       !value || isValidEmail(value) || 'Please enter a valid email',
                   })}
+                  onFocus={handleInputFocus}
                   className={`w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900 ${errors.email ? 'border-red-500 bg-red-50/10' : ''
                     }`}
                   placeholder="customer@example.com"
@@ -146,6 +157,7 @@ const MobileLogin = () => {
                   {...register('password', {
                     required: 'Password is required',
                   })}
+                  onFocus={handleInputFocus}
                   className={`w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-black focus:ring-4 focus:ring-black/5 transition-all outline-none text-gray-900 ${errors.password ? 'border-red-500 bg-red-50/10' : ''
                     }`}
                   placeholder="••••••••"
@@ -198,6 +210,15 @@ const MobileLogin = () => {
                   <Link to="/register" className="text-black font-bold hover:underline">
                     Sign Up
                   </Link>
+                </p>
+              </div>
+
+              <div className="text-center mt-4 pt-4 border-t border-gray-100">
+                <p className="text-gray-400 text-xs leading-relaxed">
+                  By logging in, you agree to our <br />
+                  <Link to="/terms" className="text-gray-600 hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
+                  {' '}and{' '}
+                  <Link to="/privacy" className="text-gray-600 hover:text-black hover:underline transition-colors">Privacy Policy</Link>
                 </p>
               </div>
             </div>

@@ -28,6 +28,13 @@ const redirectToLogin = () => {
 const normalizeWishlistItem = (item) => {
   const product = item?.productId || item;
   const id = normalizeId(product?.id || product?._id || item?.id);
+  const hasDynamicAxes =
+    Array.isArray(product?.variants?.attributes) &&
+    product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
+  const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
+  const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
+  const hasVariants = hasDynamicAxes || hasSizeVariants || hasColorVariants;
+
   return {
     id,
     name: product?.name || item?.name || 'Product',
@@ -43,6 +50,7 @@ const normalizeWishlistItem = (item) => {
           ? Number(item.originalPrice)
           : undefined,
     productId: normalizeId(product?._id || item?.productId || item?.id),
+    hasVariants,
   };
 };
 

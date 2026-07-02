@@ -19,7 +19,33 @@ import { verifyReferralCode } from '../../../services/mlm.service.js';
 export const register = asyncHandler(async (req, res) => {
     const { name, email, password, phone, storeName, storeDescription, address, gstNumber } = req.body;
 
+    if (!name || !/^[A-Za-z\s]{2,50}$/.test(name)) throw new ApiError(400, "Please enter a valid full name.");
+    
     const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) throw new ApiError(400, "Please enter a valid email address.");
+    
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) throw new ApiError(400, "Please enter a valid 10-digit mobile number.");
+    
+    if (!storeName || !/^[A-Za-z0-9\s&\-.]{3,100}$/.test(storeName)) throw new ApiError(400, "Store name must be between 3 and 100 characters.");
+    
+    if (!storeDescription || storeDescription.length < 20 || storeDescription.length > 500) throw new ApiError(400, "Description must be at least 20 characters.");
+    
+    if (gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{3}$/.test(gstNumber)) throw new ApiError(400, "Please enter a valid GST number.");
+    
+    if (!address?.street || address.street.length < 10 || address.street.length > 200) throw new ApiError(400, "Please enter your complete address.");
+    
+    if (!address?.city || !/^[A-Za-z\s]{2,50}$/.test(address.city)) throw new ApiError(400, "Please enter a valid city.");
+    
+    if (!address?.state || !/^[A-Za-z\s]{2,50}$/.test(address.state)) throw new ApiError(400, "Please select your state.");
+    
+    if (!address?.zipCode || !/^[1-9][0-9]{5}$/.test(address.zipCode)) throw new ApiError(400, "Please enter a valid PIN code.");
+    
+    if (!address?.country || String(address.country).trim().length === 0) throw new ApiError(400, "Please select a country.");
+    
+    if (!password || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,32}$/.test(password)) {
+        throw new ApiError(400, "Password must contain uppercase, lowercase, number and special character.");
+    }
+
     const existing = await Vendor.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(409, 'Email already registered.');
 
@@ -35,26 +61,6 @@ export const register = asyncHandler(async (req, res) => {
         status: 'pending'
     });
     await sendOTP(vendor, 'vendor_verification');
-
-    // Notify all active admins about a new vendor registration request.
-    const admins = await Admin.find({ isActive: true }).select('_id');
-    await Promise.all(
-        admins.map((admin) =>
-            createNotification({
-                recipientId: admin._id,
-                recipientType: 'admin',
-                title: 'New Vendor Registration',
-                message: `${vendor.storeName || vendor.name} has registered and is awaiting review.`,
-                type: 'system',
-                data: {
-                    vendorId: String(vendor._id),
-                    vendorEmail: vendor.email,
-                    status: vendor.status,
-                },
-            })
-        )
-    );
-
     res.status(201).json(new ApiResponse(201, { vendorId: vendor._id, email: vendor.email }, 'Registration submitted. Please verify your email and await admin approval.'));
 });
 
@@ -106,6 +112,25 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     vendor.otp = undefined;
     vendor.otpExpiry = undefined;
     await vendor.save();
+
+    // Notify all active admins about a new vendor registration request now that email is verified.
+    const admins = await Admin.find({ isActive: true }).select('_id');
+    await Promise.all(
+        admins.map((admin) =>
+            createNotification({
+                recipientId: admin._id,
+                recipientType: 'admin',
+                title: 'New Vendor Registration',
+                message: `${vendor.storeName || vendor.name} has verified their email and is awaiting review.`,
+                type: 'system',
+                data: {
+                    vendorId: String(vendor._id),
+                    vendorEmail: vendor.email,
+                    status: vendor.status,
+                },
+            })
+        )
+    );
 
     res.status(200).json(new ApiResponse(200, null, 'Email verified. Awaiting admin approval.'));
 });

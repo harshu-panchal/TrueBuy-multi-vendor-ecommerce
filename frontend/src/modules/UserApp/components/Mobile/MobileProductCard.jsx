@@ -19,6 +19,14 @@ import { getVariantSignature } from "../../../../shared/utils/variant";
 
 const MobileProductCard = ({ product }) => {
   const navigate = useNavigate();
+
+  const hasDynamicAxes =
+    Array.isArray(product?.variants?.attributes) &&
+    product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
+  const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
+  const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
+  const hasVariants = hasDynamicAxes || hasSizeVariants || hasColorVariants;
+
   const { items, addItem, removeItem } = useCartStore();
   const triggerCartAnimation = useUIStore(
     (state) => state.triggerCartAnimation
@@ -48,13 +56,7 @@ const MobileProductCard = ({ product }) => {
       e.stopPropagation();
     }
 
-    const hasDynamicAxes =
-      Array.isArray(product?.variants?.attributes) &&
-      product.variants.attributes.some((attr) => Array.isArray(attr?.values) && attr.values.length > 0);
-    const hasSizeVariants = Array.isArray(product?.variants?.sizes) && product.variants.sizes.length > 0;
-    const hasColorVariants = Array.isArray(product?.variants?.colors) && product.variants.colors.length > 0;
-    if (hasDynamicAxes || hasSizeVariants || hasColorVariants) {
-      toast.error("Please select variant on product page");
+    if (hasVariants) {
       navigate(`/product/${product.id}`);
       return;
     }
@@ -277,6 +279,8 @@ const MobileProductCard = ({ product }) => {
                 <span>
                   {product.stock === "out_of_stock"
                     ? "Out of Stock"
+                    : hasVariants
+                    ? "View Details"
                     : "Add to Cart"}
                 </span>
               </motion.button>

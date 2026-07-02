@@ -1,17 +1,19 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { FiTrash2, FiMinus, FiPlus, FiHeart, FiAlertCircle } from "react-icons/fi";
 import { toast } from "react-hot-toast";
 import { useCartStore } from "../../store/useStore";
 import { useWishlistStore } from "../../store/wishlistStore";
 import { formatPrice } from "../../utils/helpers";
-import { formatVariantLabel } from "../../utils/variant";
+import { formatVariantLabel, getVariantSignature } from "../../utils/variant";
+import api from "../../utils/api";
 import useSwipeGesture from "../../../modules/UserApp/hooks/useSwipeGesture";
 
 const SwipeableCartItem = ({ item, index }) => {
     const [swipeOffset, setSwipeOffset] = useState(0);
     const [isDeleted, setIsDeleted] = useState(false);
     const [hasAnimated, setHasAnimated] = useState(false);
+    const [isValidatingStock, setIsValidatingStock] = useState(false);
     const deletedItemRef = useRef(null);
 
     const { removeItem, updateQuantity } = useCartStore();
@@ -31,21 +33,40 @@ const SwipeableCartItem = ({ item, index }) => {
 
     const isLowStock = () => String(item?.stock || "") === "low_stock";
 
-    const handleQuantityChange = (id, currentQuantity, change, variant) => {
+    const handleQuantityChange = async (id, currentQuantity, change, variant) => {
         const newQuantity = currentQuantity + change;
-        const availableStock = Number(item?.stockQuantity);
 
         if (newQuantity <= 0) {
             removeItem(id, variant);
             return;
         }
 
-        if (Number.isFinite(availableStock) && newQuantity > availableStock) {
-            toast.error(`Only ${availableStock} items available in stock`);
-            return;
+        let finalAvailableStock = Number(item?.stockQuantity);
+        if (change > 0) {
+            setIsValidatingStock(true);
+            try {
+                const variantKey = getVariantSignature(variant || {});
+                const res = await api.get(`/products/${id}/stock`, {
+                    params: { variantKey }
+                });
+                
+                finalAvailableStock = res.data?.data?.availableStock ?? finalAvailableStock;
+                
+                if (newQuantity > finalAvailableStock) {
+                    toast.error(`Only ${finalAvailableStock} items available in stock`);
+                    return;
+                }
+            } catch (error) {
+                if (Number.isFinite(finalAvailableStock) && newQuantity > finalAvailableStock) {
+                    toast.error(`Only ${finalAvailableStock} items available in stock`);
+                    return;
+                }
+            } finally {
+                setIsValidatingStock(false);
+            }
         }
 
-        updateQuantity(id, newQuantity, variant);
+        updateQuantity(id, newQuantity, variant, finalAvailableStock);
     };
 
     const handleSaveForLater = (item) => {
@@ -159,7 +180,8 @@ const SwipeableCartItem = ({ item, index }) => {
                                 e.stopPropagation();
                                 handleQuantityChange(item.id, item.quantity, -1, item.variant);
                             }}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-300 hover:bg-gray-50 transition-colors">
+                            disabled={isValidatingStock}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-gray-300 hover:bg-gray-50 transition-colors disabled:opacity-50">
                             <FiMinus className="text-xs text-gray-600" />
                         </button>
                         <motion.span
@@ -169,7 +191,7 @@ const SwipeableCartItem = ({ item, index }) => {
                             transition={{ duration: 0.2 }}
                             style={{ willChange: "transform", transform: "translateZ(0)" }}
                             className="text-sm font-semibold text-gray-800 min-w-[2rem] text-center">
-                            {item.quantity}
+                            {isValidatingStock ? <span className="opacity-50">...</span> : item.quantity}
                         </motion.span>
                         <button
                             type="button"
@@ -178,11 +200,8 @@ const SwipeableCartItem = ({ item, index }) => {
                                 e.stopPropagation();
                                 handleQuantityChange(item.id, item.quantity, 1, item.variant);
                             }}
-                            disabled={isMaxQuantity(item.quantity)}
-                            className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${isMaxQuantity(item.quantity)
-                                ? "bg-gray-100 border-gray-200 cursor-not-allowed opacity-50"
-                                : "bg-white border-gray-300 hover:bg-gray-50"
-                                }`}>
+                            disabled={isValidatingStock}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg border transition-colors bg-white border-gray-300 hover:bg-gray-50 disabled:opacity-50">
                             <FiPlus className="text-xs text-gray-600" />
                         </button>
                         <button

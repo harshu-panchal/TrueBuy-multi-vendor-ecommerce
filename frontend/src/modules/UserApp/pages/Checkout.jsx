@@ -24,6 +24,40 @@ import MobileLayout from "../components/Layout/MobileLayout";
 import MobileCheckoutSteps from "../components/Mobile/MobileCheckoutSteps";
 import PageTransition from "../../../shared/components/PageTransition";
 import OrderSummary from "../components/Mobile/CheckoutOrderSummary";
+import { useJsApiLoader, Autocomplete } from "@react-google-maps/api";
+import { FiNavigation } from "react-icons/fi";
+
+const updateFormDataFromPlace = (place, setFormData) => {
+  if (!place || !place.address_components) return;
+  
+  let streetNumber = "";
+  let route = "";
+  let city = "";
+  let state = "";
+  let zipCode = "";
+  let country = "";
+
+  place.address_components.forEach((component) => {
+    const types = component.types;
+    if (types.includes("street_number")) streetNumber = component.long_name;
+    if (types.includes("route")) route = component.long_name;
+    if (types.includes("locality") || types.includes("postal_town")) city = component.long_name;
+    if (types.includes("administrative_area_level_1")) state = component.long_name;
+    if (types.includes("postal_code")) zipCode = component.long_name;
+    if (types.includes("country")) country = component.long_name;
+  });
+
+  const address = `${streetNumber} ${route}`.trim() || place.formatted_address || place.name || "";
+
+  setFormData((prev) => ({
+    ...prev,
+    address: address,
+    city: city || prev.city,
+    state: state || prev.state,
+    zipCode: zipCode || prev.zipCode,
+    country: country || prev.country,
+  }));
+};
 
 const RAZORPAY_SCRIPT_URL = "https://checkout.razorpay.com/v1/checkout.js";
 const CHECKOUT_AUTOFILL_STORAGE_PREFIX = "truebuy:checkout:shippingAutofill:v1:";
@@ -49,6 +83,8 @@ const sanitizeAutofillFormData = (value) => {
   };
 };
 
+const libraries = ["places"];
+
 const MobileCheckout = () => {
   const navigate = useNavigate();
   const { items, getTotal, clearCart, getItemsByVendor } = useCartStore();
@@ -56,13 +92,74 @@ const MobileCheckout = () => {
   const { addresses, getDefaultAddress, addAddress, fetchAddresses } = useAddressStore();
   const { createOrder } = useOrderStore();
 
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    libraries,
+  });
+
+  const autocompleteRef = useRef(null);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current !== null) {
+      const place = autocompleteRef.current.getPlace();
+      updateFormDataFromPlace(place, setFormData);
+    }
+  };
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (!window.google) {
+          setIsDetectingLocation(false);
+          toast.error("Google Maps not loaded yet.");
+          return;
+        }
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+          if (status === "OK" && results[0]) {
+            updateFormDataFromPlace(results[0], setFormData);
+            toast.success("Location detected successfully!");
+          } else {
+            toast.error("Failed to detect address");
+          }
+          setIsDetectingLocation(false);
+        });
+      },
+      (error) => {
+        setIsDetectingLocation(false);
+        toast.error("Failed to get location. Please allow location access.");
+      },
+      { timeout: 10000 }
+    );
+  };
+
   // Group items by vendor
   const itemsByVendor = useMemo(
     () => getItemsByVendor(),
     [items, getItemsByVendor]
   );
 
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => {
+    if (typeof window !== "undefined") {
+      const savedStep = sessionStorage.getItem("checkoutStep");
+      return savedStep ? parseInt(savedStep, 10) : 1;
+    }
+    return 1;
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem("checkoutStep", step);
+  }, [step]);
+
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [couponCode, setCouponCode] = useState("");
@@ -302,8 +399,10 @@ const MobileCheckout = () => {
     if (appliedCoupon) {
       setAppliedCoupon(null);
       setAppliedDiscount(0);
+      toast.error("Cart total changed, please re-apply your coupon.");
     }
-  }, [total, appliedCoupon]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [total]);
 
   useEffect(() => {
     let active = true;
@@ -568,7 +667,7 @@ const MobileCheckout = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full pb-24 min-h-screen bg-gray-50">
+        <div className="w-full min-h-screen bg-gray-50">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
             {/* Title Bar */}
@@ -586,7 +685,7 @@ const MobileCheckout = () => {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="lg:px-4 lg:py-6">
+          <form onSubmit={handleSubmit} className="lg:px-4 lg:py-6 pb-32 lg:pb-6">
             <div className="lg:grid lg:grid-cols-12 lg:gap-8">
               {/* Left Column - Steps */}
               <div className="lg:col-span-8 space-y-6">
@@ -654,6 +753,17 @@ const MobileCheckout = () => {
 
                     {/* Address Form */}
                     <div className="space-y-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm lg:p-6">
+                      <div className="flex justify-end mb-2">
+                        <button
+                          type="button"
+                          onClick={handleDetectLocation}
+                          disabled={!isLoaded || isDetectingLocation}
+                          className="flex items-center gap-2 text-sm font-semibold text-primary-600 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors disabled:opacity-50"
+                        >
+                          <FiNavigation className={isDetectingLocation ? "animate-pulse" : ""} />
+                          {isDetectingLocation ? "Detecting..." : "Detect Current Location"}
+                        </button>
+                      </div>
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Full Name
@@ -717,17 +827,36 @@ const MobileCheckout = () => {
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Address
                         </label>
-                        <textarea
-                          name="address"
-                          value={formData.address}
-                          onChange={handleInputChange}
-                          required
-                          rows={3}
-                          className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.address
-                            ? "border-red-500 focus:ring-red-200"
-                            : "border-gray-200 focus:ring-primary-500"
-                            }`}
-                        />
+                        {isLoaded ? (
+                          <Autocomplete
+                            onLoad={(autocomplete) => { autocompleteRef.current = autocomplete; }}
+                            onPlaceChanged={handlePlaceChanged}
+                          >
+                            <input
+                              type="text"
+                              name="address"
+                              value={formData.address}
+                              onChange={handleInputChange}
+                              required
+                              className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.address
+                                ? "border-red-500 focus:ring-red-200"
+                                : "border-gray-200 focus:ring-primary-500"
+                                }`}
+                            />
+                          </Autocomplete>
+                        ) : (
+                          <input
+                            type="text"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleInputChange}
+                            required
+                            className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.address
+                              ? "border-red-500 focus:ring-red-200"
+                              : "border-gray-200 focus:ring-primary-500"
+                              }`}
+                          />
+                        )}
                         {errors.address && (
                           <p className="text-red-500 text-xs mt-1 ml-1">{errors.address}</p>
                         )}
@@ -1053,7 +1182,7 @@ const MobileCheckout = () => {
             </div>
 
             {/* Navigation Buttons (Mobile Fixed Bottom) */}
-            <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 safe-area-bottom lg:hidden">
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40 safe-area-bottom lg:hidden">
               <div className="flex gap-3">
                 {step > 1 && (
                   <button
@@ -1080,6 +1209,7 @@ const MobileCheckout = () => {
             <AddressFormModal
               onSubmit={handleNewAddress}
               onCancel={() => setShowAddressForm(false)}
+              isLoaded={isLoaded}
             />
           )}
         </AnimatePresence>
@@ -1089,7 +1219,7 @@ const MobileCheckout = () => {
 };
 
 // Address Form Modal Component
-const AddressFormModal = ({ onSubmit, onCancel }) => {
+const AddressFormModal = ({ onSubmit, onCancel, isLoaded }) => {
   const [formData, setFormData] = useState({
     name: "",
     fullName: "",
@@ -1168,6 +1298,50 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
     }
   };
 
+  const autocompleteRef = useRef(null);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+
+  const handlePlaceChanged = () => {
+    if (autocompleteRef.current !== null) {
+      const place = autocompleteRef.current.getPlace();
+      updateFormDataFromPlace(place, setFormData);
+    }
+  };
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (!window.google) {
+          setIsDetectingLocation(false);
+          toast.error("Google Maps not loaded yet.");
+          return;
+        }
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+          if (status === "OK" && results[0]) {
+            updateFormDataFromPlace(results[0], setFormData);
+            toast.success("Location detected successfully!");
+          } else {
+            toast.error("Failed to detect address");
+          }
+          setIsDetectingLocation(false);
+        });
+      },
+      (error) => {
+        setIsDetectingLocation(false);
+        toast.error("Failed to get location. Please allow location access.");
+      },
+      { timeout: 10000 }
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -1187,6 +1361,17 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
             onClick={onCancel}
             className="p-2 hover:bg-gray-100 rounded-full">
             <FiX className="text-xl" />
+          </button>
+        </div>
+        <div className="flex justify-end mb-4">
+          <button
+            type="button"
+            onClick={handleDetectLocation}
+            disabled={!isLoaded || isDetectingLocation}
+            className="flex items-center gap-2 text-sm font-semibold text-primary-600 bg-primary-50 px-4 py-2 rounded-lg hover:bg-primary-100 transition-colors disabled:opacity-50"
+          >
+            <FiNavigation className={isDetectingLocation ? "animate-pulse" : ""} />
+            {isDetectingLocation ? "Detecting..." : "Detect Current Location"}
           </button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -1246,17 +1431,36 @@ const AddressFormModal = ({ onSubmit, onCancel }) => {
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Street Address
             </label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              required
-              className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.address
-                ? "border-red-500 focus:ring-red-200"
-                : "border-gray-200 focus:ring-primary-500"
-                }`}
-            />
+            {isLoaded ? (
+              <Autocomplete
+                onLoad={(autocomplete) => { autocompleteRef.current = autocomplete; }}
+                onPlaceChanged={handlePlaceChanged}
+              >
+                <input
+                  type="text"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  required
+                  className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.address
+                    ? "border-red-500 focus:ring-red-200"
+                    : "border-gray-200 focus:ring-primary-500"
+                    }`}
+                />
+              </Autocomplete>
+            ) : (
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                required
+                className={`w-full px-4 py-3 rounded-xl border-2 transition-all focus:outline-none focus:ring-2 text-base ${errors.address
+                  ? "border-red-500 focus:ring-red-200"
+                  : "border-gray-200 focus:ring-primary-500"
+                  }`}
+              />
+            )}
             {errors.address && <p className="text-red-500 text-xs mt-1 ml-1">{errors.address}</p>}
           </div>
           <div className="grid grid-cols-3 gap-3">

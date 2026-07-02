@@ -29,11 +29,13 @@ const OrderDetail = () => {
     const customerName =
         order?.customer?.name ??
         order?.userId?.name ??
+        order?.shippingAddress?.name ??
         order?.guestInfo?.name ??
         'Guest';
     const customerEmail =
         order?.customer?.email ??
         order?.userId?.email ??
+        order?.shippingAddress?.email ??
         order?.guestInfo?.email ??
         'N/A';
 

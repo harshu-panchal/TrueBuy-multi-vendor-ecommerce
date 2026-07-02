@@ -200,7 +200,8 @@ const SearchBar = () => {
   };
 
   const handleInputChange = (e) => {
-    setSearchQuery(e.target.value);
+    const val = e.target.value.trimStart().replace(/\s{2,}/g, ' ');
+    setSearchQuery(val);
     setShowSuggestions(true);
   };
 

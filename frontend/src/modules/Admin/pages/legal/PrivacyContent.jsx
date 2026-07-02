@@ -3,7 +3,7 @@ import { FiSave, FiFileText } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-const PrivacyPolicy = () => {
+const PrivacyContent = () => {
   const [content, setContent] = useState(`Privacy Policy
 
 Last updated: ${new Date().toLocaleDateString()}
@@ -63,5 +63,4 @@ You have the right to access, update, or delete your personal information at any
   );
 };
 
-export default PrivacyPolicy;
-
+export default PrivacyContent;

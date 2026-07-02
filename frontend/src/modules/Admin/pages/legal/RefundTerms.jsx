@@ -3,7 +3,7 @@ import { FiSave, FiFileText } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-const RefundPolicy = () => {
+const RefundTerms = () => {
   const [content, setContent] = useState(`Refund Policy
 
 Last updated: ${new Date().toLocaleDateString()}
@@ -63,5 +63,4 @@ Refunds will be issued to the original payment method used for the purchase.`);
   );
 };
 
-export default RefundPolicy;
-
+export default RefundTerms;

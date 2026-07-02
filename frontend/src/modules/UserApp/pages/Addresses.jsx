@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { FiMapPin, FiEdit, FiTrash2, FiPlus, FiCheck, FiX, FiArrowLeft } from 'react-icons/fi';
+import { FiMapPin, FiEdit, FiTrash2, FiPlus, FiCheck, FiX, FiArrowLeft, FiNavigation } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from "../components/Layout/MobileLayout";
@@ -9,10 +9,13 @@ import PageTransition from '../../../shared/components/PageTransition';
 import ProtectedRoute from '../../../shared/components/Auth/ProtectedRoute';
 import { useAddressStore } from '../../../shared/store/addressStore';
 import { useAuthStore } from '../../../shared/store/authStore';
+import { useJsApiLoader } from '@react-google-maps/api';
+
+const libraries = ['places', 'geometry'];
 
 const MobileAddresses = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { addresses, addAddress, updateAddress, deleteAddress, setDefaultAddress, fetchAddresses, isLoading } =
     useAddressStore();
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -22,6 +25,7 @@ const MobileAddresses = () => {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm();
 
@@ -74,7 +78,7 @@ const MobileAddresses = () => {
     <ProtectedRoute>
       <PageTransition>
         <MobileLayout showBottomNav={true} showCartBar={true}>
-          <div className="w-full pb-24">
+          <div className="w-full">
             {/* Header */}
             <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30">
               <div className="flex items-center gap-3 mb-3">
@@ -188,7 +192,9 @@ const MobileAddresses = () => {
                 editingAddress={editingAddress}
                 register={register}
                 handleSubmit={handleSubmit}
+                setValue={setValue}
                 errors={errors}
+                user={user}
               />
             )}
           </AnimatePresence>
@@ -205,14 +211,147 @@ const AddressFormModal = ({
   editingAddress,
   register,
   handleSubmit,
+  setValue,
   errors,
+  user,
 }) => {
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
+    libraries: libraries
+  });
+
+  const addressInputRef = useRef(null);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const { ref: registerAddressRef, ...registerAddressRest } = register('address', { required: 'Address is required' });
+
+  const handleDetectLocation = () => {
+    // Auto-fill user details from profile
+    if (user) {
+      if (user.name || user.fullName) {
+        setValue('fullName', user.name || user.fullName, { shouldValidate: true });
+      }
+      if (user.phone) {
+        setValue('phone', user.phone, { shouldValidate: true });
+      }
+    }
+
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        if (!isLoaded || !window.google || !window.google.maps || !window.google.maps.Geocoder) {
+          toast.error("Google Maps API not loaded");
+          setIsDetecting(false);
+          return;
+        }
+
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results, status) => {
+          if (status === "OK" && results[0]) {
+            const place = results[0];
+            let streetNumber = '';
+            let route = '';
+            let city = '';
+            let state = '';
+            let zip = '';
+            let country = '';
+
+            for (const component of place.address_components) {
+              const type = component.types[0];
+              if (type === 'street_number') streetNumber = component.long_name;
+              if (type === 'route') route = component.long_name;
+              if (type === 'locality' || type === 'postal_town') city = component.long_name;
+              if (type === 'administrative_area_level_1') state = component.long_name;
+              if (type === 'postal_code') zip = component.long_name;
+              if (type === 'country') country = component.long_name;
+            }
+
+            let fullAddress = `${streetNumber} ${route}`.trim();
+            if (!fullAddress && place.formatted_address) {
+              fullAddress = place.formatted_address.split(',')[0];
+            }
+            setValue('address', fullAddress, { shouldValidate: true });
+            if (city) setValue('city', city, { shouldValidate: true });
+            if (state) setValue('state', state, { shouldValidate: true });
+            if (zip) setValue('zipCode', zip, { shouldValidate: true });
+            if (country) setValue('country', country, { shouldValidate: true });
+            toast.success("Location detected successfully!");
+          } else {
+            toast.error("Could not determine address");
+          }
+          setIsDetecting(false);
+        });
+      },
+      (error) => {
+        console.error(error);
+        toast.error("Failed to get location. Please enable location permissions.");
+        setIsDetecting(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  useEffect(() => {
+    if (!isLoaded || !window.google || !window.google.maps || !window.google.maps.places) return;
+    if (!addressInputRef.current) return;
+
+    const autocomplete = new window.google.maps.places.Autocomplete(addressInputRef.current, {
+      fields: ["address_components", "formatted_address", "name"],
+      types: ["address"]
+    });
+
+    const listener = autocomplete.addListener("place_changed", () => {
+      const place = autocomplete.getPlace();
+      if (!place.address_components) {
+        setValue('address', place.name || '');
+        return;
+      }
+
+      let streetNumber = '';
+      let route = '';
+      let city = '';
+      let state = '';
+      let zip = '';
+      let country = '';
+
+      for (const component of place.address_components) {
+        const type = component.types[0];
+        if (type === 'street_number') streetNumber = component.long_name;
+        if (type === 'route') route = component.long_name;
+        if (type === 'locality' || type === 'postal_town') city = component.long_name;
+        if (type === 'administrative_area_level_1') state = component.long_name;
+        if (type === 'postal_code') zip = component.long_name;
+        if (type === 'country') country = component.long_name;
+      }
+
+      let fullAddress = `${streetNumber} ${route}`.trim();
+      if (!fullAddress && place.formatted_address) {
+        fullAddress = place.formatted_address.split(',')[0];
+      }
+      setValue('address', fullAddress, { shouldValidate: true });
+      if (city) setValue('city', city, { shouldValidate: true });
+      if (state) setValue('state', state, { shouldValidate: true });
+      if (zip) setValue('zipCode', zip, { shouldValidate: true });
+      if (country) setValue('country', country, { shouldValidate: true });
+    });
+
+    return () => {
+      window.google.maps.event.removeListener(listener);
+    };
+  }, [isLoaded, setValue]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 z-50 flex items-end"
+      className="fixed inset-0 bg-black/50 z-[10000] flex items-end"
       onClick={onCancel}
     >
       <motion.div
@@ -220,9 +359,9 @@ const AddressFormModal = ({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-t-3xl p-6 w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-t-3xl p-5 sm:p-6 w-full max-h-[85vh] overflow-y-auto pb-12 sm:pb-6"
       >
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-gray-800">
             {editingAddress ? 'Edit Address' : 'Add New Address'}
           </h2>
@@ -230,91 +369,106 @@ const AddressFormModal = ({
             <FiX className="text-xl" />
           </button>
         </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <button
+            type="button"
+            onClick={handleDetectLocation}
+            disabled={isDetecting}
+            className="w-full bg-blue-50 text-blue-600 border border-blue-200 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-100 transition-colors disabled:opacity-70 mb-1 shadow-sm text-sm sm:text-base"
+          >
+            <FiNavigation className={isDetecting ? "animate-pulse text-lg" : "text-lg"} />
+            {isDetecting ? 'Detecting Location...' : 'Use Current Location'}
+          </button>
+
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Address Label</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Address Label</label>
             <input
               type="text"
               {...register('name', { required: 'Address label is required' })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.name ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-3 py-2.5 rounded-xl border-2 ${errors.name ? 'border-red-300' : 'border-gray-200'
+                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm`}
               placeholder="Home, Work, etc."
             />
-            {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>}
+            {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full Name</label>
             <input
               type="text"
               {...register('fullName', { required: 'Full name is required' })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.fullName ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-3 py-2.5 rounded-xl border-2 ${errors.fullName ? 'border-red-300' : 'border-gray-200'
+                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm`}
             />
             {errors.fullName && (
-              <p className="mt-1 text-sm text-red-600">{errors.fullName.message}</p>
+              <p className="mt-1 text-xs text-red-600">{errors.fullName.message}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number</label>
             <input
               type="tel"
               {...register('phone', { required: 'Phone number is required' })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.phone ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-3 py-2.5 rounded-xl border-2 ${errors.phone ? 'border-red-300' : 'border-gray-200'
+                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm`}
             />
-            {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone.message}</p>}
+            {errors.phone && <p className="mt-1 text-xs text-red-600">{errors.phone.message}</p>}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Street Address</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Street Address</label>
             <input
               type="text"
-              {...register('address', { required: 'Address is required' })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.address ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              {...registerAddressRest}
+              ref={(e) => {
+                registerAddressRef(e);
+                addressInputRef.current = e;
+              }}
+              className={`w-full px-3 py-2.5 rounded-xl border-2 ${errors.address ? 'border-red-300' : 'border-gray-200'
+                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm`}
+              placeholder="Search or enter your address..."
             />
             {errors.address && (
-              <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
+              <p className="mt-1 text-xs text-red-600">{errors.address.message}</p>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">City</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">City</label>
               <input
                 type="text"
                 {...register('city', { required: 'City is required' })}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.city ? 'border-red-300' : 'border-gray-200'
-                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+                className={`w-full px-3 py-2.5 rounded-xl border-2 ${errors.city ? 'border-red-300' : 'border-gray-200'
+                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm`}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">State</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">State</label>
               <input
                 type="text"
                 {...register('state', { required: 'State is required' })}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.state ? 'border-red-300' : 'border-gray-200'
-                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+                className={`w-full px-3 py-2.5 rounded-xl border-2 ${errors.state ? 'border-red-300' : 'border-gray-200'
+                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm`}
               />
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Zip Code</label>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Zip Code</label>
               <input
                 type="text"
                 {...register('zipCode', { required: 'Zip code is required' })}
-                className={`w-full px-4 py-3 rounded-xl border-2 ${errors.zipCode ? 'border-red-300' : 'border-gray-200'
-                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+                className={`w-full px-3 py-2.5 rounded-xl border-2 ${errors.zipCode ? 'border-red-300' : 'border-gray-200'
+                  } focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm`}
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Country</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Country</label>
             <input
               type="text"
               {...register('country', { required: 'Country is required' })}
-              className={`w-full px-4 py-3 rounded-xl border-2 ${errors.country ? 'border-red-300' : 'border-gray-200'
-                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-base`}
+              className={`w-full px-3 py-2.5 rounded-xl border-2 ${errors.country ? 'border-red-300' : 'border-gray-200'
+                } focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm`}
             />
           </div>
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="submit"
               className="flex-1 gradient-green text-white py-3 rounded-xl font-semibold hover:shadow-glow-green transition-all"

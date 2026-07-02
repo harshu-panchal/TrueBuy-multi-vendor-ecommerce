@@ -268,11 +268,14 @@ export const assignDeliveryBoy = asyncHandler(async (req, res) => {
     const { deliveryBoyId } = req.body;
     if (!deliveryBoyId) throw new ApiError(400, 'deliveryBoyId is required.');
 
-    const deliveryBoy = await DeliveryBoy.findById(deliveryBoyId).select('name isActive applicationStatus');
+    const deliveryBoy = await DeliveryBoy.findById(deliveryBoyId).select('name isActive applicationStatus status');
     if (!deliveryBoy) throw new ApiError(404, 'Delivery boy not found.');
     if (!deliveryBoy.isActive) throw new ApiError(400, 'Delivery boy is inactive.');
     if (deliveryBoy.applicationStatus !== 'approved') {
         throw new ApiError(400, 'Delivery boy is not approved.');
+    }
+    if (deliveryBoy.status === 'offline') {
+        throw new ApiError(400, 'Delivery boy is offline and cannot be assigned.');
     }
 
     const filter = {

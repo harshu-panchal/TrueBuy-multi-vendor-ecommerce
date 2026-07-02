@@ -15,6 +15,7 @@ const DataTable = ({
   striped = false,
   hover = true,
   className = '',
+  renderMobileCard, // <--- New prop
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -75,15 +76,20 @@ const DataTable = ({
             No data available
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className={renderMobileCard ? "flex flex-col gap-4 pt-4 sm:p-4 bg-transparent" : "divide-y divide-gray-200"}>
             {paginatedData.map((row, index) => (
+              renderMobileCard ? (
+                <div key={row._id || row.id || index} onClick={() => onRowClick && onRowClick(row)} className={onRowClick ? 'cursor-pointer' : ''}>
+                  {renderMobileCard(row)}
+                </div>
+              ) : (
               <div
                 key={row.id || index}
                 onClick={() => onRowClick && onRowClick(row)}
-                className={`p-4 ${onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''
-                  } transition-colors`}
+                className={`p-5 ${onRowClick ? 'cursor-pointer hover:bg-gray-50' : ''
+                  } transition-colors border-b border-gray-100 last:border-b-0 relative`}
               >
-                <div className="space-y-2.5">
+                <div className="space-y-3.5">
                   {primaryColumns.map((column) => {
                     const rawValue = row[column.key];
                     const value = column.render
@@ -104,23 +110,25 @@ const DataTable = ({
                     }
 
                     return (
-                      <div key={column.key} className="flex items-start gap-2">
-                        <span className="text-xs font-semibold text-gray-600 flex-shrink-0 min-w-[80px] sm:min-w-[100px]">
-                          {column.label}:
+                      <div key={column.key} className="flex items-center gap-3">
+                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex-shrink-0 w-24">
+                          {column.label}
                         </span>
-                        <span className="text-sm text-gray-800 break-words flex-1">
+                        <div className="text-sm text-gray-900 break-words flex-1 font-medium">
                           {displayValue}
-                        </span>
+                        </div>
                       </div>
                     );
                   })}
+                  
                   {actionsColumn && (
-                    <div className="pt-2 border-t border-gray-100 mt-3">
+                    <div className="pt-4 border-t border-gray-100 mt-4 flex justify-end items-center">
                       {actionsColumn.render(null, row)}
                     </div>
                   )}
                 </div>
               </div>
+              )
             ))}
           </div>
         )}
@@ -134,7 +142,9 @@ const DataTable = ({
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider ${sortable && column.sortable !== false
+                  className={`px-3 sm:px-6 py-3 sm:py-4 text-xs font-semibold text-gray-700 uppercase tracking-wider ${
+                    column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'
+                  } ${sortable && column.sortable !== false
                     ? 'cursor-pointer hover:bg-gray-100'
                     : ''
                     }`}
@@ -142,6 +152,7 @@ const DataTable = ({
                 >
                   <div className={`
                     flex items-center gap-2
+                    ${column.align === 'center' ? 'justify-center' : column.align === 'right' ? 'justify-end' : 'justify-start'}
                     ${columnLines && columns.indexOf(column) < columns.length - 1 ? 'border-r border-gray-200 -mr-3 sm:-mr-6 pr-3 sm:pr-6' : ''}
                   `}>
                     {column.label}
@@ -203,6 +214,7 @@ const DataTable = ({
                         key={column.key}
                         className={`
                           px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-700
+                          ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'}
                           ${columnLines && colIdx < columns.length - 1 ? 'border-r border-gray-100' : ''}
                         `}
                       >

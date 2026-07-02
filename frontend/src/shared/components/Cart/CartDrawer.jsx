@@ -35,12 +35,18 @@ const CartDrawer = () => {
 
   useEffect(() => {
     if (isCartOpen) {
-      document.body.style.overflowY = "hidden";
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+      document.body.classList.add("modal-open");
     } else {
-      document.body.style.overflowY = "";
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      document.body.classList.remove("modal-open");
     }
     return () => {
-      document.body.style.overflowY = "";
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      document.body.classList.remove("modal-open");
     };
   }, [isCartOpen]);
 

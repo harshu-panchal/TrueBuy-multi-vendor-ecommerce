@@ -33,6 +33,7 @@ const AssignDelivery = () => {
       limit: 100,
       status: "active",
       applicationStatus: "approved",
+      availableOnly: true,
     });
     const firstRows = first?.data?.deliveryBoys || [];
     const totalPages = Number(first?.data?.pagination?.pages || 1);
@@ -46,6 +47,7 @@ const AssignDelivery = () => {
           limit: 100,
           status: "active",
           applicationStatus: "approved",
+          availableOnly: true,
         })
       );
     }

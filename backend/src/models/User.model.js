@@ -22,12 +22,21 @@ const userSchema = new mongoose.Schema(
         refreshTokenExpiresAt: { type: Date, select: false },
         passwordResetToken: { type: String, select: false },
         passwordResetExpiry: { type: Date, select: false },
+        referralCode: { type: String, unique: true, sparse: true, index: true },
+        referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        referralPoints: { type: Number, default: 0 },
     },
     { timestamps: true }
 );
 
-// Hash password before saving
+// Pre-save hook
 userSchema.pre('save', async function (next) {
+    if (!this.referralCode) {
+        // Generate a simple unique code based on TRB + 6 random alphanumeric chars
+        const randomChars = Math.random().toString(36).substring(2, 8).toUpperCase();
+        this.referralCode = `TRB${randomChars}`;
+    }
+
     if (!this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password, 12);
     next();

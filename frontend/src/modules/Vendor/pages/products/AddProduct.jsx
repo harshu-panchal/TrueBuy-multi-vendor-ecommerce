@@ -26,55 +26,69 @@ const AddProduct = () => {
 
   const vendorId = vendor?.id;
 
-  const [formData, setFormData] = useState({
-    name: "",
-    unit: "",
-    price: "",
-    originalPrice: "",
-    image: "",
-    images: [],
-    categoryId: null,
-    subcategoryId: null,
-    brandId: null,
-    stock: "in_stock",
-    stockQuantity: "",
-    totalAllowedQuantity: "",
-    minimumOrderQuantity: "",
-    warrantyPeriod: "",
-    guaranteePeriod: "",
-    hsnCode: "",
-    flashSale: false,
-    isNewArrival: false,
-    isFeatured: false,
-    isVisible: true,
-    codAllowed: true,
-    returnable: true,
-    cancelable: true,
-    taxIncluded: false,
-    description: "",
-    tags: [],
-    variants: {
-      sizes: [],
-      colors: [],
-      materials: [],
-      attributes: [],
-      prices: {},
-      stockMap: {},
-      imageMap: {},
-      defaultVariant: {},
-      defaultSelection: {},
-    },
-    seoTitle: "",
-    seoDescription: "",
-    relatedProducts: [],
-    faqs: [],
-    // B2B Wholesale
-    isWholesale: false,
-    minOrderQty: "",
-    bulkPricing: [],
-    wholesaleApprovalStatus: "",
-    wholesaleRejectionReason: "",
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem('vendor_add_product_draft');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse draft form data', e);
+      }
+    }
+    return {
+      name: "",
+      unit: "",
+      price: "",
+      originalPrice: "",
+      image: "",
+      images: [],
+      categoryId: null,
+      subcategoryId: null,
+      brandId: null,
+      stock: "in_stock",
+      stockQuantity: "",
+      totalAllowedQuantity: "",
+      minimumOrderQuantity: "",
+      warrantyPeriod: "",
+      guaranteePeriod: "",
+      hsnCode: "",
+      flashSale: false,
+      isNewArrival: false,
+      isFeatured: false,
+      isVisible: true,
+      codAllowed: true,
+      returnable: true,
+      cancelable: true,
+      taxIncluded: false,
+      description: "",
+      tags: [],
+      variants: {
+        sizes: [],
+        colors: [],
+        materials: [],
+        attributes: [],
+        prices: {},
+        stockMap: {},
+        imageMap: {},
+        defaultVariant: {},
+        defaultSelection: {},
+      },
+      seoTitle: "",
+      seoDescription: "",
+      relatedProducts: [],
+      faqs: [],
+      // B2B Wholesale
+      isWholesale: false,
+      minOrderQty: "",
+      bulkPricing: [],
+      wholesaleApprovalStatus: "",
+      wholesaleRejectionReason: "",
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem('vendor_add_product_draft', JSON.stringify(formData));
+  }, [formData]);
   const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
     sizes: "",
@@ -321,10 +335,34 @@ const AddProduct = () => {
     updateVariantAttributes(next);
   };
 
+  const VALID_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
+
   const addVariantAxisValues = (axis, rawInput) => {
+    if (!rawInput.trim()) return;
+    
+    if (axis === "sizes") {
+      const inputs = rawInput.split(',').map(s => s.trim().toUpperCase());
+      const invalidSizes = inputs.filter(s => s && !VALID_SIZES.includes(s));
+      if (invalidSizes.length > 0) {
+         toast.error(`Invalid sizes: ${invalidSizes.join(', ')}. Allowed sizes are: XS, S, M, L, XL, XXL, 3XL, 4XL`);
+         return;
+      }
+    } else if (axis === "colors") {
+      // Validate characters (only letters and spaces for colors)
+      if (!/^[a-zA-Z\s,]+$/.test(rawInput)) {
+        toast.error("Colors can only contain letters and spaces");
+        return;
+      }
+    } else {
+      // General validation for attributes
+      if (!/^[a-zA-Z0-9\s.\-\/#,]+$/.test(rawInput)) {
+        toast.error("Values can only contain letters, numbers, spaces, and basic punctuation (.-/#)");
+        return;
+      }
+    }
+
     const parsed = parseVariantAxis(rawInput);
-    if (!parsed.length) return;
-    const current = Array.isArray(formData?.variants?.[axis]) ? formData.variants[axis] : [];
+    const current = axis === "sizes" ? (formData.variants?.sizes || []) : (formData.variants?.colors || []);
     const merged = parseVariantAxis([...current, ...parsed].join(", "));
     updateVariantAxes(axis, merged.join(", "));
     setVariantAxisInput((prev) => ({ ...prev, [axis]: "" }));
@@ -388,6 +426,11 @@ const AddProduct = () => {
 
     if (!formData.name || !formData.price || !formData.stockQuantity || !formData.categoryId) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!isNaN(formData.name.trim()) && formData.name.trim() !== "") {
+      toast.error("Product name cannot contain only numbers");
       return;
     }
 
@@ -493,6 +536,7 @@ const AddProduct = () => {
 
     const result = await addProduct(payload);
     if (result) {
+      localStorage.removeItem('vendor_add_product_draft');
       navigate("/vendor/products/manage-products");
     }
   };
@@ -975,9 +1019,10 @@ const AddProduct = () => {
                   <input
                     type="text"
                     value={variantAxisInput.colors}
-                    onChange={(e) =>
-                      setVariantAxisInput((prev) => ({ ...prev, colors: e.target.value }))
-                    }
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^a-zA-Z\s,]/g, "");
+                      setVariantAxisInput((prev) => ({ ...prev, colors: value }));
+                    }}
                     onKeyDown={(e) => handleVariantAxisInputKeyDown("colors", e)}
                     onBlur={() => addVariantAxisValues("colors", variantAxisInput.colors)}
                     placeholder="Type color and press Enter (e.g. Red, Blue)"

@@ -6,6 +6,7 @@ import { useVendorAuthStore } from "../store/vendorAuthStore";
 import toast from 'react-hot-toast';
 import { appLogo } from "../../../data/logos";
 import PageTransition from '../../../shared/components/PageTransition';
+import customLogo from '../../../assets/tru_buy-removebg-preview.png';
 
 const VendorLogin = () => {
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ const VendorLogin = () => {
       const from = location.state?.from?.pathname || '/vendor/dashboard';
       navigate(from, { replace: true });
     } catch (error) {
-      toast.error(error.message || 'Invalid credentials');
+      console.error('Login failed:', error);
     }
   };
 
@@ -56,7 +57,7 @@ const VendorLogin = () => {
     <PageTransition>
       <div className="min-h-screen bg-gray-50 flex flex-col items-center">
         {/* Dark Header with Pattern */}
-        <div className="w-full bg-[#111111] relative overflow-hidden h-64 lg:h-56 flex flex-col items-center justify-center">
+        <div className="w-full bg-[#111111] relative overflow-hidden h-48 lg:h-48 flex flex-col items-center justify-center">
           {/* Geometric Pattern Overlay */}
           <div className="absolute inset-0 opacity-20 pointer-events-none"
             style={{
@@ -72,7 +73,9 @@ const VendorLogin = () => {
               backgroundPosition: '0 0, 30px 30px'
             }}>
           </div>
-
+          <div className="relative z-10 flex flex-col items-center justify-center -mt-8">
+            <img src={customLogo} alt="TrueBuy Logo" className="h-24 lg:h-28 w-auto object-contain drop-shadow-2xl transform scale-[1.3]" />
+          </div>
         </div>
 
         {/* Login Card */}
@@ -157,13 +160,18 @@ const VendorLogin = () => {
                 {isLoading ? 'Logging in...' : 'Login'}
               </button>
 
-              <div className="text-center pt-4">
+              <div className="text-center pt-4 space-y-4">
                 <p className="text-gray-500 text-sm">
                   Don't have an account?{' '}
                   <Link to="/vendor/register" className="text-black font-bold hover:underline">
                     Register as Vendor
                   </Link>
                 </p>
+                <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
+                  <Link to="/terms" className="hover:text-black transition-colors">Terms & Conditions</Link>
+                  <span>&bull;</span>
+                  <Link to="/privacy" className="hover:text-black transition-colors">Privacy Policy</Link>
+                </div>
               </div>
             </div>
           </form>

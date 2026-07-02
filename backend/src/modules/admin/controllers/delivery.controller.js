@@ -60,6 +60,10 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
         filter.applicationStatus = applicationStatus;
     }
 
+    if (String(req.query.availableOnly) === 'true') {
+        filter.status = { $ne: 'offline' };
+    }
+
     const deliveryBoys = await DeliveryBoy.find(filter)
         .select('-password')
         .sort({ createdAt: -1 })

@@ -94,12 +94,14 @@ const ManageProducts = () => {
       key: "stockQuantity",
       label: "Stock",
       sortable: true,
+      align: "center",
       render: (value) => value?.toLocaleString() || 0,
     },
     {
       key: "stock",
       label: "Status",
       sortable: true,
+      align: "center",
       render: (value) => (
         <Badge
           variant={
@@ -117,8 +119,9 @@ const ManageProducts = () => {
       key: "actions",
       label: "Actions",
       sortable: false,
+      align: "center",
       render: (_, row) => (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -147,6 +150,76 @@ const ManageProducts = () => {
     }
   };
 
+  const renderMobileCard = (row) => (
+    <div className="bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden mb-4">
+      <div className="p-4 flex gap-4">
+        {/* Image */}
+        <img
+          src={row.images?.[0] || "/placeholder-image.png"}
+          alt={row.name}
+          className="w-24 h-32 object-cover rounded-lg bg-gray-50 border border-gray-100 flex-shrink-0"
+          onError={(e) => {
+            e.target.src = "/placeholder-image.png";
+          }}
+        />
+        
+        {/* Content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <h3 className="font-semibold text-gray-900 text-[15px] truncate mb-1.5">{row.name}</h3>
+          
+          <div className="inline-block bg-gray-100/80 rounded-md px-2 py-1 mb-2.5 self-start">
+            <span className="text-[11px] font-medium text-gray-500">ID: {String(row._id ?? row.id).slice(-6).toUpperCase()}</span>
+          </div>
+          
+          <div className="flex items-center justify-between mb-3">
+            <span className="font-bold text-[#00a86b] text-lg">{formatPrice(row.price)}</span>
+            <span className="text-sm text-gray-600">Stock: {row.stockQuantity || 0}</span>
+          </div>
+          
+          <div className="mt-auto">
+            <Badge
+              variant={
+                row.stock === "in_stock"
+                  ? "success"
+                  : row.stock === "low_stock"
+                    ? "warning"
+                    : "error"
+              }
+              className="text-xs px-2.5 py-1 uppercase tracking-wider"
+            >
+              <span className="flex items-center gap-1.5 font-bold">
+                <div className={`w-1.5 h-1.5 rounded-full ${row.stock === 'in_stock' ? 'bg-[#00a86b]' : row.stock === 'low_stock' ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+                {row.stock?.replace("_", " ") || "N/A"}
+              </span>
+            </Badge>
+          </div>
+        </div>
+      </div>
+      
+      {/* Actions */}
+      <div className="grid grid-cols-2 gap-3 p-4 pt-0">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(`/vendor/products/${row._id ?? row.id}`);
+          }}
+          className="flex items-center justify-center gap-2 py-2 rounded-lg bg-blue-50 text-blue-600 font-semibold text-sm hover:bg-blue-100 transition-colors"
+        >
+          <FiEdit /> Edit
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeleteModal({ isOpen: true, productId: row._id ?? row.id });
+          }}
+          className="flex items-center justify-center gap-2 py-2 rounded-lg bg-red-50 text-red-600 font-semibold text-sm hover:bg-red-100 transition-colors"
+        >
+          <FiTrash2 /> Delete
+        </button>
+      </div>
+    </div>
+  );
+
   if (!vendorId) {
     return (
       <div className="text-center py-12">
@@ -160,18 +233,16 @@ const ManageProducts = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="lg:hidden">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-            Manage Products
-          </h1>
-          <p className="text-sm sm:text-base text-gray-600">
-            View, edit, and manage your product catalog
-          </p>
-        </div>
+      <div className="flex flex-col items-center justify-center gap-1 mb-2 lg:hidden text-center">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+          Manage Products
+        </h1>
+        <p className="text-sm text-gray-600">
+          View, edit, and manage your product catalog
+        </p>
       </div>
 
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+      <div className="bg-white rounded-xl p-3 sm:p-6 shadow-sm border border-gray-200">
         {/* Filters Section */}
         <div className="mb-6 pb-6 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 sm:gap-4">
@@ -186,29 +257,31 @@ const ManageProducts = () => {
               />
             </div>
 
-            <AnimatedSelect
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              options={[
-                { value: "all", label: "All Status" },
-                { value: "in_stock", label: "In Stock" },
-                { value: "low_stock", label: "Low Stock" },
-                { value: "out_of_stock", label: "Out of Stock" },
-              ]}
-              className="w-full sm:w-auto min-w-[140px]"
-            />
+            <div className="grid grid-cols-2 sm:flex sm:flex-row gap-3 w-full sm:w-auto">
+              <AnimatedSelect
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                options={[
+                  { value: "all", label: "All Categories" },
+                  ...categories
+                    .filter((cat) => cat.isActive !== false)
+                    .map((cat) => ({ value: String(cat._id ?? cat.id), label: cat.name })),
+                ]}
+                className="w-full sm:min-w-[160px]"
+              />
 
-            <AnimatedSelect
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              options={[
-                { value: "all", label: "All Categories" },
-                ...categories
-                  .filter((cat) => cat.isActive !== false)
-                  .map((cat) => ({ value: String(cat._id ?? cat.id), label: cat.name })),
-              ]}
-              className="w-full sm:w-auto min-w-[160px]"
-            />
+              <AnimatedSelect
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                options={[
+                  { value: "all", label: "All Status" },
+                  { value: "in_stock", label: "In Stock" },
+                  { value: "low_stock", label: "Low Stock" },
+                  { value: "out_of_stock", label: "Out of Stock" },
+                ]}
+                className="w-full sm:min-w-[140px]"
+              />
+            </div>
 
             <button
               onClick={() => navigate("/vendor/products/add-product")}
@@ -244,6 +317,7 @@ const ManageProducts = () => {
             pagination={true}
             itemsPerPage={10}
             onRowClick={(row) => navigate(`/vendor/products/${row._id ?? row.id}`)}
+            renderMobileCard={renderMobileCard}
           />
         ) : (
           <div className="text-center py-12">

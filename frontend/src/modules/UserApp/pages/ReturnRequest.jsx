@@ -192,7 +192,7 @@ const ReturnRequest = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full pb-24 bg-gray-50 min-h-screen">
+        <div className="w-full bg-gray-50 min-h-screen">
           {/* Header */}
           <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30 flex items-center gap-3">
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full">
