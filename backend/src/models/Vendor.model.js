@@ -41,6 +41,8 @@ const vendorSchema = new mongoose.Schema(
             state: String,
             zipCode: String,
             country: String,
+            lat: Number,
+            lng: Number,
         },
         bankDetails: {
             accountName: { type: String, select: false },

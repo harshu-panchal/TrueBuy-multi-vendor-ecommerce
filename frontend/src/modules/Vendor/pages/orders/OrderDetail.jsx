@@ -25,19 +25,19 @@ const OrderDetail = () => {
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
     const vendorId = vendor?.id;
-    const shippingAddress = order?.shippingAddress ?? order?.address ?? null;
     const customerName =
-        order?.customer?.name ??
-        order?.userId?.name ??
+        order?.parentOrderId?.shippingAddress?.name ??
+        order?.parentOrderId?.guestInfo?.name ??
         order?.shippingAddress?.name ??
         order?.guestInfo?.name ??
         'Guest';
     const customerEmail =
-        order?.customer?.email ??
-        order?.userId?.email ??
+        order?.parentOrderId?.shippingAddress?.email ??
+        order?.parentOrderId?.guestInfo?.email ??
         order?.shippingAddress?.email ??
         order?.guestInfo?.email ??
         'N/A';
+    const shippingAddress = order?.parentOrderId?.shippingAddress ?? order?.shippingAddress ?? null;
 
     useEffect(() => {
         if (!id || !vendorId) return;
@@ -63,15 +63,10 @@ const OrderDetail = () => {
         if (!order) return;
         setUpdatingStatus(true);
         try {
-            await updateVendorOrderStatus(order.orderId ?? order._id, newStatus);
+            await updateVendorOrderStatus((order.subOrderId || order.orderId) ?? order._id, newStatus);
             // Optimistically update local state
             setOrder((prev) => ({
                 ...prev,
-                vendorItems: prev.vendorItems?.map((vi) =>
-                    vi.vendorId?.toString() === vendorId?.toString()
-                        ? { ...vi, status: newStatus }
-                        : vi
-                ),
                 status: newStatus,
             }));
             toast.success(`Order status updated to ${newStatus}`);
@@ -98,19 +93,15 @@ const OrderDetail = () => {
         cancelled: ['cancelled'],
     };
 
-    // Derive per-vendor status from vendorItems
-    const vendorItem = order?.vendorItems?.find(
-        (vi) => vi.vendorId?.toString() === vendorId?.toString()
-    );
-    const currentStatus = String(vendorItem?.status ?? order?.status ?? 'pending').toLowerCase();
+    const currentStatus = String(order?.status ?? 'pending').toLowerCase();
     const allowedStatuses = transitionMap[currentStatus] || [currentStatus];
     const visibleStatusOptions = statusOptions.filter((option) =>
         allowedStatuses.includes(option.value)
     );
 
     // Items this vendor sold in this order
-    const vendorItems = vendorItem?.items ?? [];
-    const vendorSubtotal = vendorItem?.subtotal ?? 0;
+    const vendorItems = order?.items ?? [];
+    const vendorSubtotal = order?.subtotal ?? 0;
 
     if (loading) {
         return (
@@ -154,7 +145,7 @@ const OrderDetail = () => {
                     </Link>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-800">
-                            Order #{order.orderId ?? order._id}
+                            Order #{(order.subOrderId || order.orderId) ?? order._id}
                         </h1>
                         <p className="text-sm text-gray-500">
                             Placed on{' '}
@@ -267,6 +258,24 @@ const OrderDetail = () => {
                             </Badge>
                         </div>
                     </div>
+
+                    {/* Vendor Pickup OTP Box */}
+                    {order.vendorPickupOtp && ['pending', 'processing', 'assigned_for_delivery', 'ready'].includes(currentStatus) && (
+                        <div className="bg-blue-50 border-2 border-blue-100 rounded-xl p-5">
+                            <div className="flex items-start gap-4">
+                                <div className="p-3 bg-white rounded-full shadow-sm text-blue-600">
+                                    <FiPackage size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900 mb-1">Pickup Verification</h3>
+                                    <p className="text-sm text-gray-600 mb-3">Provide this 6-digit OTP to the delivery partner when they arrive to pick up the package.</p>
+                                    <div className="text-2xl font-black tracking-[0.2em] text-blue-700 bg-white inline-block px-4 py-2 rounded-lg shadow-sm border border-blue-100">
+                                        {order.vendorPickupOtp}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar */}

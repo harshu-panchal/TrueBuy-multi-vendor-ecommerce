@@ -67,11 +67,14 @@ const PaymentShippingSettings = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    updateSettings('payment', paymentData);
-    updateSettings('shipping', shippingData);
-    toast.success('Settings saved successfully');
+    try {
+      await updateSettings('payment', paymentData);
+      await updateSettings('shipping', shippingData);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const sections = [
@@ -278,7 +281,7 @@ const PaymentShippingSettings = () => {
           {/* Shipping Section */}
           {activeSection === 'shipping' && (
             <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Free Shipping Threshold
@@ -309,6 +312,38 @@ const PaymentShippingSettings = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">Default shipping cost</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Delivery Partner Base Fee (₹)
+                  </label>
+                  <input
+                    type="number"
+                    name="deliveryBaseFee"
+                    value={shippingData.deliveryBaseFee ?? 40}
+                    onChange={handleShippingChange}
+                    min="0"
+                    step="1"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Fixed base earnings per completed delivery</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Delivery Partner Per-Km Fee (₹)
+                  </label>
+                  <input
+                    type="number"
+                    name="deliveryPerKmFee"
+                    value={shippingData.deliveryPerKmFee ?? 5}
+                    onChange={handleShippingChange}
+                    min="0"
+                    step="0.5"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Multiplier for distance traveled per delivery</p>
                 </div>
               </div>
 

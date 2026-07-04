@@ -224,6 +224,7 @@ const MobileOrderDetail = () => {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold text-gray-800 text-sm mb-1">{item.name}</h3>
+                                <p className="text-xs text-gray-500 mb-0.5">ID: {item.productId || item.id}</p>
                                 <p className="text-xs text-gray-600">
                                   {formatPrice(item.price)} x {item.quantity}
                                 </p>
@@ -331,6 +332,7 @@ const MobileOrderDetail = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-gray-800 text-sm mb-1">{item.name}</h3>
+                          <p className="text-xs text-gray-500 mb-0.5">ID: {item.productId || item.id}</p>
                           <p className="text-xs text-gray-600">
                             {formatPrice(item.price)} x {item.quantity}
                           </p>

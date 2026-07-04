@@ -2,12 +2,15 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Order from '../../../models/Order.model.js';
+import SubOrder from '../../../models/SubOrder.model.js';
 import User from '../../../models/User.model.js';
+import Settings from '../../../models/Settings.model.js';
 import mongoose from 'mongoose';
 import crypto from 'crypto';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
 import { completeExchangeAfterDelivery } from '../../exchange/services/exchange.service.js';
+import { calculateDistanceKm } from '../../../utils/distance.js';
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
 const DELIVERY_OTP_MAX_ATTEMPTS = 5;
@@ -51,10 +54,11 @@ const clearLegacyOrderOtpState = (order) => {
     order.deliveryOtpDebug = undefined;
 };
 
-const ensureUserStaticDeliveryOtp = async (order) => {
-    if (!order?.userId) return { mode: 'legacy', otp: null };
+export const ensureUserStaticDeliveryOtp = async (order) => {
+    const userId = order.userId || (order.parentOrderId && order.parentOrderId.userId);
+    if (!userId) return { mode: 'legacy', otp: null };
 
-    const user = await User.findById(order.userId).select('+deliveryOtp +deliveryOtpGeneratedAt email');
+    const user = await User.findById(userId).select('+deliveryOtp +deliveryOtpGeneratedAt email');
     if (!user) return { mode: 'legacy', otp: null };
 
     const existingOtp = String(user.deliveryOtp || '').trim();
@@ -76,6 +80,10 @@ const ensureUserStaticDeliveryOtp = async (order) => {
         });
     } catch (err) {
         console.warn(`[Delivery OTP] Failed to email static OTP to user ${user.email}: ${err.message}`);
+    }
+
+    if (!IS_PRODUCTION) {
+        console.log(`CUSTOMER STATIC DELIVERY OTP for ${user.email}:`, generatedOtp);
     }
 
     return { mode: 'static', otp: generatedOtp };
@@ -119,7 +127,10 @@ export const getAssignedOrders = asyncHandler(async (req, res) => {
     const hasPaginationParams = page !== undefined || limit !== undefined;
 
     if (!hasPaginationParams) {
-        const orders = await Order.find(filter).sort({ createdAt: -1 });
+        const orders = await SubOrder.find(filter)
+            .populate('vendorId', 'name storeName address phone')
+            .populate('parentOrderId', 'userId shippingAddress guestInfo')
+            .sort({ createdAt: -1 });
         return res.status(200).json(new ApiResponse(200, orders, 'Assigned orders fetched.'));
     }
 
@@ -129,8 +140,13 @@ export const getAssignedOrders = asyncHandler(async (req, res) => {
     const skip = (numericPage - 1) * numericLimit;
 
     const [orders, total] = await Promise.all([
-        Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(numericLimit),
-        Order.countDocuments(filter),
+        SubOrder.find(filter)
+            .populate('vendorId', 'name storeName address phone')
+            .populate('parentOrderId', 'userId shippingAddress guestInfo')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(numericLimit),
+        SubOrder.countDocuments(filter),
     ]);
 
     return res.status(200).json(
@@ -156,8 +172,8 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [statusStats, completedTodayCount, earningsStats, recentOrders] = await Promise.all([
-        Order.aggregate([
+    const [statusStats, completedTodayCount, earningsStats, recentOrders, shippingSettings] = await Promise.all([
+        SubOrder.aggregate([
             { $match: { deliveryBoyId: new mongoose.Types.ObjectId(deliveryBoyId), isDeleted: { $ne: true } } },
             {
                 $group: {
@@ -166,7 +182,7 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
                 },
             },
         ]),
-        Order.countDocuments({
+        SubOrder.countDocuments({
             deliveryBoyId,
             isDeleted: { $ne: true },
             status: 'delivered',
@@ -176,7 +192,7 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
                 { deliveredAt: null, updatedAt: { $gte: todayStart } },
             ],
         }),
-        Order.aggregate([
+        SubOrder.aggregate([
             {
                 $match: {
                     deliveryBoyId: new mongoose.Types.ObjectId(deliveryBoyId),
@@ -188,12 +204,19 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
                 $group: {
                     _id: null,
                     totalDeliveries: { $sum: 1 },
-                    totalShipping: { $sum: { $ifNull: ['$shipping', 0] } },
+                    totalEarnings: { $sum: { $ifNull: ['$deliveryEarnings', 0] } },
                 },
             },
         ]),
-        Order.find({ deliveryBoyId, isDeleted: { $ne: true } }).sort({ createdAt: -1 }).limit(3),
+        SubOrder.find({ deliveryBoyId, isDeleted: { $ne: true } })
+            .populate('vendorId', 'name storeName address phone')
+            .populate('parentOrderId', 'userId shippingAddress guestInfo')
+            .sort({ createdAt: -1 })
+            .limit(3),
+        Settings.findOne({ key: 'shipping' }).lean(),
     ]);
+
+    const baseFee = shippingSettings?.value?.deliveryBaseFee != null ? Number(shippingSettings.value.deliveryBaseFee) : 40;
 
     const countByStatus = statusStats.reduce((acc, row) => {
         acc[String(row?._id || '')] = Number(row?.count || 0);
@@ -210,7 +233,7 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
             Number(countByStatus.returned || 0),
         completedToday: Number(completedTodayCount || 0),
         pendingOrders: Number(countByStatus.pending || 0) + Number(countByStatus.processing || 0),
-        earnings: Number((earningsStats?.[0]?.totalDeliveries || 0) * 40 + (earningsStats?.[0]?.totalShipping || 0)),
+        earnings: Number(earningsStats?.[0]?.totalEarnings || 0),
         recentOrders,
     };
 
@@ -223,8 +246,8 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [deliveredStats, completedTodayCount] = await Promise.all([
-        Order.aggregate([
+    const [deliveredStats, completedTodayCount, shippingSettings] = await Promise.all([
+        SubOrder.aggregate([
             {
                 $match: {
                     deliveryBoyId: new mongoose.Types.ObjectId(deliveryBoyId),
@@ -236,11 +259,11 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
                 $group: {
                     _id: null,
                     totalDeliveries: { $sum: 1 },
-                    totalShipping: { $sum: { $ifNull: ['$shipping', 0] } },
+                    totalEarnings: { $sum: { $ifNull: ['$deliveryEarnings', 0] } },
                 },
             },
         ]),
-        Order.countDocuments({
+        SubOrder.countDocuments({
             deliveryBoyId,
             isDeleted: { $ne: true },
             status: 'delivered',
@@ -250,7 +273,10 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
                 { deliveredAt: null, updatedAt: { $gte: todayStart } },
             ],
         }),
+        Settings.findOne({ key: 'shipping' }).lean(),
     ]);
+
+    const baseFee = shippingSettings?.value?.deliveryBaseFee != null ? Number(shippingSettings.value.deliveryBaseFee) : 40;
 
     const row = deliveredStats?.[0] || {};
     return res.status(200).json(
@@ -259,7 +285,7 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
             {
                 totalDeliveries: Number(row.totalDeliveries || 0),
                 completedToday: Number(completedTodayCount || 0),
-                earnings: Number((row.totalDeliveries || 0) * 40 + (row.totalShipping || 0)),
+                earnings: Number(row.totalEarnings || 0),
             },
             'Profile summary fetched.'
         )
@@ -271,44 +297,71 @@ export const getOrderDetail = asyncHandler(async (req, res) => {
     const query = {
         deliveryBoyId: req.user.id,
         isDeleted: { $ne: true },
-        $or: [{ orderId: req.params.id }],
+        $or: [{ subOrderId: req.params.id }],
     };
     if (mongoose.isValidObjectId(req.params.id)) {
         query.$or.push({ _id: req.params.id });
     }
 
-    const order = await Order.findOne(query).select('+deliveryOtpHash +deliveryOtpExpiry +deliveryOtpSentAt +deliveryOtpAttempts +deliveryOtpDebug');
+    const order = await SubOrder.findOne(query)
+        .populate('parentOrderId', 'userId shippingAddress guestInfo')
+        .populate('vendorId', 'name storeName address phone')
+        .select('+deliveryOtpHash +deliveryOtpExpiry +deliveryOtpSentAt +deliveryOtpAttempts +deliveryOtpDebug');
     if (!order) throw new ApiError(404, 'Order not found.');
-    res.status(200).json(new ApiResponse(200, order, 'Order detail fetched.'));
+
+    const shippingSettingsDoc = await Settings.findOne({ key: 'shipping' }).lean();
+    let baseFee = 40;
+    let perKmFee = 5;
+    if (shippingSettingsDoc && shippingSettingsDoc.value) {
+        if (shippingSettingsDoc.value.deliveryBaseFee != null) {
+            baseFee = Number(shippingSettingsDoc.value.deliveryBaseFee) || 0;
+        }
+        if (shippingSettingsDoc.value.deliveryPerKmFee != null) {
+            perKmFee = Number(shippingSettingsDoc.value.deliveryPerKmFee) || 0;
+        }
+    }
+
+    const orderData = { ...order.toObject(), deliveryBaseFee: baseFee, deliveryPerKmFee: perKmFee };
+    console.log("VENDOR PICKUP OTP:", orderData.vendorPickupOtp);
+    res.status(200).json(new ApiResponse(200, orderData, 'Order detail fetched.'));
 });
 
 // PATCH /api/delivery/orders/:id/status
 export const updateDeliveryStatus = asyncHandler(async (req, res) => {
-    const { status, otp } = req.body;
+    const { status, otp, pickupOtp } = req.body;
     const allowed = ['shipped', 'delivered'];
     if (!allowed.includes(status)) throw new ApiError(400, `Status must be one of: ${allowed.join(', ')}`);
 
     const query = {
         deliveryBoyId: req.user.id,
         isDeleted: { $ne: true },
-        $or: [{ orderId: req.params.id }],
+        $or: [{ subOrderId: req.params.id }],
     };
     if (mongoose.isValidObjectId(req.params.id)) {
         query.$or.push({ _id: req.params.id });
     }
 
-    const order = await Order.findOne(query).select('+deliveryOtpHash +deliveryOtpExpiry +deliveryOtpSentAt +deliveryOtpAttempts +deliveryOtpDebug');
+    const order = await SubOrder.findOne(query).populate('parentOrderId', 'userId shippingAddress guestInfo').select('+deliveryOtpHash +deliveryOtpExpiry +deliveryOtpSentAt +deliveryOtpAttempts +deliveryOtpDebug');
     if (!order) throw new ApiError(404, 'Order not found.');
 
     // Server-side transition guard (frontend guard already exists).
     const transitionAllowed =
-        (status === 'shipped' && ['pending', 'processing'].includes(order.status)) ||
+        (status === 'shipped' && ['pending', 'processing', 'assigned_for_delivery'].includes(order.status)) ||
         (status === 'delivered' && order.status === 'shipped');
     if (!transitionAllowed) {
         throw new ApiError(409, `Cannot move order from ${order.status} to ${status}.`);
     }
 
     if (status === 'shipped') {
+        const normalizedPickupOtp = String(pickupOtp || otp || '').trim();
+        if (!normalizedPickupOtp || normalizedPickupOtp.length !== 6) {
+            throw new ApiError(400, 'Vendor pickup OTP is required to start delivery.');
+        }
+        if (order.vendorPickupOtp && order.vendorPickupOtp !== normalizedPickupOtp) {
+            throw new ApiError(400, 'Invalid vendor pickup OTP.');
+        }
+        order.vendorPickupOtpVerifiedAt = new Date();
+
         const otpMode = await ensureUserStaticDeliveryOtp(order);
         order.deliveryOtpVerifiedAt = undefined;
 
@@ -321,6 +374,7 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
             if (!IS_PRODUCTION) {
                 order.deliveryOtpDebug = generatedOtp;
             }
+            console.log("CUSTOMER DELIVERY OTP:", generatedOtp);
 
             try {
                 const sent = await sendDeliveryOtpEmail(order, generatedOtp);
@@ -356,21 +410,42 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
     order.status = status;
     // Keep vendor sub-order statuses aligned with delivery progression.
     if (status === 'shipped') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
+        order.items = (order.items || []).map((vi) => {
             const current = String(vi?.status || 'pending');
             if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'shipped' };
+            return { ...vi.toObject ? vi.toObject() : vi, status: 'shipped' };
         });
     }
     if (status === 'delivered') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
+        order.items = (order.items || []).map((vi) => {
             const current = String(vi?.status || 'pending');
             if (current === 'cancelled') return vi;
-            return { ...vi.toObject(), status: 'delivered' };
+            return { ...vi.toObject ? vi.toObject() : vi, status: 'delivered' };
         });
     }
     if (status === 'delivered') {
         order.deliveredAt = new Date();
+        
+        let baseFee = 40;
+        let perKmFee = 5;
+        const shippingSettingsDoc = await Settings.findOne({ key: 'shipping' });
+        if (shippingSettingsDoc && shippingSettingsDoc.value) {
+            if (shippingSettingsDoc.value.deliveryBaseFee != null) {
+                baseFee = Number(shippingSettingsDoc.value.deliveryBaseFee) || 0;
+            }
+            if (shippingSettingsDoc.value.deliveryPerKmFee != null) {
+                perKmFee = Number(shippingSettingsDoc.value.deliveryPerKmFee) || 0;
+            }
+        }
+        
+        const plat = order.pickupAddress?.lat;
+        const plng = order.pickupAddress?.lng;
+        const dlat = order.dropoffAddress?.lat;
+        const dlng = order.dropoffAddress?.lng;
+        
+        const distance = calculateDistanceKm(plat, plng, dlat, dlng);
+        order.deliveryDistanceKm = distance;
+        order.deliveryEarnings = baseFee + (distance * perKmFee);
     }
     await order.save();
 
@@ -383,42 +458,37 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
     }
 
     const statusNotificationTasks = [];
-    if (order.userId) {
+    const userIdForNotification = order.userId || (order.parentOrderId && order.parentOrderId.userId);
+    if (userIdForNotification) {
         statusNotificationTasks.push(
             createNotification({
-                recipientId: order.userId,
+                recipientId: userIdForNotification,
                 recipientType: 'user',
                 title: status === 'delivered' ? 'Order delivered' : 'Order shipped',
                 message:
                     status === 'delivered'
-                        ? `Your order ${order.orderId} has been delivered.`
-                        : `Your order ${order.orderId} is out for delivery.`,
+                        ? `Your order ${order.subOrderId || order._id} has been delivered.`
+                        : `Your order ${order.subOrderId || order._id} is out for delivery.`,
                 type: 'order',
                 data: {
-                    orderId: String(order.orderId || order._id),
+                    orderId: String(order.subOrderId || order._id),
                     status: String(status),
                 },
             })
         );
     }
 
-    const vendorIds = [
-        ...new Set(
-            (order.vendorItems || [])
-                .map((item) => String(item?.vendorId || '').trim())
-                .filter(Boolean)
-        ),
-    ];
+    const vendorIds = [String(order.vendorId).trim()].filter(Boolean);
     vendorIds.forEach((vendorId) => {
         statusNotificationTasks.push(
             createNotification({
                 recipientId: vendorId,
                 recipientType: 'vendor',
                 title: 'Delivery status update',
-                message: `Order ${order.orderId} moved to ${status}.`,
+                message: `Order ${order.subOrderId || order._id} moved to ${status}.`,
                 type: 'order',
                 data: {
-                    orderId: String(order.orderId || order._id),
+                    orderId: String(order.subOrderId || order._id),
                     status: String(status),
                 },
             })
@@ -437,18 +507,19 @@ export const resendDeliveryOtp = asyncHandler(async (req, res) => {
     const query = {
         deliveryBoyId: req.user.id,
         isDeleted: { $ne: true },
-        $or: [{ orderId: req.params.id }],
+        $or: [{ subOrderId: req.params.id }],
     };
 
     if (mongoose.isValidObjectId(req.params.id)) {
         query.$or.push({ _id: req.params.id });
     }
 
-    const order = await Order.findOne(query);
-    if (!order) throw new ApiError(404, 'Order not found.');
+    const order = await SubOrder.findOne(query)
+        .populate('vendorId', 'name storeName address')
+        .populate('parentOrderId', 'userId shippingAddress guestInfo');
 
-    if (order.status !== 'shipped') {
-        throw new ApiError(409, 'OTP can only be resent when order is in shipped state.');
+    if (!['shipped', 'in-transit'].includes(order.status)) {
+        throw new ApiError(409, 'OTP can only be resent when order is shipped or in-transit.');
     }
 
     const otpMode = await ensureUserStaticDeliveryOtp(order);
@@ -498,13 +569,13 @@ export const getDeliveryOtpForDebug = asyncHandler(async (req, res) => {
     const query = {
         deliveryBoyId: req.user.id,
         isDeleted: { $ne: true },
-        $or: [{ orderId: req.params.id }],
+        $or: [{ subOrderId: req.params.id }],
     };
     if (mongoose.isValidObjectId(req.params.id)) {
         query.$or.push({ _id: req.params.id });
     }
 
-    const order = await Order.findOne(query).select('+deliveryOtpDebug +deliveryOtpExpiry status orderId');
+    const order = await SubOrder.findOne(query).select('+deliveryOtpDebug +deliveryOtpExpiry status orderId');
     if (!order) throw new ApiError(404, 'Order not found.');
     if (order.status !== 'shipped') {
         throw new ApiError(409, 'Debug OTP is only available while order is in shipped state.');

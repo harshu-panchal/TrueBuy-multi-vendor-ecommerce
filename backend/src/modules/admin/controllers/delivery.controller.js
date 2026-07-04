@@ -1,7 +1,8 @@
 import DeliveryBoy from '../../../models/DeliveryBoy.model.js';
-import { Order } from '../../../models/Order.model.js';
+import { SubOrder } from '../../../models/SubOrder.model.js';
 import { ApiError } from '../../../utils/ApiError.js';
 import { ApiResponse } from '../../../utils/ApiResponse.js';
+import Settings from '../../../models/Settings.model.js';
 import { asyncHandler } from '../../../utils/asyncHandler.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
@@ -74,7 +75,7 @@ export const getAllDeliveryBoys = asyncHandler(async (req, res) => {
 
     // Aggregate stats for each delivery boy
     const boysWithStats = await Promise.all(deliveryBoys.map(async (boy) => {
-        const stats = await Order.aggregate([
+        const stats = await SubOrder.aggregate([
             { 
                 $match: { 
                     deliveryBoyId: boy._id,
@@ -151,41 +152,44 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
         throw new ApiError(404, 'Delivery boy not found');
     }
 
-    const orders = await Order.find({ deliveryBoyId: boy._id }).sort({ createdAt: -1 }).limit(50);
+    const orders = await SubOrder.find({ deliveryBoyId: boy._id }).sort({ createdAt: -1 }).limit(50);
 
-    const stats = await Order.aggregate([
-        { 
-            $match: { 
-                deliveryBoyId: boy._id,
-                isDeleted: { $ne: true }
-            } 
-        },
-        {
-            $group: {
-                _id: null,
-                totalDeliveries: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
-                totalShipping: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, '$shipping', 0] } },
-                cashInHand: {
-                    $sum: {
-                        $cond: [
-                            {
-                                $and: [
-                                    { $eq: ['$status', 'delivered'] },
-                                    { $in: ['$paymentMethod', ['cod', 'cash']] },
-                                    { $ne: ['$isCashSettled', true] }
-                                ]
-                            },
-                            { $ifNull: ['$total', 0] },
-                            0
-                        ]
+    const [stats, shippingSettings] = await Promise.all([
+        SubOrder.aggregate([
+            { 
+                $match: { 
+                    deliveryBoyId: boy._id,
+                    isDeleted: { $ne: true }
+                } 
+            },
+            {
+                $group: {
+                    _id: null,
+                    totalDeliveries: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
+                    totalEarnings: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, { $ifNull: ['$deliveryEarnings', 0] }, 0] } },
+                    cashInHand: {
+                        $sum: {
+                            $cond: [
+                                {
+                                    $and: [
+                                        { $eq: ['$status', 'delivered'] },
+                                        { $in: ['$paymentMethod', ['cod', 'cash']] },
+                                        { $ne: ['$isCashSettled', true] }
+                                    ]
+                                },
+                                { $ifNull: ['$total', 0] },
+                                0
+                            ]
+                        }
                     }
                 }
             }
-        }
+        ]),
+        Settings.findOne({ key: 'shipping' }).lean()
     ]);
 
-    const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, totalShipping: 0, cashInHand: 0 };
-    const totalEarnings = (boyStats.totalDeliveries || 0) * 40 + (boyStats.totalShipping || 0);
+    const boyStats = stats.length > 0 ? stats[0] : { totalDeliveries: 0, totalEarnings: 0, cashInHand: 0 };
+    const totalEarnings = boyStats.totalEarnings || 0;
 
     res.status(200).json(
         new ApiResponse(200, {
@@ -198,7 +202,7 @@ export const getDeliveryBoyById = asyncHandler(async (req, res) => {
                 aadharCard: buildDocUrl(req, boy.documents?.aadharCard || ''),
             },
             totalDeliveries: boyStats.totalDeliveries,
-            totalEarnings: totalEarnings,
+            totalEarnings: boyStats ? Number(boyStats.totalEarnings || 0) : 0,
             cashInHand: boyStats.cashInHand,
             stats: boyStats,
             recentOrders: orders
@@ -390,7 +394,7 @@ export const deleteDeliveryBoy = asyncHandler(async (req, res) => {
         throw new ApiError(404, 'Delivery boy not found');
     }
 
-    const activeAssignments = await Order.countDocuments({
+    const activeAssignments = await SubOrder.countDocuments({
         deliveryBoyId: boy._id,
         status: { $in: ['pending', 'processing', 'shipped'] },
         isDeleted: { $ne: true },
@@ -426,7 +430,7 @@ export const settleCash = asyncHandler(async (req, res) => {
         isDeleted: { $ne: true },
     };
 
-    const unsettledStats = await Order.aggregate([
+    const unsettledStats = await SubOrder.aggregate([
         { $match: baseFilter },
         {
             $group: {
@@ -446,7 +450,7 @@ export const settleCash = asyncHandler(async (req, res) => {
         );
     }
 
-    const result = await Order.updateMany(
+    const result = await SubOrder.updateMany(
         baseFilter,
         {
             $set: { isCashSettled: true, settledAt: new Date() }

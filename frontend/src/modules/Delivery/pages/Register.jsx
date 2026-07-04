@@ -143,7 +143,7 @@ const DeliveryRegister = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center">
       {/* Dark Header with Pattern */}
-      <div className="w-full bg-[#111111] relative overflow-hidden h-64 lg:h-56 flex flex-col items-center justify-center">
+      <div className="w-full bg-[#111111] relative overflow-hidden h-[260px] lg:h-[280px] flex flex-col items-center justify-center pt-2">
         {/* Geometric Pattern Overlay */}
         <div className="absolute inset-0 opacity-20 pointer-events-none"
           style={{
@@ -160,10 +160,13 @@ const DeliveryRegister = () => {
           }}>
         </div>
 
-        {/* Title for Mobile */}
-        <div className="z-10 text-center lg:hidden">
-          <h1 className="text-3xl font-bold text-white mb-2">Join as Delivery Partner</h1>
-          <p className="text-gray-400 text-sm">Register your account</p>
+        {/* Logo container & Mobile Title */}
+        <div className="z-10 flex flex-col items-center justify-center pb-8 lg:pb-16">
+          {appLogo.src ? (
+            <img src={appLogo.src} alt={appLogo.alt} className="w-48 sm:w-56 lg:w-64 h-auto object-contain" />
+          ) : (
+            <h1 className="text-3xl font-bold text-white">LOGO</h1>
+          )}
         </div>
       </div>
 
@@ -347,6 +350,12 @@ const DeliveryRegister = () => {
                 <Link to="/delivery/login" className="text-black font-bold hover:underline">
                   Login here
                 </Link>
+              </p>
+              <p className="mt-8 text-center text-sm text-gray-500">
+                By registering, you agree to our <br />
+                <Link to="/delivery/privacy" className="hover:text-black hover:underline transition-colors">Privacy Policy</Link>
+                {' '}and{' '}
+                <Link to="/delivery/terms" className="hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
               </p>
             </div>
           </div>

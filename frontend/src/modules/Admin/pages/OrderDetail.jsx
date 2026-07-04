@@ -19,7 +19,7 @@ import { motion } from 'framer-motion';
 import Badge from '../../../shared/components/Badge';
 import AnimatedSelect from '../components/AnimatedSelect';
 import { formatCurrency, formatDateTime } from '../utils/adminHelpers';
-import { getOrderById, updateOrderStatus } from '../services/adminService';
+import { getOrderById, updateOrderStatus, getAllDeliveryBoys, assignDeliveryBoy } from '../services/adminService';
 import toast from 'react-hot-toast';
 
 const OrderDetail = () => {
@@ -28,6 +28,7 @@ const OrderDetail = () => {
   const [order, setOrder] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [status, setStatus] = useState('');
+  const [deliveryBoys, setDeliveryBoys] = useState([]);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -35,8 +36,14 @@ const OrderDetail = () => {
     const fetchOrderData = async () => {
       setIsLoading(true);
       try {
-        const response = await getOrderById(id);
+        const [response, boysRes] = await Promise.all([
+          getOrderById(id),
+          getAllDeliveryBoys({ page: 1, limit: 100, status: "active", applicationStatus: "approved", availableOnly: true })
+        ]);
+        
         const o = response.data;
+        const boysRows = boysRes?.data?.deliveryBoys || [];
+        setDeliveryBoys(boysRows);
 
         // Normalize data to match UI structure
         const normalizedOrder = {
@@ -75,6 +82,24 @@ const OrderDetail = () => {
     }
   };
 
+  const handleAssignDelivery = async (subOrderId, deliveryBoyId) => {
+    try {
+      await assignDeliveryBoy(subOrderId, deliveryBoyId);
+      setOrder((prev) => ({
+        ...prev,
+        subOrders: prev.subOrders.map((so) =>
+          so.subOrderId === subOrderId || so._id === subOrderId
+            ? { ...so, deliveryBoyId: deliveryBoyId }
+            : so
+        )
+      }));
+      toast.success('Delivery partner assigned');
+    } catch (error) {
+      console.error("Assign error:", error);
+      toast.error('Failed to assign delivery partner');
+    }
+  };
+
   if (isLoading || !order) {
     return (
       <div className="text-center py-12">
@@ -86,8 +111,9 @@ const OrderDetail = () => {
   const statusOptions = ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'];
 
   // Handle items - could be a number or an array
-  const itemsCount = Array.isArray(order.items) ? order.items.length : (typeof order.items === 'number' ? order.items : 0);
-  const itemsArray = Array.isArray(order.items) ? order.items : [];
+  const subOrders = order.subOrders || [];
+  const itemsCount = subOrders.reduce((total, so) => total + (so.items?.length || 0), 0);
+  const hasItems = itemsCount > 0;
 
   // Calculate order breakdown
   const subtotal = order.subtotal ?? (order.total * 0.95);
@@ -222,33 +248,70 @@ const OrderDetail = () => {
             )}
           </div>
 
-          {/* Order Items */}
-          {itemsArray.length > 0 && (
+          {/* Order Items via SubOrders */}
+          {hasItems && (
             <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
               <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
                 <FiPackage className="text-primary-600 text-base" />
-                Order Items ({itemsCount})
+                Product Orders ({itemsCount} items)
               </h2>
-              <div className="space-y-2">
-                {itemsArray.map((item) => (
-                  <div key={item.id || item.name} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg">
-                    <img
-                      src={getProductImage(item)}
-                      alt={item.name || 'Product'}
-                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                      onError={(e) => {
-                        e.target.src = 'https://via.placeholder.com/100x100?text=Product';
-                      }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm text-gray-800 truncate">{item.name || 'Unknown Product'}</p>
-                      <p className="text-xs text-gray-600">
-                        {formatCurrency(item.price || 0)} x {item.quantity || 1}
-                      </p>
+              <div className="space-y-4">
+                {subOrders.map((subOrder) => (
+                  <div key={subOrder._id || subOrder.subOrderId} className="border border-gray-100 rounded-lg overflow-hidden">
+                    <div className="bg-gray-50 px-3 py-2 flex justify-between items-center border-b border-gray-100 flex-wrap gap-2">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <span className="text-xs font-semibold text-gray-600 mr-2">Product Order ID:</span>
+                          <span className="text-xs font-bold text-primary-600">{subOrder.subOrderId}</span>
+                        </div>
+                        <Badge variant={subOrder.status === 'delivered' ? 'delivered' : 'pending'} className="text-[10px] px-1.5 py-0.5">
+                          {subOrder.status}
+                        </Badge>
+                      </div>
+                      {['pending', 'processing', 'shipped'].includes(subOrder.status?.toLowerCase()) && (
+                        <div className="flex items-center gap-2">
+                          <AnimatedSelect
+                            name="deliveryBoyId"
+                            value={String(subOrder.deliveryBoyId?._id || subOrder.deliveryBoyId || "")}
+                            onChange={(e) => handleAssignDelivery(subOrder.subOrderId || subOrder._id, e.target.value)}
+                            options={[
+                              { value: "", label: "Unassigned" },
+                              ...deliveryBoys.map((boy) => ({
+                                value: String(boy.id || boy._id),
+                                label: `${boy.name} (${boy.phone || "N/A"})`,
+                              })),
+                            ]}
+                            className="text-xs py-1 px-2 pr-8 h-8 min-w-[180px]"
+                          />
+                        </div>
+                      )}
                     </div>
-                    <p className="font-bold text-sm text-gray-800">
-                      {formatCurrency((item.price || 0) * (item.quantity || 1))}
-                    </p>
+                    <div className="p-2 space-y-2">
+                      {(subOrder.items || []).map((item) => (
+                        <div key={item._id || item.productId || item.name} className="flex items-center gap-3 p-2 bg-white rounded-lg">
+                          <img
+                            src={getProductImage(item)}
+                            alt={item.name || 'Product'}
+                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-gray-100"
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/100x100?text=Product';
+                            }}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-gray-800 truncate">{item.name || 'Unknown Product'}</p>
+                            <p className="text-xs text-gray-500">
+                              Product ID: <span className="font-mono">{item.productId || 'N/A'}</span>
+                            </p>
+                            <p className="text-xs text-gray-600 mt-0.5">
+                              {formatCurrency(item.price || 0)} x {item.quantity || 1}
+                            </p>
+                          </div>
+                          <p className="font-bold text-sm text-gray-800">
+                            {formatCurrency((item.price || 0) * (item.quantity || 1))}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>

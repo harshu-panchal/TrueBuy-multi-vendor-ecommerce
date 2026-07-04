@@ -49,6 +49,9 @@ const updateFormDataFromPlace = (place, setFormData) => {
 
   const address = `${streetNumber} ${route}`.trim() || place.formatted_address || place.name || "";
 
+  const lat = place.geometry?.location?.lat() || null;
+  const lng = place.geometry?.location?.lng() || null;
+
   setFormData((prev) => ({
     ...prev,
     address: address,
@@ -56,6 +59,8 @@ const updateFormDataFromPlace = (place, setFormData) => {
     state: state || prev.state,
     zipCode: zipCode || prev.zipCode,
     country: country || prev.country,
+    lat: lat || prev.lat,
+    lng: lng || prev.lng,
   }));
 };
 
@@ -180,6 +185,8 @@ const MobileCheckout = () => {
     zipCode: "",
     state: "",
     country: "",
+    lat: null,
+    lng: null,
     paymentMethod: "online",
   });
 
@@ -860,6 +867,11 @@ const MobileCheckout = () => {
                         {errors.address && (
                           <p className="text-red-500 text-xs mt-1 ml-1">{errors.address}</p>
                         )}
+                        {formData.lat && formData.lng && (
+                          <p className="text-green-600 text-xs mt-1 ml-1 font-medium">
+                            ✓ Coordinates matched: {Number(formData.lat).toFixed(5)}, {Number(formData.lng).toFixed(5)}
+                          </p>
+                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -1462,6 +1474,11 @@ const AddressFormModal = ({ onSubmit, onCancel, isLoaded }) => {
               />
             )}
             {errors.address && <p className="text-red-500 text-xs mt-1 ml-1">{errors.address}</p>}
+            {formData.lat && formData.lng && (
+              <p className="text-green-600 text-xs mt-1 ml-1 font-medium">
+                ✓ Coordinates matched: {Number(formData.lat).toFixed(5)}, {Number(formData.lng).toFixed(5)}
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>

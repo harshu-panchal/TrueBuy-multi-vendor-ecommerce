@@ -17,7 +17,7 @@ import AnimatedSelect from "../../components/AnimatedSelect";
 import { formatPrice } from "../../../../shared/utils/helpers";
 import { formatDate } from "../../utils/adminHelpers";
 import { useVendorStore } from "../../store/vendorStore";
-import { getAllOrders } from "../../services/adminService";
+import { getAllSubOrders } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 const ManageVendors = () => {

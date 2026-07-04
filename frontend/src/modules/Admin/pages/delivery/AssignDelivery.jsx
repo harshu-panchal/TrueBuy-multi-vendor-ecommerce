@@ -1,21 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
-import { FiRefreshCw } from "react-icons/fi";
+import { FiRefreshCw, FiEye, FiSearch } from "react-icons/fi";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import Pagination from "../../components/Pagination";
 import Badge from "../../../../shared/components/Badge";
 import AnimatedSelect from "../../components/AnimatedSelect";
-import { assignDeliveryBoy, getAllDeliveryBoys, getAllOrders } from "../../services/adminService";
+import { assignDeliveryBoy, getAllDeliveryBoys, getAllSubOrders } from "../../services/adminService";
 import { formatCurrency } from "../../utils/adminHelpers";
+import RoutePreviewMap from "../../components/Map/RoutePreviewMap";
 
 const ASSIGNABLE_STATUSES = ["pending", "processing", "shipped"];
 
 const AssignDelivery = () => {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [orders, setOrders] = useState([]);
   const [deliveryBoys, setDeliveryBoys] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchFilter, setSearchFilter] = useState(searchParams.get("search") || "");
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,6 +31,36 @@ const AssignDelivery = () => {
     pages: 1,
   });
   const itemsPerPage = 20;
+
+  const formatAddress = (addr) => {
+    if (!addr) return "";
+    return [addr.address || addr.street, addr.city, addr.state, addr.zipCode, addr.country]
+      .filter(Boolean)
+      .join(", ");
+  };
+
+  const selectedBoy = useMemo(() => {
+    if (!selectedDeliveryBoyId) return null;
+    return deliveryBoys.find(b => String(b._id || b.id) === selectedDeliveryBoyId);
+  }, [selectedDeliveryBoyId, deliveryBoys]);
+
+  const mapData = useMemo(() => {
+    if (!selectedOrder || !selectedBoy) return null;
+    
+    // Delivery Boy location (fallback to false if not available)
+    const origin = selectedBoy.currentLocation?.lat && selectedBoy.currentLocation?.lng 
+      ? selectedBoy.currentLocation 
+      : null;
+      
+    // Vendor address (origin of shipment)
+    const firstVendorAddr = selectedOrder.vendorId?.address || selectedOrder.vendorId?.vendorProfile?.storeAddress;
+    const waypoint = formatAddress(firstVendorAddr);
+    
+    // Customer shipping address
+    const destination = formatAddress(selectedOrder.dropoffAddress || selectedOrder.parentOrderId?.shippingAddress);
+    
+    return { origin, waypoint, destination };
+  }, [selectedOrder, selectedBoy]);
 
   const fetchAllActiveDeliveryBoys = async () => {
     const first = await getAllDeliveryBoys({
@@ -68,13 +103,16 @@ const AssignDelivery = () => {
       } else {
         orderParams.onlyUnassigned = true;
       }
+      if (searchFilter) {
+        orderParams.search = searchFilter;
+      }
 
       const [ordersRes, boyRows] = await Promise.all([
-        getAllOrders(orderParams),
+        getAllSubOrders(orderParams),
         fetchAllActiveDeliveryBoys(),
       ]);
 
-      const orderRows = ordersRes?.data?.orders || [];
+      const orderRows = ordersRes?.data?.subOrders || ordersRes?.data?.orders || [];
 
       setOrders(orderRows);
       setPagination({
@@ -91,11 +129,23 @@ const AssignDelivery = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, statusFilter]);
+  }, [currentPage, statusFilter, searchParams]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [statusFilter]);
+
+  const handleSearchChange = (e) => {
+    setSearchFilter(e.target.value);
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchFilter) {
+      setSearchParams({ search: searchFilter });
+    } else {
+      setSearchParams({});
+    }
+  };
 
   const assignableOrders = useMemo(() => {
     return orders.filter((order) =>
@@ -112,7 +162,7 @@ const AssignDelivery = () => {
     if (!selectedOrder || !selectedDeliveryBoyId) return;
     setIsAssigning(true);
     try {
-      await assignDeliveryBoy(selectedOrder.orderId || selectedOrder._id, selectedDeliveryBoyId);
+      await assignDeliveryBoy(selectedOrder.subOrderId || selectedOrder._id, selectedDeliveryBoyId);
       setSelectedOrder(null);
       setSelectedDeliveryBoyId("");
       await fetchData();
@@ -123,13 +173,13 @@ const AssignDelivery = () => {
 
   const columns = [
     {
-      key: "orderId",
+      key: "subOrderId",
       label: "Order",
       sortable: true,
       render: (value, row) => (
         <div>
-          <p className="font-semibold text-gray-800">{value || row._id}</p>
-          <p className="text-xs text-gray-500">{row?.shippingAddress?.name || "N/A"}</p>
+          <p className="font-semibold text-gray-800">{value || row.orderId || row._id}</p>
+          <p className="text-xs text-gray-500">{row?.dropoffAddress?.name || row?.parentOrderId?.shippingAddress?.name || "N/A"}</p>
         </div>
       ),
     },
@@ -165,12 +215,24 @@ const AssignDelivery = () => {
       label: "Action",
       sortable: false,
       render: (_, row) => (
-        <button
-          onClick={() => handleOpenAssign(row)}
-          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
-        >
-          {row.deliveryBoyId ? "Reassign" : "Assign"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/admin/orders/${row.parentOrderId?.orderId || row.orderId || row._id}`);
+            }}
+            className="p-1.5 text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer"
+            title="View Details"
+          >
+            <FiEye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleOpenAssign(row)}
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors"
+          >
+            {row.deliveryBoyId ? "Reassign" : "Assign"}
+          </button>
+        </div>
       ),
     },
   ];
@@ -183,21 +245,50 @@ const AssignDelivery = () => {
       </div>
 
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <AnimatedSelect
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={[
-              { value: "all", label: "Unassigned (All status)" },
-              { value: "pending", label: "Pending" },
-              { value: "processing", label: "Processing" },
-              { value: "shipped", label: "Shipped" },
-            ]}
-          />
-          <div className="sm:col-span-2 flex justify-start sm:justify-end">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-4 items-center">
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <AnimatedSelect
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              options={[
+                { value: "all", label: "Unassigned (All status)" },
+                { value: "pending", label: "Pending" },
+                { value: "processing", label: "Processing" },
+                { value: "shipped", label: "Shipped" },
+              ]}
+            />
+          </div>
+          
+          <div className="flex-1 flex gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 max-w-md">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FiSearch className="text-gray-400" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search by Order ID..."
+                value={searchFilter}
+                onChange={handleSearchChange}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit()}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white transition-colors"
+              />
+            </div>
             <button
-              onClick={fetchData}
-              className="px-4 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm flex items-center gap-2"
+              onClick={handleSearchSubmit}
+              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold whitespace-nowrap"
+            >
+              Search
+            </button>
+          </div>
+
+          <div className="flex w-full sm:w-auto justify-end">
+            <button
+              onClick={() => {
+                setSearchFilter("");
+                setSearchParams({});
+                fetchData();
+              }}
+              className="px-4 py-2.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm flex items-center gap-2 w-full sm:w-auto justify-center"
             >
               <FiRefreshCw />
               Refresh
@@ -250,14 +341,14 @@ const AssignDelivery = () => {
                 initial={{ y: 20, opacity: 0, scale: 0.98 }}
                 animate={{ y: 0, opacity: 1, scale: 1 }}
                 exit={{ y: 20, opacity: 0, scale: 0.98 }}
-                className="bg-white rounded-xl shadow-xl max-w-md w-full p-5 pointer-events-auto"
+                className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-5 pointer-events-auto max-h-[90vh] overflow-y-auto"
               >
                 <h3 className="text-lg font-bold text-gray-800 mb-2">
                   {selectedOrder?.deliveryBoyId ? "Reassign Delivery" : "Assign Delivery"}
                 </h3>
                 <p className="text-sm text-gray-600 mb-4">
                   Choose a delivery partner for order{" "}
-                  <span className="font-semibold text-gray-800">{selectedOrder?.orderId || selectedOrder?._id}</span>.
+                  <span className="font-semibold text-gray-800">{selectedOrder?.subOrderId || selectedOrder?.orderId || selectedOrder?._id}</span>.
                 </p>
                 <AnimatedSelect
                   name="deliveryBoyId"
@@ -271,6 +362,17 @@ const AssignDelivery = () => {
                     })),
                   ]}
                 />
+                
+                {mapData && mapData.origin && mapData.waypoint && mapData.destination && (
+                  <div className="mt-4 mb-2">
+                    <RoutePreviewMap 
+                      origin={mapData.origin}
+                      waypoint={mapData.waypoint}
+                      destination={mapData.destination}
+                    />
+                  </div>
+                )}
+                
                 <div className="mt-5 flex items-center justify-end gap-2">
                   <button
                     type="button"

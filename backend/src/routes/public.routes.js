@@ -559,8 +559,31 @@ router.get('/campaigns/:slug', asyncHandler(async (req, res) => {
 // GET /api/orders/track/:id (public order tracking)
 router.get('/orders/track/:id', asyncHandler(async (req, res) => {
     const { default: Order } = await import('../models/Order.model.js');
-    const order = await Order.findOne({ orderId: req.params.id }).select('orderId status trackingNumber estimatedDelivery deliveredAt createdAt updatedAt cancelledAt');
+    const { default: User } = await import('../models/User.model.js');
+    
+    const order = await Order.findOne({ orderId: req.params.id }).select('orderId status trackingNumber estimatedDelivery deliveredAt createdAt updatedAt cancelledAt userId').lean();
     if (!order) throw new ApiError(404, 'Order not found.');
+
+    if (['processing', 'shipped', 'in-transit', 'out_for_delivery'].includes(order.status)) {
+        if (order.userId) {
+            const user = await User.findById(order.userId).select('+deliveryOtp');
+            if (user && user.deliveryOtp) {
+                order.deliveryOtp = user.deliveryOtp;
+            }
+        }
+        
+        // Fallback for guest orders or if static OTP isn't available: Check SubOrders
+        if (!order.deliveryOtp) {
+            const { default: SubOrder } = await import('../models/SubOrder.model.js');
+            const subOrders = await SubOrder.find({ parentOrderId: order._id }).select('+deliveryOtpDebug');
+            const subOrderWithOtp = subOrders.find(so => so.deliveryOtpDebug);
+            if (subOrderWithOtp) {
+                order.deliveryOtp = subOrderWithOtp.deliveryOtpDebug;
+            }
+        }
+    }
+
+
     res.status(200).json(new ApiResponse(200, order, 'Order tracking info.'));
 }));
 

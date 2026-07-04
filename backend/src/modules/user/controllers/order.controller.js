@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Order from '../../../models/Order.model.js';
+import SubOrder from '../../../models/SubOrder.model.js';
 import Product from '../../../models/Product.model.js';
 import Coupon from '../../../models/Coupon.model.js';
 import Commission from '../../../models/Commission.model.js';
@@ -397,7 +398,6 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 orderId: generateOrderId(),
                 userId,
                 items: enrichedItems,
-                vendorItems,
                 shippingAddress,
                 paymentMethod: normalizedPaymentMethod,
                 // Keep every new order pending until gateway/webhook confirmation is implemented.
@@ -409,8 +409,6 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 total,
                 couponCode: couponCode?.toUpperCase(),
                 couponDiscount,
-                trackingNumber: generateTrackingNumber(),
-                estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // +5 days
                 idempotencyKey: idempotencyKey || undefined,
                 idempotencyScope: idempotencyKey ? idempotencyScope : undefined,
             }], { session });
@@ -454,6 +452,28 @@ export const placeOrder = asyncHandler(async (req, res) => {
                     { session }
                 );
             }
+
+            // 8. Generate SubOrders
+            const subOrdersToCreate = vendorItems.map((vGroup, idx) => ({
+                subOrderId: `${createdOrder.orderId}-V${idx + 1}`,
+                parentOrderId: createdOrder._id,
+                vendorId: vGroup.vendorId,
+                vendorName: vGroup.vendorName,
+                items: vGroup.items,
+                subtotal: vGroup.subtotal,
+                shipping: vGroup.shipping,
+                tax: vGroup.tax,
+                discount: vGroup.discount,
+                total: parseFloat((vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount).toFixed(2)),
+                status: 'pending',
+                trackingNumber: generateTrackingNumber(),
+                dropoffAddress: shippingAddress,
+            }));
+            const createdSubOrders = await Promise.all(
+                subOrdersToCreate.map(data => new SubOrder(data).save({ session }))
+            );
+            
+            order.subOrders = createdSubOrders; // Attach for COD notification logic
 
             // 8. Record commissions
             const commissionDocs = Object.values(vendorMap).map((v) => ({
@@ -518,24 +538,26 @@ export const placeOrder = asyncHandler(async (req, res) => {
         // Update order status to processing for COD
         await Order.updateOne({ _id: order._id }, { 
             $set: { 
-                status: 'processing',
-                'vendorItems.$[].status': 'processing'
+                status: 'processing'
             } 
+        });
+        await SubOrder.updateMany({ parentOrderId: order._id }, {
+            $set: { status: 'processing' }
         });
 
         // Notify vendors
-        if (Array.isArray(order.vendorItems)) {
-            for (const vGroup of order.vendorItems) {
+        if (Array.isArray(order.subOrders)) {
+            for (const subOrder of order.subOrders) {
                 await createNotification({
-                    recipientId: vGroup.vendorId,
+                    recipientId: subOrder.vendorId,
                     recipientType: 'vendor',
                     title: 'New Order Received',
-                    message: `You have received a new order ${order.orderId}.`,
+                    message: `You have received a new order ${subOrder.subOrderId}.`,
                     type: 'order',
                     data: {
-                        orderId: String(order.orderId),
-                        amount: vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount,
-                        itemCount: vGroup.items.length
+                        orderId: String(subOrder.subOrderId),
+                        amount: subOrder.total,
+                        itemCount: subOrder.items.length
                     }
                 });
             }
@@ -694,31 +716,28 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     order.razorpaySignature = razorpaySignature;
     order.paidAt = new Date();
 
-    if (Array.isArray(order.vendorItems) && order.vendorItems.length > 0) {
-        order.vendorItems = order.vendorItems.map((vendorGroup) => ({
-            ...vendorGroup.toObject(),
-            status: vendorGroup.status === 'pending' ? 'processing' : vendorGroup.status,
-        }));
-    }
+    await SubOrder.updateMany(
+        { parentOrderId: order._id, status: 'pending' },
+        { $set: { status: 'processing' } }
+    );
 
     await order.save();
 
     // Notify vendors about the confirmed payment and new order
-    if (Array.isArray(order.vendorItems)) {
-        for (const vGroup of order.vendorItems) {
-            await createNotification({
-                recipientId: vGroup.vendorId,
-                recipientType: 'vendor',
-                title: 'New Order Received',
-                message: `You have received a new order ${order.orderId}. Payment confirmed.`,
-                type: 'order',
-                data: {
-                    orderId: String(order.orderId),
-                    amount: vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount,
-                    itemCount: vGroup.items.length
-                }
-            });
-        }
+    const subOrders = await SubOrder.find({ parentOrderId: order._id });
+    for (const subOrder of subOrders) {
+        await createNotification({
+            recipientId: subOrder.vendorId,
+            recipientType: 'vendor',
+            title: 'New Order Received',
+            message: `You have received a new order ${subOrder.subOrderId}. Payment confirmed.`,
+            type: 'order',
+            data: {
+                orderId: String(subOrder.subOrderId),
+                amount: subOrder.total,
+                itemCount: subOrder.items.length
+            }
+        });
     }
 
     res.status(200).json(new ApiResponse(200, {
@@ -734,15 +753,33 @@ export const getUserOrders = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
     const filter = { userId: req.user.id, sourceType: { $ne: 'exchange_replacement' } };
-    const orders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
+    const rawOrders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
+    
+    // Attach suborders
+    const orders = await Promise.all(rawOrders.map(async (order) => {
+        const subOrders = await SubOrder.find({ parentOrderId: order._id }).lean();
+        return { ...order, subOrders };
+    }));
     const total = await Order.countDocuments(filter);
     res.status(200).json(new ApiResponse(200, { orders, total, page: Number(page), pages: Math.ceil(total / limit) }, 'Orders fetched.'));
 });
 
 // GET /api/user/orders/:id
 export const getOrderDetail = asyncHandler(async (req, res) => {
-    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id, sourceType: { $ne: 'exchange_replacement' } });
+    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id, sourceType: { $ne: 'exchange_replacement' } }).lean();
     if (!order) throw new ApiError(404, 'Order not found.');
+    
+    if (['processing', 'shipped', 'in-transit', 'out_for_delivery'].includes(order.status)) {
+        const { default: User } = await import('../../../models/User.model.js');
+        const user = await User.findById(req.user.id).select('+deliveryOtp');
+        if (user && user.deliveryOtp) {
+            order.deliveryOtp = user.deliveryOtp;
+        }
+    }
+
+    const subOrders = await SubOrder.find({ parentOrderId: order._id }).lean();
+    order.subOrders = subOrders;
+
     res.status(200).json(new ApiResponse(200, order, 'Order detail fetched.'));
 });
 
@@ -758,12 +795,12 @@ export const cancelOrder = asyncHandler(async (req, res) => {
             order.status = 'cancelled';
             order.cancelledAt = new Date();
             order.cancellationReason = req.body.reason || 'Cancelled by customer';
-            if (Array.isArray(order.vendorItems)) {
-                order.vendorItems = order.vendorItems.map((vendorGroup) => ({
-                    ...vendorGroup.toObject(),
-                    status: 'cancelled',
-                }));
-            }
+            
+            await SubOrder.updateMany(
+                { parentOrderId: order._id },
+                { $set: { status: 'cancelled', cancelledAt: order.cancelledAt, cancellationReason: order.cancellationReason } }
+            );
+            
             await order.save({ session });
 
             // Restore stock and status

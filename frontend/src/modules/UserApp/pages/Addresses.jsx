@@ -281,6 +281,8 @@ const AddressFormModal = ({
             if (state) setValue('state', state, { shouldValidate: true });
             if (zip) setValue('zipCode', zip, { shouldValidate: true });
             if (country) setValue('country', country, { shouldValidate: true });
+            setValue('lat', latitude);
+            setValue('lng', longitude);
             toast.success("Location detected successfully!");
           } else {
             toast.error("Could not determine address");
@@ -339,6 +341,11 @@ const AddressFormModal = ({
       if (state) setValue('state', state, { shouldValidate: true });
       if (zip) setValue('zipCode', zip, { shouldValidate: true });
       if (country) setValue('country', country, { shouldValidate: true });
+
+      const lat = place.geometry?.location?.lat() || null;
+      const lng = place.geometry?.location?.lng() || null;
+      if (lat) setValue('lat', lat);
+      if (lng) setValue('lng', lng);
     });
 
     return () => {

@@ -149,7 +149,10 @@ const CartDrawer = () => {
                 <div className="flex flex-col gap-1.5 sm:gap-2">
                   <Link
                     to={checkoutLink}
-                    onClick={toggleCart}
+                    onClick={() => {
+                      sessionStorage.removeItem("checkoutStep");
+                      toggleCart();
+                    }}
                     className="w-full gradient-green text-white py-2 sm:py-3 rounded-xl font-semibold text-sm sm:text-base text-center">
                     Proceed to Checkout
                   </Link>

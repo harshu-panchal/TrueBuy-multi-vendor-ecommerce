@@ -15,6 +15,8 @@ const buildAddressPayload = (input = {}) => ({
     state: toTrimmed(input.state),
     zipCode: toTrimmed(input.zipCode),
     country: toTrimmed(input.country),
+    lat: input.lat !== undefined ? Number(input.lat) : undefined,
+    lng: input.lng !== undefined ? Number(input.lng) : undefined,
 });
 
 // GET /api/user/addresses
@@ -53,7 +55,7 @@ export const updateAddress = asyncHandler(async (req, res) => {
     }
 
     const payload = {};
-    const allowedFields = ['name', 'fullName', 'phone', 'address', 'city', 'state', 'zipCode', 'country', 'isDefault'];
+    const allowedFields = ['name', 'fullName', 'phone', 'address', 'city', 'state', 'zipCode', 'country', 'lat', 'lng', 'isDefault'];
     allowedFields.forEach((field) => {
         if (Object.prototype.hasOwnProperty.call(req.body, field)) {
             if (field === 'phone') {
@@ -65,6 +67,10 @@ export const updateAddress = asyncHandler(async (req, res) => {
                 if (req.body.isDefault === true) {
                     payload.isDefault = true;
                 }
+                return;
+            }
+            if (field === 'lat' || field === 'lng') {
+                payload[field] = Number(req.body[field]);
                 return;
             }
             payload[field] = toTrimmed(req.body[field]);

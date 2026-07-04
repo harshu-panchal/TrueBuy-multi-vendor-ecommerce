@@ -18,6 +18,7 @@ const MobileTrackOrder = () => {
   const { getOrder, fetchOrderById, fetchPublicTrackingOrder, lastError } = useOrderStore();
   const { user } = useAuthStore();
   const [isResolving, setIsResolving] = useState(true);
+  const [deliveryOtp, setDeliveryOtp] = useState(null);
   const order = getOrder(orderId);
   const { getReturnRequestByOrderId, fetchReturnRequests, cancelReturnRequest } = useReturnStore();
   const returnRequest = getReturnRequestByOrderId(orderId);
@@ -36,13 +37,22 @@ const MobileTrackOrder = () => {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      setIsResolving(true);
       if (!order && orderId) {
-        const privateOrder = await fetchOrderById(orderId);
-        if (!privateOrder) {
-          await fetchPublicTrackingOrder(orderId);
+        let fetchedOrder = await fetchOrderById(orderId);
+        
+        // If not found in user orders, try public tracking
+        if (!fetchedOrder) {
+          fetchedOrder = await fetchPublicTrackingOrder(orderId);
         }
+        
+        if (mounted && fetchedOrder) {
+          setDeliveryOtp(fetchedOrder.deliveryOtp || null);
+        }
+      } else if (order) {
+          setDeliveryOtp(order.deliveryOtp || null);
       }
-      
+
       // Always try to fetch return requests for this order
       if (orderId) {
         await fetchReturnRequests({ orderId });
@@ -54,7 +64,6 @@ const MobileTrackOrder = () => {
       mounted = false;
     };
   }, [order, orderId, fetchOrderById, fetchPublicTrackingOrder]);
-
   useEffect(() => {
     if (!isResolving && !order) {
       navigate(user?.id ? '/orders' : '/home');
@@ -117,7 +126,8 @@ const MobileTrackOrder = () => {
   const getTrackingSteps = () => {
     const isCancelled = normalizedStatus === 'cancelled';
     const isReturned = normalizedStatus === 'returned';
-    const isProcessingOrLater = ['processing', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
+    const isProcessingOrLater = ['processing', 'assigned_for_delivery', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
+    const isAssignedOrLater = ['assigned_for_delivery', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
     const isShippedOrLater = ['shipped', 'delivered', 'returned'].includes(normalizedStatus);
     const isDelivered = normalizedStatus === 'delivered';
 
@@ -132,6 +142,12 @@ const MobileTrackOrder = () => {
         label: 'Processing',
         completed: !isCancelled && isProcessingOrLater,
         date: order?.processingAt || null,
+        icon: FiPackage,
+      },
+      {
+        label: 'Assigned',
+        completed: !isCancelled && isAssignedOrLater,
+        date: order?.assignedAt || null,
         icon: FiPackage,
       },
       {
@@ -236,6 +252,24 @@ const MobileTrackOrder = () => {
                 <div className="glass-card rounded-2xl p-4">
                   <h2 className="text-base font-bold text-gray-800 mb-2">Tracking Number</h2>
                   <p className="text-lg font-bold text-primary-600">{order.trackingNumber}</p>
+                </div>
+              )}
+
+              {/* Delivery OTP */}
+              {['processing', 'assigned_for_delivery', 'shipped', 'in-transit', 'out_for_delivery'].includes(normalizedStatus) && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+                   <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                     <FiPackage size={64} />
+                   </div>
+                   <h2 className="text-sm font-bold text-blue-900 mb-1">Delivery Verification PIN</h2>
+                   <p className="text-xs text-blue-700 mb-3">Share this OTP with the delivery partner to receive your order.</p>
+                   <div className="bg-white rounded-xl py-3 px-4 inline-block shadow-sm border border-blue-100 border-dashed">
+                      {deliveryOtp ? (
+                         <p className="text-3xl font-black text-blue-600 tracking-[0.25em]">{deliveryOtp}</p>
+                      ) : (
+                         <p className="text-sm font-bold text-gray-500">OTP will be generated once order is shipped</p>
+                      )}
+                   </div>
                 </div>
               )}
 

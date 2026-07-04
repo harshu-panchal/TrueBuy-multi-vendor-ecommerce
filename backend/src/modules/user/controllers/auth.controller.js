@@ -301,7 +301,16 @@ export const getDeliveryOtp = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id).select('+deliveryOtp +deliveryOtpGeneratedAt email');
     if (!user) throw new ApiError(404, 'User not found.');
 
-    const deliveryOtp = await ensureStaticDeliveryOtp(user, { sendEmail: false });
+    let deliveryOtp = String(user.deliveryOtp || '').trim();
+    
+    // Simple 6-digit validation
+    if (!/^\d{6}$/.test(deliveryOtp)) {
+        deliveryOtp = String(Math.floor(100000 + Math.random() * 900000));
+        user.deliveryOtp = deliveryOtp;
+        user.deliveryOtpGeneratedAt = new Date();
+        await user.save({ validateBeforeSave: false });
+    }
+
     res.status(200).json(new ApiResponse(200, {
         deliveryOtp,
         generatedAt: user.deliveryOtpGeneratedAt || null,

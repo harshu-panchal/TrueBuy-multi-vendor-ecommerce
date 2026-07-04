@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/auth.controller.js';
 import * as vendorController from '../controllers/vendor.controller.js';
 import * as orderController from '../controllers/order.controller.js';
+import * as subOrderController from '../controllers/subOrder.controller.js';
 import * as catalogController from '../controllers/catalog.controller.js';
 import * as customerController from '../controllers/customer.controller.js';
 import * as deliveryController from '../controllers/delivery.controller.js';
@@ -108,8 +109,12 @@ router.get('/analytics/online-customers', ...adminAuth, analyticsController.getO
 router.get('/orders', ...adminAuth, orderController.getAllOrders);
 router.get('/orders/:id', ...adminAuth, orderController.getOrderById);
 router.patch('/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
-router.patch('/orders/:id/assign-delivery', ...adminAuth, orderController.assignDeliveryBoy);
 router.delete('/orders/:id', ...adminAuth, orderController.deleteOrder);
+
+// ─── SubOrders (Product Orders) ───────────────────────────────────────────────
+router.get('/suborders', ...adminAuth, subOrderController.getAllSubOrders);
+router.patch('/suborders/:id/status', ...adminAuth, subOrderController.updateSubOrderStatus);
+router.patch('/suborders/:id/assign-delivery', ...adminAuth, subOrderController.assignDeliveryBoy);
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 router.get('/products', ...adminAuth, catalogController.getAllProducts);

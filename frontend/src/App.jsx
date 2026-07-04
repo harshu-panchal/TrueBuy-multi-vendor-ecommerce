@@ -185,6 +185,8 @@ import DeliveryLogin from "./modules/Delivery/pages/Login";
 import DeliveryRegister from "./modules/Delivery/pages/Register";
 import DeliveryForgotPassword from "./modules/Delivery/pages/ForgotPassword";
 import DeliveryResetPassword from "./modules/Delivery/pages/ResetPassword";
+import DeliveryTerms from "./modules/Delivery/pages/Terms";
+import DeliveryPrivacy from "./modules/Delivery/pages/Privacy";
 import DeliveryProtectedRoute from "./modules/Delivery/components/DeliveryProtectedRoute";
 import DeliveryLayout from "./modules/Delivery/components/Layout/DeliveryLayout";
 import DeliveryDashboard from "./modules/Delivery/pages/Dashboard";
@@ -667,6 +669,8 @@ const AppRoutes = () => {
       <Route path="/delivery/register" element={<DeliveryRegister />} />
       <Route path="/delivery/forgot-password" element={<DeliveryForgotPassword />} />
       <Route path="/delivery/reset-password" element={<DeliveryResetPassword />} />
+      <Route path="/delivery/terms" element={<DeliveryTerms />} />
+      <Route path="/delivery/privacy" element={<DeliveryPrivacy />} />
       <Route
         path="/delivery"
         element={

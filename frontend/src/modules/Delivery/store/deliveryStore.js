@@ -33,9 +33,11 @@ const mapBackendStatusToUI = (status) => {
   return status || 'pending';
 };
 
-const toAddressLine = (shippingAddress = {}) => {
+const toAddressLine = (shippingAddress) => {
+  if (!shippingAddress) return '';
+  if (typeof shippingAddress === 'string') return shippingAddress;
   const parts = [
-    shippingAddress.address,
+    shippingAddress.street || shippingAddress.address,
     shippingAddress.city,
     shippingAddress.state,
     shippingAddress.zipCode,
@@ -44,8 +46,8 @@ const toAddressLine = (shippingAddress = {}) => {
 };
 
 const normalizeOrder = (raw) => {
-  const shippingAddress = raw?.shippingAddress || {};
-  const guestInfo = raw?.guestInfo || {};
+  const shippingAddress = raw?.parentOrderId?.shippingAddress || raw?.shippingAddress || {};
+  const guestInfo = raw?.parentOrderId?.guestInfo || raw?.guestInfo || {};
   const backendStatus = raw?.status || 'pending';
   const uiStatus = mapBackendStatusToUI(backendStatus);
   const itemCount = Array.isArray(raw?.items)
@@ -54,14 +56,35 @@ const normalizeOrder = (raw) => {
       ? raw.items
       : 0;
 
+  const firstVendor = raw?.vendorId || raw?.vendorItems?.[0]?.vendorId || {};
+  let vendorAddressData = firstVendor?.address;
+  if (
+    !vendorAddressData ||
+    (typeof vendorAddressData === 'object' && !vendorAddressData.street && !vendorAddressData.city && !vendorAddressData.address)
+  ) {
+    vendorAddressData = raw?.vendorAddress || raw?.pickupAddress || '';
+  }
+
+  const vendorAddress = typeof vendorAddressData === 'string' && vendorAddressData.trim() ? vendorAddressData : toAddressLine(vendorAddressData);
+  const vendorName = firstVendor?.name || firstVendor?.storeName || raw?.vendorName || raw?.vendorItems?.[0]?.vendorName || 'Vendor';
+  const vendorPhone = firstVendor?.phone || raw?.vendorPhone || '';
+
   return {
     ...raw,
-    id: raw?.orderId || raw?._id || raw?.id,
-    orderId: raw?.orderId || raw?._id || raw?.id,
+    id: raw?.subOrderId || raw?.orderId || raw?._id || raw?.id,
+    orderId: raw?.subOrderId || raw?.orderId || raw?._id || raw?.id,
+    parentOrderId: raw?.parentOrderId,
     customer: shippingAddress?.name || guestInfo?.name || 'Customer',
     phone: shippingAddress?.phone || guestInfo?.phone || '',
     email: shippingAddress?.email || guestInfo?.email || '',
     address: toAddressLine(shippingAddress),
+    shippingLat: shippingAddress?.lat || null,
+    shippingLng: shippingAddress?.lng || null,
+    vendorName,
+    vendorPhone,
+    vendorAddress, // Added this
+    vendorLat: vendorAddressData?.lat || null,
+    vendorLng: vendorAddressData?.lng || null,
     amount: Number(raw?.total ?? raw?.subtotal ?? 0),
     total: Number(raw?.total ?? raw?.subtotal ?? 0),
     deliveryFee: Number(raw?.shipping ?? 0),
@@ -392,6 +415,9 @@ export const useDeliveryAuthStore = create(
           if (options?.otp) {
             requestPayload.otp = String(options.otp).trim();
           }
+          if (options?.pickupOtp) {
+            requestPayload.pickupOtp = String(options.pickupOtp).trim();
+          }
 
           const response = await api.patch(`/delivery/orders/${id}/status`, requestPayload);
           const responsePayload = unwrapApiData(response);
@@ -411,17 +437,17 @@ export const useDeliveryAuthStore = create(
         }
       },
 
-      acceptOrder: async (id) => {
+      acceptOrder: async (id, pickupOtp) => {
         const state = get();
         const current =
           state.orders.find((order) => String(order.id) === String(id)) ||
           (state.selectedOrder && String(state.selectedOrder.id) === String(id)
             ? state.selectedOrder
             : null);
-        if (current && current.status !== 'pending') {
+        if (current && !['pending', 'processing', 'assigned_for_delivery'].includes(current.status)) {
           return current;
         }
-        return get().updateOrderStatus(id, 'shipped');
+        return get().updateOrderStatus(id, 'shipped', { pickupOtp });
       },
 
       completeOrder: async (id, otp) => {
@@ -431,7 +457,7 @@ export const useDeliveryAuthStore = create(
           (state.selectedOrder && String(state.selectedOrder.id) === String(id)
             ? state.selectedOrder
             : null);
-        if (current && current.status !== 'in-transit') {
+        if (current && !['shipped', 'in-transit'].includes(current.status)) {
           return current;
         }
         return get().updateOrderStatus(id, 'delivered', { otp });

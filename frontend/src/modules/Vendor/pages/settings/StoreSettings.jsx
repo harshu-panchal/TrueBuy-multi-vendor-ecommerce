@@ -5,11 +5,22 @@ import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
 import { isValidEmail, isValidPhone } from "../../../../shared/utils/helpers";
 import toast from "react-hot-toast";
+import { Autocomplete, useJsApiLoader } from "@react-google-maps/api";
+
+const libraries = ['places'];
 
 const StoreSettings = () => {
   const { vendor, updateProfile } = useVendorAuthStore();
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState("identity");
+  
+  const { isLoaded } = useJsApiLoader({
+    id: 'google-map-script',
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
+
+  const [autocomplete, setAutocomplete] = useState(null);
 
   useEffect(() => {
     if (vendor) {
@@ -52,6 +63,20 @@ const StoreSettings = () => {
     });
   };
 
+  const onPlaceChanged = () => {
+    if (autocomplete !== null) {
+      const place = autocomplete.getPlace();
+      const lat = place.geometry?.location?.lat() || null;
+      const lng = place.geometry?.location?.lng() || null;
+      setFormData({ 
+        ...formData, 
+        address: place.formatted_address || place.name,
+        lat,
+        lng
+      });
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!vendor) return;
@@ -78,6 +103,8 @@ const StoreSettings = () => {
             state: addressParts[2].trim().split(" ")[0],
             zipCode: addressParts[2].trim().split(" ")[1] || "",
             country: vendor.address?.country || "India",
+            lat: formData.lat || vendor.address?.lat,
+            lng: formData.lng || vendor.address?.lng,
           };
         }
       }
@@ -276,14 +303,35 @@ const StoreSettings = () => {
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     Address
                   </label>
-                  <textarea
-                    name="address"
-                    value={formData.address || ""}
-                    onChange={handleChange}
-                    rows={2}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Street, City, State ZIP"
-                  />
+                  {isLoaded ? (
+                    <Autocomplete
+                      onLoad={(autoC) => setAutocomplete(autoC)}
+                      onPlaceChanged={onPlaceChanged}
+                    >
+                      <input
+                        type="text"
+                        name="address"
+                        value={formData.address || ""}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Start typing your address..."
+                      />
+                    </Autocomplete>
+                  ) : (
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.address || ""}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Street, City, State ZIP"
+                    />
+                  )}
+                  {formData.lat && formData.lng && (
+                    <p className="text-green-600 text-xs mt-1 ml-1 font-medium">
+                      ✓ Coordinates matched: {Number(formData.lat).toFixed(5)}, {Number(formData.lng).toFixed(5)}
+                    </p>
+                  )}
                 </div>
 
                 <div>

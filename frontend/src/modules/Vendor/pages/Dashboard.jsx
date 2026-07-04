@@ -273,14 +273,14 @@ const VendorDashboard = () => {
 
                 return (
                 <div
-                  key={order._id ?? order.orderId}
+                  key={order._id ?? (order.subOrderId || order.orderId)}
                   onClick={() =>
-                    navigate(`/vendor/orders/${order.orderId ?? order._id}`)
+                    navigate(`/vendor/orders/${(order.subOrderId || order.orderId) ?? order._id}`)
                   }
                   className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
                   <div>
                     <p className="font-semibold text-gray-800">
-                      {order.orderId ?? order._id}
+                      {(order.subOrderId || order.orderId) ?? order._id}
                     </p>
                     <p className="text-sm text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString()}

@@ -49,7 +49,7 @@ const AllOrders = () => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter((order) =>
-        order.orderId?.toLowerCase().includes(q) ||
+        (order.subOrderId || order.orderId)?.toLowerCase().includes(q) ||
         order._id?.toLowerCase().includes(q)
       );
     }

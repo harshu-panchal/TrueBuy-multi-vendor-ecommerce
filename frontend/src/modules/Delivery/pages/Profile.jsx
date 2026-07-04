@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
-import { FiUser, FiMail, FiPhone, FiTruck, FiEdit2, FiSave, FiX, FiLogOut, FiCreditCard, FiCamera } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiTruck, FiEdit2, FiSave, FiX, FiLogOut, FiCreditCard, FiCamera, FiShield, FiFileText } from 'react-icons/fi';
 import PageTransition from '../../../shared/components/PageTransition';
 import toast from 'react-hot-toast';
 import { formatPrice } from '../../../shared/utils/helpers';
@@ -13,6 +13,15 @@ const DeliveryProfile = () => {
   const { deliveryBoy, updateProfile, updateAvatar, fetchProfile, fetchProfileSummary, isLoading, logout } = useDeliveryAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const formRef = useRef(null);
+  
+  const handleEditClick = () => {
+    setIsEditing(true);
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+  
   const [profileMetrics, setProfileMetrics] = useState({
     totalDeliveries: 0,
     completedToday: 0,
@@ -217,7 +226,7 @@ const DeliveryProfile = () => {
               )}
             {!isEditing ? (
               <button
-                onClick={() => setIsEditing(true)}
+                onClick={handleEditClick}
                 className="p-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30"
               >
                 <FiEdit2 />
@@ -297,6 +306,7 @@ const DeliveryProfile = () => {
 
         {/* Profile Information */}
         <motion.div
+          ref={formRef}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
@@ -492,6 +502,35 @@ const DeliveryProfile = () => {
                 <p className="px-4 py-3 bg-gray-50 rounded-xl text-gray-800 uppercase">{formData.bankDetails.ifscCode || 'Not added'}</p>
               )}
             </div>
+          </div>
+        </motion.div>
+
+        {/* Legal & Support */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.38 }}
+          className="bg-white rounded-2xl p-4 shadow-sm space-y-4"
+        >
+          <h2 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2">
+            <FiShield className="text-gray-600" />
+            Legal & Support
+          </h2>
+          
+          <div className="space-y-1">
+            <Link to="/delivery/terms" className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <FiFileText className="text-gray-400" />
+                <span className="font-medium text-gray-700">Terms & Conditions</span>
+              </div>
+            </Link>
+            
+            <Link to="/delivery/privacy" className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
+              <div className="flex items-center gap-3">
+                <FiShield className="text-gray-400" />
+                <span className="font-medium text-gray-700">Privacy Policy</span>
+              </div>
+            </Link>
           </div>
         </motion.div>
 

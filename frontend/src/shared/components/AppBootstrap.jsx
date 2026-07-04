@@ -39,6 +39,12 @@ const normalizeBrand = (raw) => ({
 
 const AppBootstrap = () => {
   useEffect(() => {
+    // Register Service Worker for offline fallback
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+        .catch((error) => console.error('SW registration failed:', error));
+    }
+
     let cancelled = false;
 
     const syncCatalog = async () => {

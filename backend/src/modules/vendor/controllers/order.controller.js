@@ -8,21 +8,9 @@ import mongoose from 'mongoose';
 import { createNotification } from '../../../services/notification.service.js';
 import { completeExchangeAfterDelivery } from '../../exchange/services/exchange.service.js';
 
-const deriveTopLevelOrderStatus = (vendorItems = [], fallback = 'pending') => {
-    const statuses = (vendorItems || [])
-        .map((item) => String(item?.status || '').toLowerCase())
-        .filter(Boolean);
-
-    if (!statuses.length) return String(fallback || 'pending').toLowerCase();
-
-    if (statuses.every((s) => s === 'cancelled')) return 'cancelled';
-    if (statuses.every((s) => s === 'delivered')) return 'delivered';
-    if (statuses.includes('shipped')) return 'shipped';
-    if (statuses.includes('processing')) return 'processing';
-    if (statuses.includes('pending')) return 'pending';
-
-    return String(fallback || 'pending').toLowerCase();
-};
+import SubOrder from '../../../models/SubOrder.model.js';
+import { syncOrderStatusFromSubOrders } from '../../user/services/orderStatusAggregator.service.js';
+import { ensureUserStaticDeliveryOtp } from '../../delivery/controllers/order.controller.js';
 
 // GET /api/vendor/orders
 export const getVendorOrders = asyncHandler(async (req, res) => {
@@ -31,71 +19,92 @@ export const getVendorOrders = asyncHandler(async (req, res) => {
     const numericLimit = Math.max(1, Number(limit) || 20);
     const skip = (numericPage - 1) * numericLimit;
 
-    const filter = status
-        ? { vendorItems: { $elemMatch: { vendorId: req.user.id, status } } }
-        : { 'vendorItems.vendorId': req.user.id };
+    const filter = { vendorId: req.user.id };
+    if (status && status !== 'all') {
+        filter.status = status;
+    }
 
-    const orders = await Order.find(filter).populate('userId', 'name email phone').sort({ createdAt: -1 }).skip(skip).limit(numericLimit);
-    const total = await Order.countDocuments(filter);
-    res.status(200).json(new ApiResponse(200, { orders, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Orders fetched.'));
+    const subOrders = await SubOrder.find(filter)
+        .populate('parentOrderId', 'orderId shippingAddress paymentMethod paymentStatus')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(numericLimit)
+        .lean();
+        
+    const total = await SubOrder.countDocuments(filter);
+    res.status(200).json(new ApiResponse(200, { orders: subOrders, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Orders fetched.'));
 });
 
 // GET /api/vendor/orders/:id
 export const getVendorOrderById = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const idFilter = [{ orderId: id }];
+    const idFilter = [{ subOrderId: id }];
     if (mongoose.Types.ObjectId.isValid(id)) {
         idFilter.push({ _id: id });
     }
 
-    const order = await Order.findOne({
+    const subOrder = await SubOrder.findOne({
         $or: idFilter,
-        'vendorItems.vendorId': req.user.id,
-    }).populate('userId', 'name email phone');
-    if (!order) throw new ApiError(404, 'Order not found.');
+        vendorId: req.user.id,
+    }).populate('parentOrderId', 'orderId shippingAddress paymentMethod paymentStatus userId');
+    
+    if (!subOrder) throw new ApiError(404, 'Order not found.');
 
-    res.status(200).json(new ApiResponse(200, order, 'Order fetched.'));
+    res.status(200).json(new ApiResponse(200, subOrder, 'Order fetched.'));
 });
 
 // PATCH /api/vendor/orders/:id/status
 export const updateOrderStatus = asyncHandler(async (req, res) => {
     const { status } = req.body;
-    const allowed = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const allowed = ['pending', 'processing', 'assigned_for_delivery', 'shipped', 'delivered', 'cancelled'];
     if (!allowed.includes(status)) throw new ApiError(400, `Status must be one of: ${allowed.join(', ')}`);
     const transitionMap = {
         pending: ['pending', 'processing', 'cancelled'],
-        processing: ['processing', 'shipped', 'cancelled'],
+        processing: ['processing', 'assigned_for_delivery', 'shipped', 'cancelled'],
+        assigned_for_delivery: ['assigned_for_delivery', 'shipped', 'cancelled'],
         shipped: ['shipped', 'delivered'],
         delivered: ['delivered'],
         cancelled: ['cancelled'],
     };
 
     const { id } = req.params;
-    const idFilter = [{ orderId: id }];
+    const idFilter = [{ subOrderId: id }];
     if (mongoose.Types.ObjectId.isValid(id)) {
         idFilter.push({ _id: id });
     }
 
-    const order = await Order.findOne({
+    const subOrder = await SubOrder.findOne({
         $or: idFilter,
-        'vendorItems.vendorId': req.user.id,
-    });
-    if (!order) throw new ApiError(404, 'Order not found.');
-    const vendorItem = order.vendorItems.find((vi) => String(vi.vendorId) === String(req.user.id));
-    if (!vendorItem) throw new ApiError(404, 'Vendor order item not found.');
+        vendorId: req.user.id,
+    }).populate('parentOrderId');
+    
+    if (!subOrder) throw new ApiError(404, 'SubOrder not found.');
 
-    const currentStatus = String(vendorItem.status || 'pending');
+    const currentStatus = String(subOrder.status || 'pending');
     const allowedNextStatuses = transitionMap[currentStatus] || [];
     if (!allowedNextStatuses.includes(status)) {
         throw new ApiError(409, `Cannot move order from ${currentStatus} to ${status}.`);
     }
 
-    // Update only this vendor's items status
-    order.vendorItems = order.vendorItems.map((vi) =>
-        vi.vendorId.toString() === req.user.id ? { ...vi.toObject(), status } : vi
-    );
-    order.status = deriveTopLevelOrderStatus(order.vendorItems, order.status);
-    await order.save();
+    subOrder.status = status;
+    if (status === 'delivered') subOrder.deliveredAt = new Date();
+    if (status === 'cancelled') subOrder.cancelledAt = new Date();
+
+    if (status === 'shipped' || status === 'in-transit') {
+        await ensureUserStaticDeliveryOtp(subOrder);
+    }
+
+    subOrder.statusTimeline.push({
+        status,
+        updatedByType: 'Vendor',
+    });
+
+    await subOrder.save();
+    
+    // Sync main order
+    await syncOrderStatusFromSubOrders(subOrder.parentOrderId);
+    
+    const order = await Order.findById(subOrder.parentOrderId);
 
     if (status === 'delivered' && String(order.sourceType || '') === 'exchange_replacement') {
         await completeExchangeAfterDelivery({
@@ -106,16 +115,16 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 
     const notificationTasks = [];
-    if (order.userId) {
+    if (order && order.userId) {
         notificationTasks.push(
             createNotification({
                 recipientId: order.userId,
                 recipientType: 'user',
                 title: 'Order item status updated',
-                message: `An item in your order ${order.orderId || order._id} is now ${status}.`,
+                message: `An item in your order ${subOrder.subOrderId} is now ${status}.`,
                 type: 'order',
                 data: {
-                    orderId: String(order.orderId || order._id),
+                    orderId: String(subOrder.subOrderId),
                     status: String(status),
                     scope: 'vendor_item',
                 },
@@ -128,18 +137,20 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
             recipientId: req.user.id,
             recipientType: 'vendor',
             title: 'Order status updated',
-            message: `Order ${order.orderId || order._id} moved to ${status}.`,
+            message: `Order ${subOrder.subOrderId} moved to ${status}.`,
             type: 'order',
             data: {
-                orderId: String(order.orderId || order._id),
+                orderId: String(subOrder.subOrderId),
                 status: String(status),
             },
         })
     );
 
-    await Promise.allSettled(notificationTasks);
+    if (notificationTasks.length > 0) {
+        await Promise.allSettled(notificationTasks);
+    }
 
-    res.status(200).json(new ApiResponse(200, order, 'Order status updated.'));
+    res.status(200).json(new ApiResponse(200, subOrder, 'Status updated successfully.'));
 });
 
 // GET /api/vendor/earnings
