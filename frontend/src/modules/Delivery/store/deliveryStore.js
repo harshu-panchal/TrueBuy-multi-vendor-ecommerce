@@ -46,7 +46,7 @@ const toAddressLine = (shippingAddress) => {
 };
 
 const normalizeOrder = (raw) => {
-  const shippingAddress = raw?.parentOrderId?.shippingAddress || raw?.shippingAddress || {};
+  const shippingAddress = raw?.parentOrderId?.shippingAddress || raw?.shippingAddress || raw?.dropoffAddress || {};
   const guestInfo = raw?.parentOrderId?.guestInfo || raw?.guestInfo || {};
   const backendStatus = raw?.status || 'pending';
   const uiStatus = mapBackendStatusToUI(backendStatus);
@@ -418,6 +418,9 @@ export const useDeliveryAuthStore = create(
           if (options?.pickupOtp) {
             requestPayload.pickupOtp = String(options.pickupOtp).trim();
           }
+          if (options?.distanceKm !== undefined) {
+            requestPayload.distanceKm = Number(options.distanceKm);
+          }
 
           const response = await api.patch(`/delivery/orders/${id}/status`, requestPayload);
           const responsePayload = unwrapApiData(response);
@@ -450,7 +453,7 @@ export const useDeliveryAuthStore = create(
         return get().updateOrderStatus(id, 'shipped', { pickupOtp });
       },
 
-      completeOrder: async (id, otp) => {
+      completeOrder: async (id, otp, distanceKm) => {
         const state = get();
         const current =
           state.orders.find((order) => String(order.id) === String(id)) ||
@@ -460,7 +463,7 @@ export const useDeliveryAuthStore = create(
         if (current && !['shipped', 'in-transit'].includes(current.status)) {
           return current;
         }
-        return get().updateOrderStatus(id, 'delivered', { otp });
+        return get().updateOrderStatus(id, 'delivered', { otp, distanceKm });
       },
 
       resendDeliveryOtp: async (id) => {

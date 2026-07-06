@@ -222,7 +222,7 @@ const MobileCheckout = () => {
 
     if (!formData.address.trim()) {
       newErrors.address = "Address is required";
-    } else if (formData.address.trim().length < 10) {
+    } else if (formData.address.trim().length < 5) {
       newErrors.address = "Please enter a complete address";
     }
 
@@ -373,6 +373,8 @@ const MobileCheckout = () => {
           zipCode: defaultAddress.zipCode || "",
           state: defaultAddress.state || "",
           country: defaultAddress.country || "",
+          lat: defaultAddress.lat || null,
+          lng: defaultAddress.lng || null,
         }));
       }
     }
@@ -504,6 +506,8 @@ const MobileCheckout = () => {
       zipCode: address.zipCode,
       state: address.state,
       country: address.country,
+      lat: address.lat || null,
+      lng: address.lng || null,
     }));
   };
 
@@ -555,13 +559,6 @@ const MobileCheckout = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (step === 1) {
-      if (!validateForm()) {
-        toast.error("Please fix the errors in the form.");
-        return;
-      }
-    }
-
     const normalizedShipping = {
       name: String(formData.name || "").trim(),
       email: String(formData.email || "").trim().toLowerCase(),
@@ -571,6 +568,8 @@ const MobileCheckout = () => {
       zipCode: String(formData.zipCode || "").trim(),
       state: String(formData.state || "").trim(),
       country: String(formData.country || "").trim(),
+      lat: formData.lat ? Number(formData.lat) : null,
+      lng: formData.lng ? Number(formData.lng) : null,
     };
 
     if (step === 2 && isApplyingCoupon) {
@@ -582,8 +581,17 @@ const MobileCheckout = () => {
     }
 
     if (step === 1) {
+      if (!validateForm()) {
+        toast.error("Please fix the errors in the form.");
+        return;
+      }
       setStep(2);
     } else if (step === 2) {
+      if (!validateForm()) {
+        toast.error("Shipping details are incomplete. Please complete your address.");
+        setStep(1);
+        return;
+      }
       setIsPlacingOrder(true);
       try {
         const isOnlinePayment = formData.paymentMethod === "online";

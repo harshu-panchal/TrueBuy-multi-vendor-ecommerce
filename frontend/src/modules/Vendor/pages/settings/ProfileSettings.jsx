@@ -16,16 +16,19 @@ const ProfileSettings = () => {
   });
   const [activeSection, setActiveSection] = useState('profile');
 
+  const [isInitialized, setIsInitialized] = useState(false);
+
   useEffect(() => {
-    if (vendor) {
+    if (vendor && !isInitialized) {
       setFormData((prev) => ({
         ...prev,
         name: vendor.name || '',
         phone: vendor.phone || '',
         gstNumber: vendor.gstNumber || '',
       }));
+      setIsInitialized(true);
     }
-  }, [vendor]);
+  }, [vendor, isInitialized]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

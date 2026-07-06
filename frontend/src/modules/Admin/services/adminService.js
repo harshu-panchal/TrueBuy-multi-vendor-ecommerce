@@ -338,4 +338,4 @@ export const getAdminFinanceStats = () =>
     api.get('/admin/finance/stats');
 
 export const processWithdrawRequest = (id, action, data = {}) =>
-    api.post(`/admin/finance/withdraw-request/${id}/${action}`, data);
+    api.patch(`/admin/finance/withdraw-requests/${id}`, { status: action, ...data });

@@ -56,9 +56,14 @@ const clearLegacyOrderOtpState = (order) => {
 
 export const ensureUserStaticDeliveryOtp = async (order) => {
     const userId = order.userId || (order.parentOrderId && order.parentOrderId.userId);
-    if (!userId) return { mode: 'legacy', otp: null };
+    let user = null;
 
-    const user = await User.findById(userId).select('+deliveryOtp +deliveryOtpGeneratedAt email');
+    if (userId) {
+        user = await User.findById(userId).select('+deliveryOtp +deliveryOtpGeneratedAt email');
+    } else if (order.dropoffAddress && order.dropoffAddress.email) {
+        user = await User.findOne({ email: order.dropoffAddress.email.toLowerCase() }).select('+deliveryOtp +deliveryOtpGeneratedAt email');
+    }
+
     if (!user) return { mode: 'legacy', otp: null };
 
     const existingOtp = String(user.deliveryOtp || '').trim();
@@ -443,7 +448,11 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
         const dlat = order.dropoffAddress?.lat;
         const dlng = order.dropoffAddress?.lng;
         
-        const distance = calculateDistanceKm(plat, plng, dlat, dlng);
+        const distanceKmFromBody = Number(req.body.distanceKm);
+        const distance = !isNaN(distanceKmFromBody) && distanceKmFromBody > 0 
+            ? distanceKmFromBody 
+            : calculateDistanceKm(plat, plng, dlat, dlng);
+            
         order.deliveryDistanceKm = distance;
         order.deliveryEarnings = baseFee + (distance * perKmFee);
     }

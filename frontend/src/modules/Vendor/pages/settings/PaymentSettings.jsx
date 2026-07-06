@@ -26,8 +26,10 @@ const PaymentSettings = () => {
   });
   const [activeSection, setActiveSection] = useState('bank');
 
+  const [isInitialized, setIsInitialized] = useState(false);
+
   useEffect(() => {
-    if (vendor && vendor.bankDetails) {
+    if (vendor && vendor.bankDetails && !isInitialized) {
       setFormData({
         bankDetails: vendor.bankDetails || {
           accountName: '',
@@ -43,8 +45,9 @@ const PaymentSettings = () => {
         upiId: vendor.upiId || '',
         paypalEmail: vendor.paypalEmail || '',
       });
+      setIsInitialized(true);
     }
-  }, [vendor]);
+  }, [vendor, isInitialized]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

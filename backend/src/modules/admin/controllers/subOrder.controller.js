@@ -77,6 +77,12 @@ export const assignDeliveryBoy = asyncHandler(async (req, res) => {
         
         subOrder.deliveryBoyId = deliveryBoyId;
         subOrder.status = 'assigned_for_delivery';
+        
+        // Generate a 6-digit OTP for vendor pickup if not already generated
+        if (!subOrder.vendorPickupOtp) {
+            subOrder.vendorPickupOtp = Math.floor(100000 + Math.random() * 900000).toString();
+        }
+
         subOrder.statusTimeline.push({
             status: subOrder.status,
             updatedByType: 'Admin',

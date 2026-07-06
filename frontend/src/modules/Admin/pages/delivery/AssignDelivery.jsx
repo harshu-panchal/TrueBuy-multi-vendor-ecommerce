@@ -7,7 +7,7 @@ import Pagination from "../../components/Pagination";
 import Badge from "../../../../shared/components/Badge";
 import AnimatedSelect from "../../components/AnimatedSelect";
 import { assignDeliveryBoy, getAllDeliveryBoys, getAllSubOrders } from "../../services/adminService";
-import { formatCurrency } from "../../utils/adminHelpers";
+import { formatCurrency, formatDateTime } from "../../utils/adminHelpers";
 import RoutePreviewMap from "../../components/Map/RoutePreviewMap";
 
 const ASSIGNABLE_STATUSES = ["pending", "processing", "shipped"];
@@ -180,6 +180,7 @@ const AssignDelivery = () => {
         <div>
           <p className="font-semibold text-gray-800">{value || row.orderId || row._id}</p>
           <p className="text-xs text-gray-500">{row?.dropoffAddress?.name || row?.parentOrderId?.shippingAddress?.name || "N/A"}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(row.createdAt)}</p>
         </div>
       ),
     },
@@ -354,13 +355,11 @@ const AssignDelivery = () => {
                   name="deliveryBoyId"
                   value={selectedDeliveryBoyId}
                   onChange={(e) => setSelectedDeliveryBoyId(e.target.value)}
-                  options={[
-                    { value: "", label: "Select Delivery Boy" },
-                    ...deliveryBoys.map((boy) => ({
-                      value: String(boy.id || boy._id),
-                      label: `${boy.name} (${boy.phone || "N/A"})`,
-                    })),
-                  ]}
+                  placeholder="Select Delivery Boy"
+                  options={deliveryBoys.map((boy) => ({
+                    value: String(boy.id || boy._id),
+                    label: `${boy.name} (${boy.phone || "N/A"})`,
+                  }))}
                 />
                 
                 {mapData && mapData.origin && mapData.waypoint && mapData.destination && (

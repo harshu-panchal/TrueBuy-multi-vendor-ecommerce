@@ -38,6 +38,7 @@ const withdrawRequestSchema = new mongoose.Schema(
         },
         rejectionReason: String,
         transactionId: String,
+        receiptUrl: String,
         notes: String,
         processedAt: Date,
     },

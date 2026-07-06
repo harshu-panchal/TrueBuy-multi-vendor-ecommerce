@@ -265,7 +265,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
     for (const item of items) {
         const product = await Product.findById(item.productId).populate(
             'vendorId',
-            'commissionRate storeName shippingEnabled defaultShippingRate freeShippingThreshold'
+            'commissionRate storeName shippingEnabled defaultShippingRate freeShippingThreshold address'
         );
         if (!product) throw new ApiError(404, `Product not found: ${item.productId}`);
         if (product.stock === 'out_of_stock') throw new ApiError(400, `${product.name} is out of stock.`);
@@ -314,6 +314,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
             vendorMap[vid] = {
                 vendorId: product.vendorId._id,
                 vendorName: product.vendorId.storeName,
+                address: product.vendorId.address,
                 commissionRate: product.vendorId.commissionRate || 10,
                 shippingEnabled: product.vendorId.shippingEnabled !== false,
                 defaultShippingRate: product.vendorId.defaultShippingRate,
@@ -454,21 +455,25 @@ export const placeOrder = asyncHandler(async (req, res) => {
             }
 
             // 8. Generate SubOrders
-            const subOrdersToCreate = vendorItems.map((vGroup, idx) => ({
-                subOrderId: `${createdOrder.orderId}-V${idx + 1}`,
-                parentOrderId: createdOrder._id,
-                vendorId: vGroup.vendorId,
-                vendorName: vGroup.vendorName,
-                items: vGroup.items,
-                subtotal: vGroup.subtotal,
-                shipping: vGroup.shipping,
-                tax: vGroup.tax,
-                discount: vGroup.discount,
-                total: parseFloat((vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount).toFixed(2)),
-                status: 'pending',
-                trackingNumber: generateTrackingNumber(),
-                dropoffAddress: shippingAddress,
-            }));
+            const subOrdersToCreate = vendorItems.map((vGroup, idx) => {
+                const vendorData = vendorMap[String(vGroup.vendorId)];
+                return {
+                    subOrderId: `${createdOrder.orderId}-V${idx + 1}`,
+                    parentOrderId: createdOrder._id,
+                    vendorId: vGroup.vendorId,
+                    vendorName: vGroup.vendorName,
+                    items: vGroup.items,
+                    subtotal: vGroup.subtotal,
+                    shipping: vGroup.shipping,
+                    tax: vGroup.tax,
+                    discount: vGroup.discount,
+                    total: parseFloat((vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount).toFixed(2)),
+                    status: 'pending',
+                    trackingNumber: generateTrackingNumber(),
+                    pickupAddress: vendorData?.address || {},
+                    dropoffAddress: shippingAddress,
+                };
+            });
             const createdSubOrders = await Promise.all(
                 subOrdersToCreate.map(data => new SubOrder(data).save({ session }))
             );

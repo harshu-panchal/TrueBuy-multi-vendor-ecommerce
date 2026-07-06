@@ -42,7 +42,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
         if (endDate) filter.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
     }
     if (req.query.vendorId) {
-        filter['vendorItems.vendorId'] = req.query.vendorId;
+        filter['items.vendorId'] = req.query.vendorId;
     }
     if (userId) {
         filter.userId = userId;
@@ -54,7 +54,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
     const [orders, total] = await Promise.all([
         Order.find(filter)
             .populate('userId', 'name email phone')
-            .populate('vendorItems.vendorId', 'address')
+            .populate('items.vendorId', 'address')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(numericLimit)
@@ -134,32 +134,28 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 
     if (nextStatus === 'processing') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'processing' };
-        });
+        await SubOrder.updateMany(
+            { parentOrderId: order._id, status: { $nin: ['cancelled', 'delivered'] } },
+            { $set: { status: 'processing' } }
+        );
     }
     if (nextStatus === 'shipped') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'shipped' };
-        });
+        await SubOrder.updateMany(
+            { parentOrderId: order._id, status: { $nin: ['cancelled', 'delivered'] } },
+            { $set: { status: 'shipped' } }
+        );
     }
     if (nextStatus === 'delivered') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'cancelled') return vi;
-            return { ...vi.toObject(), status: 'delivered' };
-        });
+        await SubOrder.updateMany(
+            { parentOrderId: order._id, status: { $ne: 'cancelled' } },
+            { $set: { status: 'delivered', deliveredAt: new Date() } }
+        );
     }
     if (nextStatus === 'cancelled') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'cancelled' };
-        });
+        await SubOrder.updateMany(
+            { parentOrderId: order._id, status: { $ne: 'delivered' } },
+            { $set: { status: 'cancelled', cancelledAt: new Date() } }
+        );
     }
 
     if (nextStatus === 'cancelled' && previousStatus !== 'cancelled' && ['pending', 'processing', 'shipped'].includes(previousStatus)) {
@@ -222,7 +218,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
     const vendorIds = [
         ...new Set(
-            (order.vendorItems || [])
+            (order.items || [])
                 .map((item) => String(item?.vendorId || '').trim())
                 .filter(Boolean)
         ),

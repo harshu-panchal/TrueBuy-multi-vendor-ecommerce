@@ -58,16 +58,28 @@ const RoutePreviewMap = ({ origin, waypoint, destination, onRouteCalculated, hid
           // Calculate total distance and duration across all legs
           let totalDistance = 0;
           let totalDuration = 0;
+          let tripDistance = 0;
+          let tripDuration = 0;
           
           const legs = result.routes[0].legs;
+          
+          // If we have an origin (delivery boy) that is different from waypoint (vendor),
+          // the first leg is just the approach. The actual trip is from the waypoint onwards.
+          const startIndex = (origin && origin !== waypoint && legs.length > 1) ? 1 : 0;
+          
           for (let i = 0; i < legs.length; ++i) {
             totalDistance += legs[i].distance.value;
             totalDuration += legs[i].duration.value;
+            
+            if (i >= startIndex) {
+              tripDistance += legs[i].distance.value;
+              tripDuration += legs[i].duration.value;
+            }
           }
           
           setDistance((totalDistance / 1000).toFixed(2) + ' km');
           
-          // Convert seconds to readable format
+          // Convert seconds to readable format for total
           const hrs = Math.floor(totalDuration / 3600);
           const mins = Math.floor((totalDuration % 3600) / 60);
           
@@ -76,10 +88,20 @@ const RoutePreviewMap = ({ origin, waypoint, destination, onRouteCalculated, hid
           durationStr += `${mins} mins`;
           setDuration(durationStr);
           setError('');
+          
           if (onRouteCalculated) {
+             // Return trip distance (excluding approach) for accurate earnings and trip info
+             const tHrs = Math.floor(tripDuration / 3600);
+             const tMins = Math.floor((tripDuration % 3600) / 60);
+             let tDurationStr = '';
+             if (tHrs > 0) tDurationStr += `${tHrs} hr `;
+             tDurationStr += `${tMins} mins`;
+             
              onRouteCalculated({
-                distance: (totalDistance / 1000).toFixed(1) + ' km',
-                duration: durationStr
+                distance: (tripDistance / 1000).toFixed(1) + ' km',
+                duration: tDurationStr,
+                totalDistance: (totalDistance / 1000).toFixed(1) + ' km',
+                totalDuration: durationStr
              });
           }
         } else {

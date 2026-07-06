@@ -68,7 +68,8 @@ const DeliveryOrderDetail = () => {
     }
 
     try {
-      const updated = await completeOrder(order.id, normalizedOtp);
+      const distanceToPass = parseFloat(routeInfo?.distance) || 0;
+      const updated = await completeOrder(order.id, normalizedOtp, distanceToPass);
       setOrder(updated);
       setDeliveryOtp('');
       toast.success('Order marked as delivered');
@@ -173,8 +174,8 @@ const DeliveryOrderDetail = () => {
         {/* Map Section */}
         <div className="relative w-full h-[280px] bg-gray-200">
           <RoutePreviewMap
-            origin={deliveryBoy?.currentLocation?.lat ? deliveryBoy.currentLocation : null}
-            waypoint={order.vendorLat && order.vendorLng ? { lat: order.vendorLat, lng: order.vendorLng } : order.vendorAddress}
+            origin={order.vendorLat && order.vendorLng ? { lat: order.vendorLat, lng: order.vendorLng } : order.vendorAddress}
+            waypoint={null}
             destination={order.shippingLat && order.shippingLng ? { lat: order.shippingLat, lng: order.shippingLng } : order.address}
             hideInternalUI={true}
             onRouteCalculated={setRouteInfo}
@@ -354,14 +355,13 @@ const DeliveryOrderDetail = () => {
             
             {/* Top Blue Box */}
             <div className="bg-[#f5f7ff] rounded-2xl p-4 flex items-center justify-between mb-6">
-              <div className="flex-1 flex flex-col items-center">
-                <span className="text-[9px] font-extrabold text-blue-400 tracking-wider mb-1">TRIP DISTANCE</span>
-                <span className="text-sm font-black text-blue-900">{routeInfo.distance || order.distance || '--'}</span>
+              <div className="text-center flex-1 border-r border-blue-100">
+                <p className="text-[9px] font-extrabold text-blue-400 tracking-wider mb-1">TRIP DISTANCE</p>
+                <p className="text-sm font-black text-blue-600">{['delivered', 'completed'].includes(order.status) ? `${(order.deliveryDistanceKm || 0).toFixed(1)} km` : (routeInfo.distance || '-')}</p>
               </div>
-              <div className="w-px h-8 bg-blue-100"></div>
-              <div className="flex-1 flex flex-col items-center">
-                <span className="text-[9px] font-extrabold text-blue-400 tracking-wider mb-1">EST. TIME</span>
-                <span className="text-sm font-black text-blue-900">{routeInfo.duration || '--'}</span>
+              <div className="text-center flex-1">
+                <p className="text-[9px] font-extrabold text-blue-400 tracking-wider mb-1">EST. TIME</p>
+                <p className="text-sm font-black text-blue-600">{['delivered', 'completed'].includes(order.status) ? 'Done' : (routeInfo.duration || '--')}</p>
               </div>
             </div>
 
@@ -396,7 +396,9 @@ const DeliveryOrderDetail = () => {
               <div>
                 <span className="text-[10px] font-extrabold text-gray-400 tracking-wider">YOUR EARNING</span>
                 <h3 className="text-xl font-black text-gray-800">
-                  ₹{order.deliveryEarnings || ((order.deliveryBaseFee || 40) + ((parseFloat(routeInfo.distance) || 0) * (order.deliveryPerKmFee || 5))).toFixed(2)}
+                  ₹{['delivered', 'completed'].includes(order.status) 
+                    ? (order.deliveryEarnings || 0).toFixed(2) 
+                    : ((order.deliveryBaseFee || 20) + ((parseFloat(routeInfo?.distance) || 0) * (order.deliveryPerKmFee || 15))).toFixed(2)}
                 </h3>
               </div>
             </div>
@@ -404,11 +406,11 @@ const DeliveryOrderDetail = () => {
             <div className="bg-gray-50 rounded-2xl p-4 mt-2 border border-gray-100">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-[10px] font-extrabold text-gray-500">Base Fee</span>
-                <span className="text-[11px] font-black text-gray-800">₹{order.deliveryBaseFee || 40}</span>
+                <span className="text-[11px] font-black text-gray-800">₹{order.deliveryBaseFee || 20}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-extrabold text-gray-500">Distance ({routeInfo.distance || '0 km'} × ₹{order.deliveryPerKmFee || 5})</span>
-                <span className="text-[11px] font-black text-gray-800">₹{((parseFloat(routeInfo.distance) || 0) * (order.deliveryPerKmFee || 5)).toFixed(2)}</span>
+                <span className="text-[10px] font-extrabold text-gray-500">Distance ({['delivered', 'completed'].includes(order.status) ? (order.deliveryDistanceKm || 0).toFixed(1) : (routeInfo.distance || '0')} km × ₹{order.deliveryPerKmFee || 15})</span>
+                <span className="text-[11px] font-black text-gray-800">₹{['delivered', 'completed'].includes(order.status) ? ((order.deliveryDistanceKm || 0) * (order.deliveryPerKmFee || 15)).toFixed(2) : ((parseFloat(routeInfo.distance) || 0) * (order.deliveryPerKmFee || 15)).toFixed(2)}</span>
               </div>
             </div>
             <p className="text-[9px] text-gray-400 font-semibold mt-3 text-center px-2">Net amount after platform commission. Credited to your wallet once the trip is completed.</p>
@@ -451,9 +453,9 @@ const DeliveryOrderDetail = () => {
                 <button
                   onClick={handleCompleteOrder}
                   disabled={isUpdatingOrderStatus || deliveryOtp.length !== 6 || isResendingOtp}
-                  className="w-full h-[52px] bg-[#d9d9d9] text-white rounded-full font-black text-xs tracking-wider flex items-center justify-center transition-colors hover:bg-gray-400 disabled:opacity-80"
+                  className="w-full h-[52px] bg-green-500 text-white rounded-full font-black text-xs tracking-wider flex items-center justify-center transition-all hover:bg-green-600 disabled:bg-gray-300 disabled:shadow-none shadow-lg shadow-green-500/40"
                 >
-                  {isUpdatingOrderStatus ? 'PROCESSING...' : 'PROVIDE OTP & PHOTO TO COMPLETE'}
+                  {isUpdatingOrderStatus ? 'PROCESSING...' : 'PROVIDE OTP TO COMPLETE'}
                 </button>
                 <button
                   onClick={handleResendOtp}
@@ -464,10 +466,14 @@ const DeliveryOrderDetail = () => {
                 </button>
               </div>
             )}
-            
-            <button className="w-full py-4 text-[11px] font-black text-[#ff4b4b] tracking-wider flex items-center justify-center gap-2 hover:text-red-600 transition-colors">
-              <span className="text-base font-bold leading-none -mt-0.5">×</span> CANCEL TRIP
-            </button>
+            {!['completed', 'delivered'].includes(order.status) && (
+              <button 
+                onClick={() => toast.error('Please contact admin support to cancel an assigned trip.')}
+                className="w-full py-4 text-[11px] font-black text-[#ff4b4b] tracking-wider flex items-center justify-center gap-2 hover:text-red-600 transition-colors"
+              >
+                <span className="text-base font-bold leading-none -mt-0.5">×</span> CANCEL TRIP
+              </button>
+            )}
           </motion.div>
 
         </div>

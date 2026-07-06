@@ -2,7 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import WithdrawRequest from '../../../models/WithdrawRequest.model.js';
-import Order from '../../../models/Order.model.js';
+import SubOrder from '../../../models/SubOrder.model.js';
 import DeliveryBoy from '../../../models/DeliveryBoy.model.js';
 import mongoose from 'mongoose';
 
@@ -11,7 +11,7 @@ export const getFinanceSummary = asyncHandler(async (req, res) => {
     const deliveryBoyId = req.user.id;
 
     const [earningsStats, withdrawRequests] = await Promise.all([
-        Order.aggregate([
+        SubOrder.aggregate([
             {
                 $match: {
                     deliveryBoyId: new mongoose.Types.ObjectId(deliveryBoyId),
@@ -22,18 +22,18 @@ export const getFinanceSummary = asyncHandler(async (req, res) => {
             {
                 $group: {
                     _id: null,
-                    totalEarned: { $sum: { $ifNull: ['$shipping', 0] } },
+                    totalEarned: { $sum: { $ifNull: ['$deliveryEarnings', 0] } },
                 },
             },
         ]),
-        WithdrawRequest.find({ userId: deliveryBoyId, userType: 'delivery_boy' }).select('amount status'),
+        WithdrawRequest.find({ userId: deliveryBoyId, userType: 'delivery_boy' }).select('amount status createdAt updatedAt').sort({ updatedAt: -1 }),
     ]);
 
     const totalEarned = earningsStats[0]?.totalEarned || 0;
     
-    const totalWithdrawn = withdrawRequests
-        .filter(r => r.status === 'completed')
-        .reduce((sum, r) => sum + (r.amount || 0), 0);
+    const completedRequests = withdrawRequests.filter(r => r.status === 'completed');
+    const totalWithdrawn = completedRequests.reduce((sum, r) => sum + (r.amount || 0), 0);
+    const lastWithdrawalAmount = completedRequests.length > 0 ? completedRequests[0].amount : 0;
     
     const pendingWithdrawal = withdrawRequests
         .filter(r => r.status === 'pending' || r.status === 'approved')
@@ -49,6 +49,7 @@ export const getFinanceSummary = asyncHandler(async (req, res) => {
                 totalWithdrawn,
                 pendingWithdrawal,
                 withdrawableBalance,
+                lastWithdrawalAmount,
             },
             'Finance summary fetched.'
         )
@@ -63,7 +64,7 @@ export const createWithdrawRequest = asyncHandler(async (req, res) => {
     if (!amount || amount <= 0) throw new ApiError(400, 'Invalid withdrawal amount.');
 
     // 1. Calculate available balance
-    const earningsStats = await Order.aggregate([
+    const earningsStats = await SubOrder.aggregate([
         {
             $match: {
                 deliveryBoyId: new mongoose.Types.ObjectId(deliveryBoyId),
@@ -74,7 +75,7 @@ export const createWithdrawRequest = asyncHandler(async (req, res) => {
         {
             $group: {
                 _id: null,
-                totalEarned: { $sum: { $ifNull: ['$shipping', 0] } },
+                totalEarned: { $sum: { $ifNull: ['$deliveryEarnings', 0] } },
             },
         },
     ]);
@@ -97,10 +98,13 @@ export const createWithdrawRequest = asyncHandler(async (req, res) => {
         throw new ApiError(400, `Insufficient balance. Available: ${available}`);
     }
 
-    // 2. Validate bank details (DeliveryBoy model might not have them, so we can take from body or add to model)
-    // For now, let's assume they provide it in the request if not in model.
-    if (!bankDetails || !bankDetails.accountNumber) {
-        throw new ApiError(400, 'Bank details are required.');
+    // 2. Validate bank details
+    // We check if bank details were passed in the request body; if not, we use the ones from the DeliveryBoy profile
+    const deliveryBoy = await DeliveryBoy.findById(deliveryBoyId);
+    const finalBankDetails = bankDetails || deliveryBoy?.bankDetails;
+
+    if (!finalBankDetails || !finalBankDetails.accountNumber) {
+        throw new ApiError(400, 'Bank details are required. Please update them in your profile or provide them with the request.');
     }
 
     const request = await WithdrawRequest.create({
@@ -110,10 +114,10 @@ export const createWithdrawRequest = asyncHandler(async (req, res) => {
         amount,
         notes,
         bankDetails: {
-            accountName: bankDetails.accountName,
-            accountNumber: bankDetails.accountNumber,
-            bankName: bankDetails.bankName,
-            ifscCode: bankDetails.ifscCode,
+            accountName: finalBankDetails.accountHolderName || finalBankDetails.accountName || deliveryBoy?.name,
+            accountNumber: finalBankDetails.accountNumber,
+            bankName: finalBankDetails.bankName,
+            ifscCode: finalBankDetails.ifscCode,
         },
     });
 

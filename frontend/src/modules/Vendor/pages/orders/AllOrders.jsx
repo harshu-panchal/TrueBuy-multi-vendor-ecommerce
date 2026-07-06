@@ -56,10 +56,7 @@ const AllOrders = () => {
 
     if (selectedStatus !== 'all') {
       filtered = filtered.filter((order) => {
-        const vendorItem = order.vendorItems?.find(
-          (vi) => vi.vendorId?.toString() === vendorId?.toString()
-        );
-        const status = (vendorItem?.status ?? order.status ?? '').toLowerCase();
+        const status = (order.status ?? '').toLowerCase();
         return status === selectedStatus.toLowerCase();
       });
     }
@@ -67,19 +64,12 @@ const AllOrders = () => {
     return filtered;
   }, [orders, searchQuery, selectedStatus, vendorId]);
 
-  // Get per-vendor subtotal from vendorItems
   const getVendorSubtotal = (order) => {
-    const vendorItem = order.vendorItems?.find(
-      (vi) => vi.vendorId?.toString() === vendorId?.toString()
-    );
-    return vendorItem?.subtotal ?? order.total ?? order.totalAmount ?? 0;
+    return order.total ?? order.totalAmount ?? 0;
   };
 
   const getOrderStatus = (order) => {
-    const vendorItem = order.vendorItems?.find(
-      (vi) => vi.vendorId?.toString() === vendorId?.toString()
-    );
-    return vendorItem?.status ?? order.status ?? 'pending';
+    return order.status ?? 'pending';
   };
 
   const handleStatusChange = async (orderId, newStatus) => {
@@ -131,14 +121,21 @@ const AllOrders = () => {
       label: 'Items',
       sortable: false,
       render: (_, row) => {
-        const vendorItem = row.vendorItems?.find(
-          (vi) => vi.vendorId?.toString() === vendorId?.toString()
-        );
-        const count = vendorItem?.items?.length ?? row.vendorItems?.length ?? 0;
+        const count = row.items?.length ?? 0;
         return (
           <span className="text-sm text-gray-700">{count} item(s)</span>
         );
       },
+    },
+    {
+      key: 'vendorPickupOtp',
+      label: 'Pickup OTP',
+      sortable: false,
+      render: (_, row) => (
+        <span className="font-mono text-sm tracking-widest text-primary-600 font-bold">
+          {row.vendorPickupOtp || '---'}
+        </span>
+      ),
     },
     {
       key: 'totalAmount',

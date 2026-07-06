@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 
 const ShippingSettings = () => {
   const { vendor, updateProfile } = useVendorAuthStore();
+  const [isInitialized, setIsInitialized] = useState(false);
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     shippingEnabled: true,
@@ -20,7 +21,7 @@ const ShippingSettings = () => {
   const [activeSection, setActiveSection] = useState('general');
 
   useEffect(() => {
-    if (vendor) {
+    if (vendor && !isInitialized) {
       setFormData({
         shippingEnabled: vendor.shippingEnabled !== false,
         freeShippingThreshold: vendor.freeShippingThreshold || 100,
@@ -30,8 +31,9 @@ const ShippingSettings = () => {
         handlingTime: vendor.handlingTime || 1,
         processingTime: vendor.processingTime || 1,
       });
+      setIsInitialized(true);
     }
-  }, [vendor]);
+  }, [vendor, isInitialized]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;

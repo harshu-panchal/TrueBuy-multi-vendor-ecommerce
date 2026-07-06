@@ -13,6 +13,7 @@ const StoreSettings = () => {
   const { vendor, updateProfile } = useVendorAuthStore();
   const [formData, setFormData] = useState({});
   const [activeSection, setActiveSection] = useState("identity");
+  const [isInitialized, setIsInitialized] = useState(false);
   
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
@@ -23,7 +24,7 @@ const StoreSettings = () => {
   const [autocomplete, setAutocomplete] = useState(null);
 
   useEffect(() => {
-    if (vendor) {
+    if (vendor && !isInitialized) {
       setFormData({
         storeName: vendor.storeName || "",
         storeLogo: vendor.storeLogo || "",
@@ -44,8 +45,9 @@ const StoreSettings = () => {
           linkedin: "",
         },
       });
+      setIsInitialized(true);
     }
-  }, [vendor]);
+  }, [vendor, isInitialized]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -103,6 +105,13 @@ const StoreSettings = () => {
             state: addressParts[2].trim().split(" ")[0],
             zipCode: addressParts[2].trim().split(" ")[1] || "",
             country: vendor.address?.country || "India",
+            lat: formData.lat || vendor.address?.lat,
+            lng: formData.lng || vendor.address?.lng,
+          };
+        } else {
+          addressData = {
+            ...addressData,
+            street: formData.address,
             lat: formData.lat || vendor.address?.lat,
             lng: formData.lng || vendor.address?.lng,
           };

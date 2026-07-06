@@ -43,7 +43,7 @@ export const getWithdrawRequests = asyncHandler(async (req, res) => {
 
 // PATCH /api/admin/finance/withdraw-requests/:id
 export const updateWithdrawRequestStatus = asyncHandler(async (req, res) => {
-    const { status, rejectionReason, transactionId, notes } = req.body;
+    const { status, rejectionReason, transactionId, receiptUrl, notes } = req.body;
     const request = await WithdrawRequest.findById(req.params.id);
 
     if (!request) throw new ApiError(404, 'Withdrawal request not found.');
@@ -59,6 +59,7 @@ export const updateWithdrawRequestStatus = asyncHandler(async (req, res) => {
     request.status = status;
     if (rejectionReason) request.rejectionReason = rejectionReason;
     if (transactionId) request.transactionId = transactionId;
+    if (receiptUrl) request.receiptUrl = receiptUrl;
     if (notes) request.notes = notes;
     
     if (status === 'completed') {

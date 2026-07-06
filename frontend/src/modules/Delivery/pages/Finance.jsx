@@ -8,7 +8,8 @@ import {
   FiPlus, 
   FiAlertCircle,
   FiCreditCard,
-  FiCalendar
+  FiCalendar,
+  FiExternalLink
 } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
@@ -16,6 +17,7 @@ import PageTransition from '../../../shared/components/PageTransition';
 import { formatPrice } from '../../../shared/utils/helpers';
 import Badge from '../../../shared/components/Badge';
 import { toast } from 'react-hot-toast';
+import api from '../../../shared/utils/api';
 
 const Finance = () => {
   const navigate = useNavigate();
@@ -24,6 +26,8 @@ const Finance = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [financeSummary, setFinanceSummary] = useState(null);
   const [withdrawRequests, setWithdrawRequests] = useState([]);
+  const [earningsHistory, setEarningsHistory] = useState([]);
+  const [activeTab, setActiveTab] = useState('earnings'); // 'earnings' | 'withdrawals'
   
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,12 +38,17 @@ const Finance = () => {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [summary, requests] = await Promise.all([
+      const [summary, requests, earningsRes] = await Promise.all([
         fetchFinanceSummary(),
-        fetchWithdrawRequests()
+        fetchWithdrawRequests(),
+        api.get('/delivery/orders', { params: { status: 'delivered', limit: 20 } })
       ]);
       setFinanceSummary(summary);
       setWithdrawRequests(requests?.requests || []);
+      
+      const payload = earningsRes?.data || {};
+      const rawOrders = payload?.data?.orders || payload?.orders || [];
+      setEarningsHistory(Array.isArray(rawOrders) ? rawOrders : []);
     } catch (err) {
       console.error('Error loading finance data:', err);
     } finally {
@@ -113,7 +122,7 @@ const Finance = () => {
               <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/20">
                 <div>
                   <p className="text-primary-100 text-[10px] uppercase font-bold mb-1">Total Earned</p>
-                  <p className="text-lg font-bold">{formatPrice(financeSummary?.totalEarnings || 0)}</p>
+                  <p className="text-lg font-bold">{formatPrice(financeSummary?.totalEarned || 0)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-primary-100 text-[10px] uppercase font-bold mb-1">Total Withdrawn</p>
@@ -155,47 +164,117 @@ const Finance = () => {
             <FiPlus /> Request Payout
           </button>
 
-          {/* Withdrawal History */}
+          {/* Tabs */}
+          <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+             <button 
+               onClick={() => setActiveTab('earnings')}
+               className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all ${activeTab === 'earnings' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500'}`}
+             >
+               Earnings
+             </button>
+             <button 
+               onClick={() => setActiveTab('withdrawals')}
+               className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all ${activeTab === 'withdrawals' ? 'bg-white shadow-sm text-primary-600' : 'text-gray-500'}`}
+             >
+               Payouts
+             </button>
+          </div>
+
+          {/* History Lists */}
           <div className="space-y-4">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <FiCalendar className="text-primary-600" /> Payout History
-            </h3>
             
-            <div className="space-y-3">
-              {withdrawRequests.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                  <FiCreditCard className="mx-auto text-4xl text-gray-300 mb-2" />
-                  <p className="text-gray-500 text-sm">No payout requests yet.</p>
-                </div>
-              ) : (
-                withdrawRequests.map((req, idx) => (
-                  <motion.div 
-                    key={req._id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between shadow-sm"
-                  >
-                    <div className="space-y-1">
-                      <p className="text-xs text-gray-400 font-medium">{new Date(req.createdAt).toLocaleDateString()}</p>
-                      <p className="font-bold text-gray-800">{formatPrice(req.amount)}</p>
-                    </div>
-                    <div className="text-right">
-                       <Badge variant={
-                         req.status === 'completed' ? 'success' : 
-                         req.status === 'pending' ? 'warning' : 
-                         req.status === 'approved' ? 'info' : 'error'
-                       }>
-                         {req.status.toUpperCase()}
-                       </Badge>
-                       {req.status === 'rejected' && (
-                         <p className="text-[10px] text-red-500 mt-1 max-w-[100px] truncate">{req.rejectionReason}</p>
-                       )}
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
+            {activeTab === 'withdrawals' ? (
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4">
+                  <FiCalendar className="text-primary-600" /> Payout History
+                </h3>
+                {withdrawRequests.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <FiCreditCard className="mx-auto text-4xl text-gray-300 mb-2" />
+                    <p className="text-gray-500 text-sm">No payout requests yet.</p>
+                  </div>
+                ) : (
+                  withdrawRequests.map((req, idx) => (
+                    <motion.div 
+                      key={req._id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between shadow-sm"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-400 font-medium">{new Date(req.createdAt).toLocaleDateString()}</p>
+                        <p className="font-bold text-gray-800">{formatPrice(req.amount)}</p>
+                      </div>
+                      <div className="text-right">
+                         <Badge variant={
+                           req.status === 'completed' ? 'success' : 
+                           req.status === 'pending' ? 'warning' : 
+                           req.status === 'approved' ? 'info' : 'error'
+                         }>
+                           {req.status.toUpperCase()}
+                         </Badge>
+                         {req.status === 'completed' && req.transactionId && (
+                           <div className="mt-2 text-right">
+                             <p className="text-[10px] text-gray-500">Ref: <span className="font-mono text-gray-700 font-bold">{req.transactionId}</span></p>
+                             {req.receiptUrl && (
+                               <a 
+                                 href={req.receiptUrl} 
+                                 target="_blank" 
+                                 rel="noreferrer"
+                                 className="text-[10px] font-bold text-primary-600 hover:underline inline-flex items-center gap-1 mt-0.5"
+                               >
+                                 <FiExternalLink /> View Receipt
+                               </a>
+                             )}
+                           </div>
+                         )}
+                         {req.status === 'rejected' && (
+                           <p className="text-[10px] text-red-500 mt-1 max-w-[100px] truncate">{req.rejectionReason}</p>
+                         )}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-4">
+                  <FiDollarSign className="text-primary-600" /> Earnings History
+                </h3>
+                {earningsHistory.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <FiDollarSign className="mx-auto text-4xl text-gray-300 mb-2" />
+                    <p className="text-gray-500 text-sm">No earnings recorded yet.</p>
+                  </div>
+                ) : (
+                  earningsHistory.map((order, idx) => (
+                    <motion.div 
+                      key={order._id || order.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      onClick={() => navigate(`/delivery/orders/${order.id || order._id}`)}
+                      className="bg-white p-4 rounded-2xl border border-gray-100 flex items-center justify-between shadow-sm cursor-pointer hover:border-primary-200"
+                    >
+                      <div className="space-y-1">
+                        <p className="text-xs text-gray-400 font-medium">{new Date(order.deliveredAt || order.updatedAt).toLocaleDateString()}</p>
+                        <p className="font-bold text-gray-800">Order #{String(order.subOrderId || order._id).slice(-6)}</p>
+                      </div>
+                      <div className="text-right">
+                         <p className="font-black text-primary-600 text-lg">
+                           {formatPrice(order.deliveryEarnings || 0)}
+                         </p>
+                         <p className="text-[10px] text-gray-400">
+                           {Number(order.deliveryDistanceKm || 0).toFixed(1)} km
+                         </p>
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
+            )}
+            
           </div>
         </div>
 

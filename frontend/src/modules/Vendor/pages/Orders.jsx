@@ -52,11 +52,7 @@ const Orders = () => {
     };
 
     orders.forEach((order) => {
-      // Each order's vendorItems may carry per-vendor status
-      const vendorItem = order.vendorItems?.find(
-        (vi) => vi.vendorId?.toString() === vendorId?.toString()
-      );
-      const status = (vendorItem?.status ?? order.status ?? '').toLowerCase();
+      const status = (order.status ?? '').toLowerCase();
 
       if (status === 'pending') stats.pending++;
       else if (status === 'processing') stats.processing++;
