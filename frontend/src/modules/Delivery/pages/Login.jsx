@@ -178,7 +178,7 @@ const DeliveryLogin = () => {
                   By logging in, you agree to our <br />
                   <Link to="/delivery/privacy" className="hover:text-black hover:underline transition-colors">Privacy Policy</Link>
                   {' '}and{' '}
-                  <Link to="/delivery/terms" className="hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
+                  <Link to="/delivery/support-info" className="hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
                 </p>
               </div>
             </div>

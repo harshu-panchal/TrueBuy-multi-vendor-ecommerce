@@ -193,7 +193,7 @@ const MobileProfile = () => {
     },
     { id: 'referral', label: 'Refer & Earn', icon: FiGift, color: 'text-pink-600', bg: 'bg-pink-50' },
     { id: 'password', label: 'Change Password', icon: FiLock, color: 'text-purple-600', bg: 'bg-purple-50' },
-    { id: 'terms', label: 'Terms & Conditions', icon: FiFileText, color: 'text-gray-600', bg: 'bg-gray-100', link: '/terms' },
+    { id: 'terms', label: 'Terms & Conditions', icon: FiFileText, color: 'text-gray-600', bg: 'bg-gray-100', link: '/support-info' },
     { id: 'privacy', label: 'Privacy Policy', icon: FiShield, color: 'text-gray-600', bg: 'bg-gray-100', link: '/privacy' },
   ];
 
@@ -263,7 +263,7 @@ const MobileProfile = () => {
                       Password
                     </button>
                     <Link
-                      to="/terms"
+                      to="/support-info"
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium text-gray-600 hover:bg-gray-50"
                     >
                       <FiFileText className="text-lg" />

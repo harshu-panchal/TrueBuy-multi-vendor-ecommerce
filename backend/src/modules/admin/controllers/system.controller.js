@@ -154,7 +154,13 @@ export const getSettings = asyncHandler(async (req, res) => {
 // GET /api/public/settings/legal
 export const getPublicLegalSettings = asyncHandler(async (req, res) => {
     const contentSetting = await Settings.findOne({ key: 'content' }).lean();
-    return res.status(200).json(new ApiResponse(200, contentSetting?.value || {}, 'Legal settings fetched successfully.'));
+    const generalSetting = await Settings.findOne({ key: 'general' }).lean();
+    const data = {
+        ...(contentSetting?.value || {}),
+        contactEmail: generalSetting?.value?.contactEmail || 'contact@truebuy.com',
+        contactPhone: generalSetting?.value?.contactPhone || '+1 800 123 4567'
+    };
+    return res.status(200).json(new ApiResponse(200, data, 'Legal and contact settings fetched successfully.'));
 });
 
 // PUT /api/admin/settings

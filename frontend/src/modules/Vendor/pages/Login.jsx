@@ -168,7 +168,7 @@ const VendorLogin = () => {
                   </Link>
                 </p>
                 <div className="flex items-center justify-center gap-4 text-xs text-gray-400">
-                  <Link to="/vendor/terms" className="hover:text-black transition-colors">Terms & Conditions</Link>
+                  <Link to="/vendor/support-info" className="hover:text-black transition-colors">Terms & Conditions</Link>
                   <span>&bull;</span>
                   <Link to="/vendor/privacy" className="hover:text-black transition-colors">Privacy Policy</Link>
                 </div>

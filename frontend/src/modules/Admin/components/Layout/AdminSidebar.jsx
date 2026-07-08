@@ -172,7 +172,7 @@ const getChildRoute = (parentRoute, childName) => {
     "/admin/policies": {
       "Privacy Policy": "/admin/legal/privacy",
       "Refund Policy": "/admin/legal/refund",
-      "Terms & Conditions": "/admin/legal/terms",
+      "Terms & Conditions": "/admin/legal/support-info",
     },
     "/admin/firebase": {
       "Push Config": "/admin/firebase/push-config",

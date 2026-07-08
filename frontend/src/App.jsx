@@ -442,7 +442,7 @@ const AppRoutes = () => {
         }
       />
       <Route
-        path="/terms"
+        path="/support-info"
         element={
           <RouteWrapper>
             <MobileTermsAndConditions />
@@ -651,7 +651,7 @@ const AppRoutes = () => {
         <Route path="legal" element={<PrivacyContent />} />
         <Route path="legal/privacy" element={<PrivacyContent />} />
         <Route path="legal/refund" element={<RefundTerms />} />
-        <Route path="legal/terms" element={<LegalTermsConditions />} />
+        <Route path="legal/support-info" element={<LegalTermsConditions />} />
         <Route path="firebase" element={<PushConfig />} />
         <Route path="firebase/push-config" element={<PushConfig />} />
         <Route path="firebase/authentication" element={<Authentication />} />
@@ -674,7 +674,7 @@ const AppRoutes = () => {
       <Route path="/delivery/register" element={<DeliveryRegister />} />
       <Route path="/delivery/forgot-password" element={<DeliveryForgotPassword />} />
       <Route path="/delivery/reset-password" element={<DeliveryResetPassword />} />
-      <Route path="/delivery/terms" element={<DeliveryTerms />} />
+      <Route path="/delivery/support-info" element={<DeliveryTerms />} />
       <Route path="/delivery/privacy" element={<DeliveryPrivacy />} />
       <Route
         path="/delivery"
@@ -699,7 +699,7 @@ const AppRoutes = () => {
       <Route path="/vendor/verification" element={<VendorVerification />} />
       <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
       <Route path="/vendor/reset-password" element={<VendorResetPassword />} />
-      <Route path="/vendor/terms" element={<VendorTerms />} />
+      <Route path="/vendor/support-info" element={<VendorTerms />} />
       <Route path="/vendor/privacy" element={<VendorPrivacy />} />
       
       <Route

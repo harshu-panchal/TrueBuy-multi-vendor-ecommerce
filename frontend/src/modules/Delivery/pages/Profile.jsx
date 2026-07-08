@@ -518,7 +518,7 @@ const DeliveryProfile = () => {
           </h2>
           
           <div className="space-y-1">
-            <Link to="/delivery/terms" className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
+            <Link to="/delivery/support-info" className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
               <div className="flex items-center gap-3">
                 <FiFileText className="text-gray-400" />
                 <span className="font-medium text-gray-700">Terms & Conditions</span>

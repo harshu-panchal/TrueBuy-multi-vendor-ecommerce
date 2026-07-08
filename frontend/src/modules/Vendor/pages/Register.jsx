@@ -424,7 +424,7 @@ const VendorRegister = () => {
                 </div>
                 <span className="text-sm text-gray-600 leading-relaxed">
                   I agree to the{' '}
-                  <Link to="/vendor/terms" target="_blank" className="text-black font-bold hover:underline">
+                  <Link to="/vendor/support-info" target="_blank" className="text-black font-bold hover:underline">
                     Terms & Conditions
                   </Link>
                   {' '}and{' '}

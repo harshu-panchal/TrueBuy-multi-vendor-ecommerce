@@ -264,7 +264,7 @@ const MobileRegister = () => {
               <div className="text-center mt-4 pt-4 border-t border-gray-100">
                 <p className="text-gray-400 text-xs leading-relaxed">
                   By creating an account, you agree to our <br />
-                  <Link to="/terms" className="text-gray-600 hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
+                  <Link to="/support-info" className="text-gray-600 hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
                   {' '}and{' '}
                   <Link to="/privacy" className="text-gray-600 hover:text-black hover:underline transition-colors">Privacy Policy</Link>
                 </p>
