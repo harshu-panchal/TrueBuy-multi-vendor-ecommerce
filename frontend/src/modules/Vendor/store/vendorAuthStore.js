@@ -134,6 +134,18 @@ export const useVendorAuthStore = create(
         localStorage.removeItem("vendor-refresh-token");
       },
 
+      setAuth: (vendor, accessToken, refreshToken) => {
+        set({
+          vendor,
+          token: accessToken,
+          refreshToken,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+        localStorage.setItem("vendor-token", accessToken);
+        localStorage.setItem("vendor-refresh-token", refreshToken);
+      },
+
       // Update vendor profile — calls real PUT /vendor/auth/profile
       updateProfile: async (profileData) => {
         set({ isLoading: true });
@@ -152,6 +164,23 @@ export const useVendorAuthStore = create(
           });
 
           return { success: true, vendor: updatedVendor };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      fetchProfile: async () => {
+        set({ isLoading: true });
+        try {
+          const response = await api.get("/vendor/auth/profile");
+          const data = response?.data ?? response;
+          const vendor = data?.vendor || data;
+          
+          if (vendor) {
+            set({ vendor, isLoading: false });
+          }
+          return { success: true, vendor };
         } catch (error) {
           set({ isLoading: false });
           throw error;

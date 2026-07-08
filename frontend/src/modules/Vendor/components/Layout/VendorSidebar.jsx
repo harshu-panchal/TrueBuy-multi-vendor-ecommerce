@@ -35,6 +35,7 @@ import { appLogo } from "../../../../data/logos";
 const iconMap = {
   Dashboard: FiHome,
   Products: FiPackage,
+  Subscriptions: FiCreditCard,
   Orders: FiShoppingBag,
   "Wholesale Marketplace": FiGrid,
   "Return Requests": FiRefreshCw,

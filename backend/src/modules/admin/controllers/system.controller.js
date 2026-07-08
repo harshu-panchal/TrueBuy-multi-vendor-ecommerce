@@ -151,6 +151,12 @@ export const getSettings = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, settings, 'Settings fetched successfully.'));
 });
 
+// GET /api/public/settings/legal
+export const getPublicLegalSettings = asyncHandler(async (req, res) => {
+    const contentSetting = await Settings.findOne({ key: 'content' }).lean();
+    return res.status(200).json(new ApiResponse(200, contentSetting?.value || {}, 'Legal settings fetched successfully.'));
+});
+
 // PUT /api/admin/settings
 export const updateSettings = asyncHandler(async (req, res) => {
     const updates = resolveSettingOpsFromPayload(req.body);

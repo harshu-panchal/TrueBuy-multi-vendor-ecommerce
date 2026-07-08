@@ -43,9 +43,13 @@ export const enforceAccountStatus = async (req, res, next) => {
             const vendor = await Vendor.findById(req.user.id).select('status isVerified').lean();
             if (!vendor) return next(new ApiError(401, 'Account not found.'));
             if (!vendor.isVerified) return next(new ApiError(403, 'Please verify your email first.'));
-            if (vendor.status !== 'approved') {
+            
+            const isSubscriptionOrAuthRoute = req.originalUrl.includes('/subscription') || req.originalUrl.includes('/auth');
+            
+            if (vendor.status !== 'approved' && !isSubscriptionOrAuthRoute) {
                 return next(new ApiError(403, `Vendor account is ${vendor.status}.`));
             }
+            
             return next();
         }
 

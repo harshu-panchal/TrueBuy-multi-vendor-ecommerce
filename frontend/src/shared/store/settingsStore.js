@@ -84,9 +84,21 @@ const defaultSettings = {
     priceDisplayFormat: "INR", // Currency format
   },
   content: {
-    privacyPolicy: "",
-    termsConditions: "",
-    refundPolicy: "",
+    privacyPolicy: {
+      user: "",
+      vendor: "",
+      delivery: "",
+    },
+    termsConditions: {
+      user: "",
+      vendor: "",
+      delivery: "",
+    },
+    refundPolicy: {
+      user: "",
+      vendor: "",
+      delivery: "",
+    },
   },
   features: {
     wishlistEnabled: true,

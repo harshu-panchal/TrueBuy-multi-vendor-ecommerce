@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { FiArrowLeft, FiCheck, FiMail } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { verifyVendorOTP, resendVendorOTP } from '../services/vendorService';
+import { useVendorAuthStore } from '../store/vendorAuthStore';
 import toast from 'react-hot-toast';
 
 const VendorVerification = () => {
@@ -12,6 +13,7 @@ const VendorVerification = () => {
   const [codes, setCodes] = useState(Array(OTP_LENGTH).fill(''));
   const [isLoading, setIsLoading] = useState(false);
   const inputRefs = useRef([]);
+  const { setAuth } = useVendorAuthStore();
 
   const email = location.state?.email || '';
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -65,9 +67,14 @@ const VendorVerification = () => {
 
     setIsLoading(true);
     try {
-      await verifyVendorOTP(email, verificationCode);
-      toast.success('Email verified! Your account is pending admin approval.');
-      navigate('/vendor/login');
+      const response = await verifyVendorOTP(email, verificationCode);
+      if (response && response.data) {
+        // Auto login the user with the tokens provided
+        const { accessToken, refreshToken, vendor } = response.data;
+        setAuth(vendor, accessToken, refreshToken);
+      }
+      toast.success('Email verified! Please select a subscription plan to continue.');
+      navigate('/vendor/onboarding/subscription');
     } catch {
       // Error toast is shown by api.js interceptor
     } finally {

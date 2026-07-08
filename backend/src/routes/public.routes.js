@@ -19,8 +19,12 @@ import {
     removeFcmTokenSchema,
     testFcmTokenSchema,
 } from '../validators/fcm.validator.js';
+import { getPublicLegalSettings } from '../modules/admin/controllers/system.controller.js';
 
 const router = Router();
+
+// GET /api/settings/legal (public)
+router.get('/settings/legal', getPublicLegalSettings);
 
 const toPublicVendor = (vendorDoc) => {
     const vendor = typeof vendorDoc?.toObject === 'function'

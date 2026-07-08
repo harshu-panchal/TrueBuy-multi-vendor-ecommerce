@@ -1,85 +1,109 @@
-import React from 'react';
-import { FiArrowLeft } from 'react-icons/fi';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { FiArrowLeft, FiShield } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { getPublicLegalSettings } from '../../../shared/services/publicSettingsService';
 import PageTransition from '../../../shared/components/PageTransition';
 
 const DeliveryPrivacy = () => {
   const navigate = useNavigate();
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPrivacy = async () => {
+      try {
+        const data = await getPublicLegalSettings();
+        setContent(data?.privacyPolicy?.delivery || 'Privacy Policy not available.');
+      } catch (error) {
+        setContent('Error loading privacy policy.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrivacy();
+  }, []);
 
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center">
-        {/* Dark Header with Pattern */}
-        <div className="w-full bg-[#111111] relative overflow-hidden h-48 lg:h-48 flex flex-col items-center justify-center">
-          {/* Back Button */}
-          <button
-            onClick={() => navigate(-1)}
-            className="absolute top-8 left-8 p-3 text-white hover:bg-white/10 rounded-full transition-colors z-30"
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => navigate(-1)}
+                  className="p-2 -ml-2 rounded-full hover:bg-gray-100 transition-colors"
+                  title="Go Back"
+                >
+                  <FiArrowLeft className="text-xl text-gray-600" />
+                </button>
+                <Link to="/delivery/login" className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-green-600 to-emerald-500 flex items-center justify-center text-white font-bold text-lg shadow-sm">
+                    D
+                  </div>
+                  <span className="text-xl font-bold text-gray-900 hidden sm:block">
+                    TrueBuy Delivery
+                  </span>
+                </Link>
+              </div>
+              
+              <div className="flex gap-4">
+                <Link to="/delivery/login" className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors">
+                  Login
+                </Link>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
           >
-            <FiArrowLeft size={24} />
-          </button>
+            {/* Cover Header */}
+            <div className="bg-slate-900 px-6 py-12 sm:px-12 sm:py-16 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-12 opacity-10">
+                <FiShield className="w-48 h-48 text-white" />
+              </div>
+              <div className="relative z-10">
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Privacy Policy</h1>
+                <p className="text-slate-400">Delivery Partner Data Protection</p>
+              </div>
+            </div>
 
-          <div className="absolute inset-0 opacity-20 pointer-events-none"
-            style={{
-              backgroundImage: `radial-gradient(circle at 10px 10px, #333 2px, transparent 0)`,
-              backgroundSize: '30px 30px'
-            }}>
-          </div>
-          <div className="absolute inset-0 opacity-10 pointer-events-none"
-            style={{
-              backgroundImage: `linear-gradient(45deg, #444 25%, transparent 25%, transparent 75%, #444 75%, #444), 
-                                  linear-gradient(45deg, #444 25%, transparent 25%, transparent 75%, #444 75%, #444)`,
-              backgroundSize: '60px 60px',
-              backgroundPosition: '0 0, 30px 30px'
-            }}>
-          </div>
+            <div className="p-6 sm:p-12 text-gray-700">
+              <p className="text-sm text-gray-500 mb-8 border-b pb-4">
+                Last updated: {new Date().toLocaleDateString()}
+              </p>
 
-          <h1 className="z-10 text-3xl md:text-4xl font-bold text-white">Privacy Policy</h1>
-        </div>
+              <div className="space-y-8">
+                {loading ? (
+                  <div className="flex justify-center p-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                    {content}
+                  </div>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </main>
 
-        <div className="w-full max-w-4xl bg-white -mt-16 lg:-mt-16 rounded-[40px] shadow-2xl z-20 px-6 sm:px-10 pt-10 pb-12 mb-10">
-          <div className="text-gray-700 space-y-6">
-            <p className="text-sm font-semibold text-gray-500">
-              Last updated: {new Date().toLocaleDateString()}
+        {/* Footer */}
+        <footer className="bg-white border-t border-gray-200 mt-auto py-8">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <p className="text-gray-500 text-sm">
+              © {new Date().getFullYear()} TrueBuy. All rights reserved.
             </p>
-
-            <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">1. Information We Collect</h2>
-              <p className="leading-relaxed">
-                We collect personal information such as your name, contact details, vehicle information, and location data when you use our delivery application. We may also collect document images (like your license) during registration.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">2. How We Use Your Information</h2>
-              <p className="leading-relaxed">
-                Your information is used to verify your identity, assign delivery orders, track deliveries in real-time, process payouts, and communicate important updates regarding your account.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">3. Location Data</h2>
-              <p className="leading-relaxed">
-                For the core functionality of the delivery app, we require access to your location data while you are on duty. This helps us optimize routes and update customers on the status of their orders.
-              </p>
-            </section>
-            
-            <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">4. Data Security</h2>
-              <p className="leading-relaxed">
-                We implement industry-standard security measures to protect your personal information from unauthorized access, disclosure, or misuse.
-              </p>
-            </section>
-            
-            <section>
-              <h2 className="text-xl font-bold text-gray-900 mb-3">5. Contact Us</h2>
-              <p className="leading-relaxed">
-                If you have any questions about this Privacy Policy or our data practices, please contact our delivery partner support team.
-              </p>
-            </section>
-            
           </div>
-        </div>
+        </footer>
       </div>
     </PageTransition>
   );

@@ -41,6 +41,16 @@ const VendorProtectedRoute = ({ children }) => {
     return <Navigate to="/vendor/login" state={{ from: location }} replace />;
   }
 
+  // Handle pending vendor status
+  const vendorStatus = payload?.status || JSON.parse(localStorage.getItem('vendor-auth-storage') || '{}')?.state?.vendor?.status;
+  
+  if (vendorStatus === 'pending') {
+    const isAllowedRoute = location.pathname.includes('/onboarding/subscription') || location.pathname.includes('/pending-approval');
+    if (!isAllowedRoute) {
+      return <Navigate to="/vendor/onboarding/subscription" replace />;
+    }
+  }
+
   return children;
 };
 

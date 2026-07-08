@@ -17,11 +17,13 @@ import * as uploadController from '../controllers/upload.controller.js';
 import * as systemController from '../controllers/system.controller.js';
 import * as b2bController from '../controllers/b2b.controller.js';
 import * as financeController from '../controllers/finance.controller.js';
+import * as subscriptionController from '../controllers/subscription.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
+import { createSubscriptionPlanSchema, updateSubscriptionPlanSchema, subscriptionPlanIdParamSchema } from '../validators/subscription.validator.js';
 import { refreshTokenSchema, logoutSchema } from '../validators/auth.validator.js';
 import {
     createProductSchema,
@@ -252,5 +254,12 @@ router.get('/settings', ...adminAuth, systemController.getSettings);
 router.put('/settings', ...adminAuth, validate(settingUpdateSchema), systemController.updateSettings);
 router.get('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'params'), systemController.getPolicy);
 router.put('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'params'), validate(policyUpdateSchema), systemController.updatePolicy);
+
+// ——— Subscriptions ——————————————————————————————————————————————————————
+router.post('/subscription-plans', ...adminAuth, validate(createSubscriptionPlanSchema), subscriptionController.createPlan);
+router.get('/subscription-plans', ...adminAuth, subscriptionController.getAllPlans);
+router.get('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.getPlanById);
+router.put('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), validate(updateSubscriptionPlanSchema), subscriptionController.updatePlan);
+router.delete('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.deletePlan);
 
 export default router;

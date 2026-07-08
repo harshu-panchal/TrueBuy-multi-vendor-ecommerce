@@ -105,6 +105,12 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
     const vendor = await Vendor.findOne({ email }).select('+otp +otpExpiry');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    if (vendor.isVerified) {
+        const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
+        await persistRefreshSession(vendor, refreshToken);
+        return res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, status: vendor.status } }, 'Email is already verified.'));
+    }
+
     if (vendor.otp !== otp) throw new ApiError(400, 'Invalid OTP.');
     if (vendor.otpExpiry < Date.now()) throw new ApiError(400, 'OTP has expired.');
 
@@ -132,7 +138,11 @@ export const verifyOTP = asyncHandler(async (req, res) => {
         )
     );
 
-    res.status(200).json(new ApiResponse(200, null, 'Email verified. Awaiting admin approval.'));
+    // Auto-login the vendor so they can select a subscription plan
+    const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
+    await persistRefreshSession(vendor, refreshToken);
+
+    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, status: vendor.status } }, 'Email verified. Please select a subscription plan.'));
 });
 
 // POST /api/vendor/auth/resend-otp
@@ -239,7 +249,7 @@ export const login = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findOne({ email }).select('+password');
     if (!vendor) throw new ApiError(401, 'Invalid credentials.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
-    if (vendor.status === 'pending') throw new ApiError(403, 'Your account is pending admin approval.');
+    // Allow pending vendors to login so they can access onboarding subscription page
     if (vendor.status === 'suspended') throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
     if (vendor.status === 'rejected') throw new ApiError(403, 'Your vendor application was rejected.');
 
@@ -248,7 +258,7 @@ export const login = asyncHandler(async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
     await persistRefreshSession(vendor, refreshToken);
-    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, storeLogo: vendor.storeLogo } }, 'Login successful.'));
+    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, storeLogo: vendor.storeLogo, status: vendor.status } }, 'Login successful.'));
 });
 
 // POST /api/vendor/auth/refresh
@@ -259,7 +269,6 @@ export const refresh = asyncHandler(async (req, res) => {
 
     if (!vendor) throw new ApiError(401, 'Invalid refresh token.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
-    if (vendor.status === 'pending') throw new ApiError(403, 'Your account is pending admin approval.');
     if (vendor.status === 'suspended') throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
     if (vendor.status === 'rejected') throw new ApiError(403, 'Your vendor application was rejected.');
 

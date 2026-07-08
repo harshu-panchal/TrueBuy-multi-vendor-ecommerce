@@ -15,6 +15,13 @@
                      ]
     },
     {
+        "title":  "Subscriptions",
+        "route":  "/vendor/subscriptions",
+        "children":  [
+
+                     ]
+    },
+    {
         "title":  "Orders",
         "route":  "/vendor/orders",
         "children":  [

@@ -1,31 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiSave, FiFileText } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { useSettingsStore } from '../../../../shared/store/settingsStore';
 
 const PrivacyContent = () => {
-  const [content, setContent] = useState(`Privacy Policy
+  const { settings, updateSettings, isLoading } = useSettingsStore();
+  const [activeTab, setActiveTab] = useState('user');
+  
+  // Local state to hold the content for all 3 panels while editing
+  const [content, setContent] = useState({
+    user: '',
+    vendor: '',
+    delivery: ''
+  });
 
-Last updated: ${new Date().toLocaleDateString()}
+  useEffect(() => {
+    if (settings?.content?.privacyPolicy) {
+      // If it's still a string (legacy), convert it safely
+      if (typeof settings.content.privacyPolicy === 'string') {
+        setContent({
+          user: settings.content.privacyPolicy,
+          vendor: '',
+          delivery: ''
+        });
+      } else {
+        setContent(settings.content.privacyPolicy);
+      }
+    }
+  }, [settings]);
 
-1. Information We Collect
-We collect information that you provide directly to us, including when you create an account, make a purchase, or contact us for support.
-
-2. How We Use Your Information
-We use the information we collect to provide, maintain, and improve our services, process transactions, and communicate with you.
-
-3. Information Sharing
-We do not sell, trade, or rent your personal information to third parties without your consent.
-
-4. Data Security
-We implement appropriate security measures to protect your personal information.
-
-5. Your Rights
-You have the right to access, update, or delete your personal information at any time.`);
-
-  const handleSave = () => {
-    toast.success('Privacy policy saved successfully');
+  const handleSave = async () => {
+    await updateSettings('content', {
+      ...settings.content,
+      privacyPolicy: content
+    });
   };
+
+  const tabs = [
+    { id: 'user', label: 'User App' },
+    { id: 'vendor', label: 'Vendor Portal' },
+    { id: 'delivery', label: 'Delivery Partner App' }
+  ];
 
   return (
     <motion.div
@@ -34,30 +49,53 @@ You have the right to access, update, or delete your personal information at any
       className="space-y-6"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="lg:hidden">
+        <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Privacy Policy</h1>
-          <p className="text-sm sm:text-base text-gray-600">Manage your store's privacy policy</p>
+          <p className="text-sm sm:text-base text-gray-600">Manage privacy policies for each panel</p>
         </div>
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm"
+          disabled={isLoading}
+          className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm disabled:opacity-50"
         >
           <FiSave />
-          <span>Save Policy</span>
+          <span>{isLoading ? 'Saving...' : 'Save Policy'}</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <div className="flex items-center gap-2 mb-4">
-          <FiFileText className="text-primary-600" />
-          <h3 className="font-semibold text-gray-800">Privacy Policy Content</h3>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 bg-gray-50">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-b-2 border-primary-500 text-primary-600 bg-white'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          rows={20}
-          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
-        />
+
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <FiFileText className="text-primary-600" />
+            <h3 className="font-semibold text-gray-800">
+              {tabs.find(t => t.id === activeTab)?.label} Privacy Content
+            </h3>
+          </div>
+          <textarea
+            value={content[activeTab] || ''}
+            onChange={(e) => setContent(prev => ({ ...prev, [activeTab]: e.target.value }))}
+            rows={20}
+            placeholder={`Enter privacy policy for ${tabs.find(t => t.id === activeTab)?.label}...`}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+          />
+        </div>
       </div>
     </motion.div>
   );

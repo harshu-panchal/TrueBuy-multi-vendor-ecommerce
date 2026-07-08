@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/Layout/MobileLayout';
 import PageTransition from '../../../shared/components/PageTransition';
+import { getPublicLegalSettings } from '../../../shared/services/publicSettingsService';
 
 const TermsAndConditions = () => {
   const navigate = useNavigate();
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTerms = async () => {
+      try {
+        const data = await getPublicLegalSettings();
+        setContent(data?.termsConditions?.user || 'Terms and Conditions not available.');
+      } catch (error) {
+        setContent('Error loading terms and conditions.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTerms();
+  }, []);
 
   return (
     <PageTransition>
@@ -29,34 +46,15 @@ const TermsAndConditions = () => {
               Last updated: {new Date().toLocaleDateString()}
             </p>
 
-            <section>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">1. Introduction</h2>
-              <p>
-                Welcome to TrueBuy. By accessing or using our platform, you agree to be bound by these Terms and Conditions. Please read them carefully.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">2. Use of Service</h2>
-              <p>
-                You must use this service in compliance with all applicable laws and regulations. You may not use our platform for any illegal or unauthorized purpose.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">3. User Accounts</h2>
-              <p>
-                When you create an account with us, you must provide accurate, complete, and current information. You are responsible for safeguarding the password that you use to access the service and for any activities or actions under your password.
-              </p>
-            </section>
-            
-            <section>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">4. Modifications</h2>
-              <p>
-                We reserve the right, at our sole discretion, to modify or replace these Terms at any time. We will try to provide at least 30 days' notice prior to any new terms taking effect.
-              </p>
-            </section>
-            
+            {loading ? (
+              <div className="flex justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+              </div>
+            ) : (
+              <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                {content}
+              </div>
+            )}
           </div>
         </div>
       </MobileLayout>

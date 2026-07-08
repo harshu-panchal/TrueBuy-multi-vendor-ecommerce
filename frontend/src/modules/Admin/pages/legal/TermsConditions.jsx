@@ -1,31 +1,46 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiSave, FiFileText } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import { useSettingsStore } from '../../../../shared/store/settingsStore';
 
 const TermsConditions = () => {
-  const [content, setContent] = useState(`Terms & Conditions
+  const { settings, updateSettings, isLoading } = useSettingsStore();
+  const [activeTab, setActiveTab] = useState('user');
+  
+  // Local state to hold the content for all 3 panels while editing
+  const [content, setContent] = useState({
+    user: '',
+    vendor: '',
+    delivery: ''
+  });
 
-Last updated: ${new Date().toLocaleDateString()}
+  useEffect(() => {
+    if (settings?.content?.termsConditions) {
+      // If it's still a string (legacy), convert it safely
+      if (typeof settings.content.termsConditions === 'string') {
+        setContent({
+          user: settings.content.termsConditions,
+          vendor: '',
+          delivery: ''
+        });
+      } else {
+        setContent(settings.content.termsConditions);
+      }
+    }
+  }, [settings]);
 
-1. Acceptance of Terms
-By accessing and using this website, you accept and agree to be bound by the terms and provision of this agreement.
-
-2. Use License
-Permission is granted to temporarily download one copy of the materials on our website for personal, non-commercial transitory viewing only.
-
-3. Disclaimer
-The materials on our website are provided on an 'as is' basis. We make no warranties, expressed or implied.
-
-4. Limitations
-In no event shall our company or its suppliers be liable for any damages arising out of the use or inability to use the materials on our website.
-
-5. Revisions
-We may revise these terms of service at any time without notice. By using this website you are agreeing to be bound by the then current version of these terms.`);
-
-  const handleSave = () => {
-    toast.success('Terms & conditions saved successfully');
+  const handleSave = async () => {
+    await updateSettings('content', {
+      ...settings.content,
+      termsConditions: content
+    });
   };
+
+  const tabs = [
+    { id: 'user', label: 'User App' },
+    { id: 'vendor', label: 'Vendor Portal' },
+    { id: 'delivery', label: 'Delivery Partner App' }
+  ];
 
   return (
     <motion.div
@@ -34,30 +49,53 @@ We may revise these terms of service at any time without notice. By using this w
       className="space-y-6"
     >
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="lg:hidden">
+        <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Terms & Conditions</h1>
-          <p className="text-sm sm:text-base text-gray-600">Manage your store's terms and conditions</p>
+          <p className="text-sm sm:text-base text-gray-600">Manage terms and conditions for each panel</p>
         </div>
         <button
           onClick={handleSave}
-          className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm"
+          disabled={isLoading}
+          className="flex items-center gap-2 px-4 py-2 gradient-green text-white rounded-lg hover:shadow-glow-green transition-all font-semibold text-sm disabled:opacity-50"
         >
           <FiSave />
-          <span>Save Policy</span>
+          <span>{isLoading ? 'Saving...' : 'Save Policy'}</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
-        <div className="flex items-center gap-2 mb-4">
-          <FiFileText className="text-primary-600" />
-          <h3 className="font-semibold text-gray-800">Terms & Conditions Content</h3>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 bg-gray-50">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'border-b-2 border-primary-500 text-primary-600 bg-white'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          rows={20}
-          className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
-        />
+
+        <div className="p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <FiFileText className="text-primary-600" />
+            <h3 className="font-semibold text-gray-800">
+              {tabs.find(t => t.id === activeTab)?.label} Terms Content
+            </h3>
+          </div>
+          <textarea
+            value={content[activeTab] || ''}
+            onChange={(e) => setContent(prev => ({ ...prev, [activeTab]: e.target.value }))}
+            rows={20}
+            placeholder={`Enter terms and conditions for ${tabs.find(t => t.id === activeTab)?.label}...`}
+            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+          />
+        </div>
       </div>
     </motion.div>
   );

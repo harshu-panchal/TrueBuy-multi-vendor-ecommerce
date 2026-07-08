@@ -104,8 +104,10 @@ import Vendors from "./modules/Admin/pages/Vendors";
 import ManageVendors from "./modules/Admin/pages/vendors/ManageVendors";
 import PendingApprovals from "./modules/Admin/pages/vendors/PendingApprovals";
 import VendorDetail from "./modules/Admin/pages/vendors/VendorDetail";
-import CommissionRates from "./modules/Admin/pages/vendors/CommissionRates";
+import AdminCommissionRates from "./modules/Admin/pages/vendors/CommissionRates";
 import AdminVendorAnalytics from "./modules/Admin/pages/vendors/VendorAnalytics";
+
+import AdminSubscriptions from "./modules/Admin/pages/Subscriptions";
 
 // Offers & Sliders child pages
 import HomeSliders from "./modules/Admin/pages/offers/HomeSliders";
@@ -212,6 +214,9 @@ import VendorProducts from "./modules/Vendor/pages/Products";
 import VendorManageProducts from "./modules/Vendor/pages/products/ManageProducts";
 import VendorAddProduct from "./modules/Vendor/pages/products/AddProduct";
 import VendorProductForm from "./modules/Vendor/pages/products/ProductForm";
+import VendorSubscriptions from "./modules/Vendor/pages/Subscriptions";
+import OnboardingSubscription from "./modules/Vendor/pages/OnboardingSubscription";
+import PendingApproval from "./modules/Vendor/pages/PendingApproval";
 import VendorOrders from "./modules/Vendor/pages/Orders";
 import VendorAllOrders from "./modules/Vendor/pages/orders/AllOrders";
 import VendorOrderTracking from "./modules/Vendor/pages/orders/OrderTracking";
@@ -566,16 +571,16 @@ const AppRoutes = () => {
         <Route path="delivery/assign-delivery" element={<AssignDelivery />} />
         <Route path="vendors" element={<Vendors />} />
         <Route path="vendors/manage-vendors" element={<ManageVendors />} />
-        <Route
-          path="vendors/pending-approvals"
-          element={<PendingApprovals />}
-        />
-        <Route path="vendors/commission-rates" element={<CommissionRates />} />
-        <Route
-          path="vendors/vendor-analytics"
-          element={<AdminVendorAnalytics />}
-        />
+        <Route path="vendors/pending-approvals" element={<PendingApprovals />} />
+        <Route path="vendors/commission-rates" element={<AdminCommissionRates />} />
+        <Route path="vendors/vendor-analytics" element={<AdminVendorAnalytics />} />
         <Route path="vendors/:id" element={<VendorDetail />} />
+        
+        {/* Subscriptions */}
+        <Route path="subscriptions" element={<AdminSubscriptions />} />
+        <Route path="subscriptions/add" element={<AdminSubscriptions />} />
+
+        {/* Promotions */}
         <Route path="promotions" element={<Navigate to="discounts" replace />} />
         <Route path="promotions/discounts" element={<Discounts />} />
         <Route path="promotions/affiliates" element={<Affiliates />} />
@@ -696,6 +701,24 @@ const AppRoutes = () => {
       <Route path="/vendor/reset-password" element={<VendorResetPassword />} />
       <Route path="/vendor/terms" element={<VendorTerms />} />
       <Route path="/vendor/privacy" element={<VendorPrivacy />} />
+      
+      <Route
+        path="/vendor/onboarding/subscription"
+        element={
+          <VendorProtectedRoute>
+            <OnboardingSubscription />
+          </VendorProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/vendor/pending-approval"
+        element={
+          <VendorProtectedRoute>
+            <PendingApproval />
+          </VendorProtectedRoute>
+        }
+      />
       <Route
         path="/vendor"
         element={
@@ -712,6 +735,7 @@ const AppRoutes = () => {
         />
         <Route path="products/add-product" element={<VendorAddProduct />} />
         <Route path="products/:id" element={<VendorProductForm />} />
+        <Route path="subscriptions" element={<VendorSubscriptions />} />
         <Route path="orders" element={<VendorOrders />} />
         <Route path="orders/all-orders" element={<VendorAllOrders />} />
         <Route path="orders/order-tracking" element={<VendorOrderTracking />} />

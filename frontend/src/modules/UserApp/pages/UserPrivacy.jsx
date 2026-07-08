@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiArrowLeft } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import MobileLayout from '../components/Layout/MobileLayout';
 import PageTransition from '../../../shared/components/PageTransition';
+import { getPublicLegalSettings } from '../../../shared/services/publicSettingsService';
 
 const PrivacyPolicy = () => {
   const navigate = useNavigate();
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPrivacy = async () => {
+      try {
+        const data = await getPublicLegalSettings();
+        setContent(data?.privacyPolicy?.user || 'Privacy Policy not available.');
+      } catch (error) {
+        setContent('Error loading privacy policy.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPrivacy();
+  }, []);
 
   return (
     <PageTransition>
@@ -29,34 +46,15 @@ const PrivacyPolicy = () => {
               Last updated: {new Date().toLocaleDateString()}
             </p>
 
-            <section>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">1. Data Collection</h2>
-              <p>
-                We collect personal information that you provide to us, such as your name, email address, phone number, and payment information when you register, make a purchase, or interact with our platform.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">2. How We Use Your Data</h2>
-              <p>
-                We use your information to provide and improve our services, process transactions, send notifications, and personalize your shopping experience.
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">3. Data Sharing</h2>
-              <p>
-                We do not sell your personal data. We may share information with trusted third-party service providers who assist us in operating our platform, conducting business, or serving you, provided they agree to keep this information confidential.
-              </p>
-            </section>
-            
-            <section>
-              <h2 className="text-lg font-bold text-gray-900 mb-2">4. Your Rights</h2>
-              <p>
-                You have the right to access, update, or delete your personal information. You can manage your account settings from your Profile or contact us for assistance.
-              </p>
-            </section>
-            
+            {loading ? (
+              <div className="flex justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500"></div>
+              </div>
+            ) : (
+              <div className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                {content}
+              </div>
+            )}
           </div>
         </div>
       </MobileLayout>

@@ -26,6 +26,7 @@ import {
   FiTrendingUp,
   FiLayers,
   FiCpu,
+  FiCreditCard,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "../../store/adminStore";
 import adminMenu from "../../config/adminMenu.json";
@@ -41,6 +42,7 @@ const iconMap = {
   Categories: FiGrid,
   Brands: FiTag,
   Customers: FiUsers,
+  Subscriptions: FiCreditCard,
   "Delivery Management": FiTruck,
   "Offers & Sliders": FiImage,
   Banners: FiImage,
@@ -117,6 +119,10 @@ const getChildRoute = (parentRoute, childName) => {
       "Commission Rates": "/admin/vendors/commission-rates",
       "Vendor Analytics": "/admin/vendors/vendor-analytics",
     },
+    "/admin/subscriptions": {
+      "Manage Plans": "/admin/subscriptions",
+      "Add Plan": "/admin/subscriptions/add",
+    },
     "/admin/promotions": {
       "Discounts": "/admin/promotions/discounts",
       "Affiliates": "/admin/promotions/affiliates",
@@ -163,7 +169,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Content & Features": "/admin/settings/content-features",
       "Notifications & SEO": "/admin/settings/notifications-seo",
     },
-    "/admin/legal": {
+    "/admin/policies": {
       "Privacy Policy": "/admin/legal/privacy",
       "Refund Policy": "/admin/legal/refund",
       "Terms & Conditions": "/admin/legal/terms",
