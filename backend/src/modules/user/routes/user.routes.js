@@ -48,6 +48,7 @@ router.get('/auth/delivery-otp', ...customerAuth, authController.getDeliveryOtp)
 router.put('/auth/profile', ...customerAuth, validate(updateProfileSchema), authController.updateProfile);
 router.post('/auth/profile/avatar', ...customerAuth, uploadSingle('avatar'), authController.uploadProfileAvatar);
 router.post('/auth/change-password', ...customerAuth, validate(changePasswordSchema), authController.changePassword);
+router.delete('/auth/profile', ...customerAuth, authController.deleteAccount);
 
 // Address routes (protected)
 router.get('/addresses', ...customerAuth, addressController.getAddresses);

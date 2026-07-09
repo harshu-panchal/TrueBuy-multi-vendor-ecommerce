@@ -92,6 +92,8 @@ const vendorSchema = new mongoose.Schema(
             canBuyWholesale: { type: Boolean, default: true },
             canSellWholesale: { type: Boolean, default: false },
         },
+        isDeleted: { type: Boolean, default: false },
+        deletedAt: { type: Date },
     },
     { timestamps: true }
 );

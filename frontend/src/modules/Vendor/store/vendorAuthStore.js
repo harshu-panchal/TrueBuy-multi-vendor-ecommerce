@@ -134,6 +134,20 @@ export const useVendorAuthStore = create(
         localStorage.removeItem("vendor-refresh-token");
       },
 
+      // Delete Account action
+      deleteAccount: async () => {
+        set({ isLoading: true });
+        try {
+          await api.delete('/vendor/auth/profile');
+          get().logout();
+          set({ isLoading: false });
+          return { success: true };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       setAuth: (vendor, accessToken, refreshToken) => {
         set({
           vendor,

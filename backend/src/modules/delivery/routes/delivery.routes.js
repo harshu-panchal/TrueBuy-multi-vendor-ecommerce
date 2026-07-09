@@ -43,7 +43,7 @@ router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...deliveryAuth, authController.getProfile);
 router.put('/auth/profile', ...deliveryAuth, authController.updateProfile);
 router.patch('/auth/avatar', ...deliveryAuth, uploadDeliveryAvatar, authController.updateAvatar);
-
+router.delete('/auth/profile', ...deliveryAuth, authController.deleteAccount);
 // Orders
 router.get('/orders', ...deliveryAuth, orderController.getAssignedOrders);
 router.get('/orders/dashboard-summary', ...deliveryAuth, orderController.getDashboardSummary);

@@ -353,3 +353,21 @@ export const updateAvatar = asyncHandler(async (req, res) => {
 
     res.status(200).json(new ApiResponse(200, { avatar: deliveryBoy.avatar }, 'Avatar updated successfully.'));
 });
+
+// DELETE /api/delivery/auth/profile
+export const deleteAccount = asyncHandler(async (req, res) => {
+    const deliveryBoy = await DeliveryBoy.findById(req.user.id);
+    if (!deliveryBoy) throw new ApiError(404, 'Delivery account not found.');
+
+    deliveryBoy.isDeleted = true;
+    deliveryBoy.isActive = false;
+    deliveryBoy.status = 'offline';
+    deliveryBoy.isAvailable = false;
+    deliveryBoy.deletedAt = new Date();
+    deliveryBoy.refreshTokenHash = undefined;
+    deliveryBoy.refreshTokenExpiresAt = undefined;
+    
+    await deliveryBoy.save();
+
+    res.status(200).json(new ApiResponse(200, null, 'Delivery account deleted successfully.'));
+});

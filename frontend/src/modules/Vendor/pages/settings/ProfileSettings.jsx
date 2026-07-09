@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { FiSave, FiUser, FiLock, FiShield } from 'react-icons/fi';
+import { FiSave, FiUser, FiLock, FiShield, FiTrash2 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import toast from 'react-hot-toast';
 
 const ProfileSettings = () => {
-  const { vendor, updateProfile, logout } = useVendorAuthStore();
+  const { vendor, updateProfile, logout, deleteAccount } = useVendorAuthStore();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -81,6 +81,17 @@ const ProfileSettings = () => {
       });
     } catch (error) {
       toast.error('Failed to change password');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (window.confirm("Are you sure you want to delete your vendor account? This action cannot be undone.")) {
+      try {
+        await deleteAccount();
+        toast.success('Account deleted successfully');
+      } catch (error) {
+        toast.error(error.message || 'Failed to delete account');
+      }
     }
   };
 
@@ -305,12 +316,19 @@ const ProfileSettings = () => {
                 </ul>
               </div>
 
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={logout}
-                  className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold text-sm sm:text-base"
+                  className="flex-1 px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold text-sm sm:text-base text-center"
                 >
                   Logout
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-2 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-all font-semibold text-sm sm:text-base"
+                >
+                  <FiTrash2 />
+                  Delete Account
                 </button>
               </div>
             </div>

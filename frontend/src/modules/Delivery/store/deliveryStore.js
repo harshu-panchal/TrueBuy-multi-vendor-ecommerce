@@ -258,6 +258,20 @@ export const useDeliveryAuthStore = create(
         localStorage.removeItem('delivery-refresh-token');
       },
 
+      // Delete Account action
+      deleteAccount: async () => {
+        set({ isLoading: true });
+        try {
+          await api.delete('/delivery/auth/profile');
+          get().logout();
+          set({ isLoading: false });
+          return { success: true };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       // Update delivery boy status
       updateStatus: async (status) => {
         const current = get().deliveryBoy;

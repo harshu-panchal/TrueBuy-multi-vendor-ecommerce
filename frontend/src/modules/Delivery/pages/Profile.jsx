@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { useDeliveryAuthStore } from '../store/deliveryStore';
-import { FiUser, FiMail, FiPhone, FiTruck, FiEdit2, FiSave, FiX, FiLogOut, FiCreditCard, FiCamera, FiShield, FiFileText } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiTruck, FiEdit2, FiSave, FiX, FiLogOut, FiCreditCard, FiCamera, FiShield, FiFileText, FiTrash2 } from 'react-icons/fi';
 import PageTransition from '../../../shared/components/PageTransition';
 import toast from 'react-hot-toast';
 import { formatPrice } from '../../../shared/utils/helpers';
@@ -10,7 +10,7 @@ import { SERVER_URL } from '../../../shared/utils/constants';
 
 const DeliveryProfile = () => {
   const navigate = useNavigate();
-  const { deliveryBoy, updateProfile, updateAvatar, fetchProfile, fetchProfileSummary, isLoading, logout } = useDeliveryAuthStore();
+  const { deliveryBoy, updateProfile, updateAvatar, fetchProfile, fetchProfileSummary, isLoading, logout, deleteAccount } = useDeliveryAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const formRef = useRef(null);
@@ -162,6 +162,18 @@ const DeliveryProfile = () => {
     logout();
     toast.success('Logged out successfully');
     navigate('/delivery/login');
+  };
+
+  const handleDeleteAccount = async () => {
+    if (window.confirm("Are you sure you want to delete your delivery account? This action cannot be undone.")) {
+      try {
+        await deleteAccount();
+        toast.success('Account deleted successfully');
+        navigate('/delivery/login');
+      } catch (error) {
+        toast.error(error.message || 'Failed to delete account');
+      }
+    }
   };
 
   const handleAvatarChange = async (e) => {
@@ -539,7 +551,7 @@ const DeliveryProfile = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-white rounded-2xl p-4 shadow-sm"
+          className="bg-white rounded-2xl p-4 shadow-sm space-y-4"
         >
           <button
             onClick={handleLogout}
@@ -548,6 +560,15 @@ const DeliveryProfile = () => {
           >
             <FiLogOut className="text-xl" />
             <span>Logout</span>
+          </button>
+          
+          <button
+            onClick={handleDeleteAccount}
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-red-200 text-red-600 rounded-xl font-semibold hover:bg-red-50 transition-colors"
+          >
+            <FiTrash2 className="text-xl" />
+            <span>Delete Account</span>
           </button>
         </motion.div>
       </div>
