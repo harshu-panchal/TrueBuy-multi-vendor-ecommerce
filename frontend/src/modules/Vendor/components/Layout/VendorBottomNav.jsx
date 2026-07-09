@@ -9,7 +9,7 @@ import {
   FiDollarSign,
 } from "react-icons/fi";
 
-const VendorBottomNav = () => {
+const VendorBottomNav = ({ isHidden }) => {
   const location = useLocation();
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
@@ -79,7 +79,7 @@ const VendorBottomNav = () => {
 
   const navContent = (
     <nav 
-      className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[9999] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] lg:hidden ${isKeyboardOpen ? 'hidden' : ''}`}
+      className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-[9999] shadow-[0_-2px_10px_rgba(0,0,0,0.05)] lg:hidden ${isKeyboardOpen || isHidden ? 'hidden' : ''}`}
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}

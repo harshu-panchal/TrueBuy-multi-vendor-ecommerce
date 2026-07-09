@@ -58,7 +58,7 @@ const VendorLayout = () => {
       </div>
 
       {/* Bottom Navigation - Mobile Only */}
-      <VendorBottomNav />
+      <VendorBottomNav isHidden={sidebarOpen} />
     </div>
   );
 };
