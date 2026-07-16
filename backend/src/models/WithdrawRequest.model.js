@@ -4,7 +4,7 @@ const withdrawRequestSchema = new mongoose.Schema(
     {
         userType: {
             type: String,
-            enum: ['vendor', 'delivery_boy'],
+            enum: ['user', 'vendor', 'delivery_boy'],
             required: true,
             index: true,
         },
@@ -17,7 +17,7 @@ const withdrawRequestSchema = new mongoose.Schema(
         userModel: {
             type: String,
             required: true,
-            enum: ['Vendor', 'DeliveryBoy'],
+            enum: ['User', 'Vendor', 'DeliveryBoy'],
         },
         amount: {
             type: Number,

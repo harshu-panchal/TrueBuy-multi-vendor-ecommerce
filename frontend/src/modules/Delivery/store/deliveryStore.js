@@ -92,7 +92,7 @@ const normalizeOrder = (raw) => {
     rawStatus: backendStatus,
     items: Array.isArray(raw?.items) ? raw.items : [],
     itemCount,
-    distance: raw?.distance || '-',
+    distance: raw?.deliveryDistanceKm ? `${Number(raw.deliveryDistanceKm).toFixed(1)} km` : (raw?.distance || '-'),
     estimatedTime: raw?.estimatedTime || '-',
   };
 };

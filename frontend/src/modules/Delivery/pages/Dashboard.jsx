@@ -342,12 +342,12 @@ const DeliveryDashboard = () => {
           </div>
 
           <div className="space-y-3">
-            {returnRequests.length === 0 ? (
+            {returnRequests.filter(req => req.status !== 'COMPLETED' && req.status !== 'RETURNED').length === 0 ? (
               <div className="text-sm text-gray-500 py-6 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
                 No return pickups assigned.
               </div>
             ) : (
-              returnRequests.map((req, index) => (
+              returnRequests.filter(req => req.status !== 'COMPLETED' && req.status !== 'RETURNED').map((req, index) => (
                 <div 
                   key={req.id}
                   onClick={() => navigate(`/delivery/return-pickup/${req.id}`)}

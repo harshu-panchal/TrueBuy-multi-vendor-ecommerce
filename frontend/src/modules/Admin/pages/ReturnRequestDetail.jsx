@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import StatusBadge from '../../../shared/components/Badge';
@@ -69,6 +69,15 @@ const ReturnRequestDetail = () => {
     replacement_shipped: ['completed'],
     rejected: [],
     completed: [],
+    REQUESTED: ['APPROVED_BY_VENDOR', 'REJECTED_BY_VENDOR'],
+    APPROVED_BY_VENDOR: ['PICKUP_ASSIGNED', 'INSPECTION_PENDING', 'COMPLETED'],
+    PICKUP_ASSIGNED: ['PICKED_UP'],
+    PICKED_UP: ['INSPECTION_PENDING', 'COMPLETED'],
+    INSPECTION_PENDING: ['APPROVED_BY_VENDOR', 'REJECTED_BY_VENDOR'],
+    COMPLETED: [],
+    REJECTED_BY_VENDOR: [],
+    REFUND_INITIATED: ['REFUND_COMPLETED'],
+    REFUND_COMPLETED: [],
   };
 
   useEffect(() => {
@@ -188,6 +197,8 @@ const ReturnRequestDetail = () => {
   const normalizedStatus = String(returnRequest.status || '').toLowerCase();
   const canAssignPickup = normalizedStatus === 'approved' || normalizedStatus === 'approved_by_vendor';
   const allowedNextStatuses = statusTransitions[returnRequest.status] || [];
+  
+  const displayOrderId = typeof returnRequest.orderId === 'object' ? (returnRequest.orderId?.orderId || returnRequest.orderId?._id) : returnRequest.orderId;
   const editableStatusOptions = [returnRequest.status, ...allowedNextStatuses].map((value) => ({
     value,
     label: value.charAt(0).toUpperCase() + value.slice(1),
@@ -250,7 +261,7 @@ const ReturnRequestDetail = () => {
           ) : (
             <>
               <StatusBadge variant={getStatusVariant(returnRequest.status)}>{returnRequest.status}</StatusBadge>
-              {returnRequest.status === 'pending' ? (
+              {(returnRequest.status === 'pending' || returnRequest.status === 'REQUESTED') ? (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg border border-amber-200 text-xs font-bold">
                   <FiClock className="animate-pulse" />
                   WAITING FOR SELLER
@@ -349,10 +360,10 @@ const ReturnRequestDetail = () => {
               Original Order
             </h2>
             <Link
-              to={`/admin/orders/${returnRequest.orderId}`}
+              to={`/admin/orders/${displayOrderId}`}
               className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold text-sm"
             >
-              <span>View Order: {returnRequest.orderId}</span>
+              <span>View Order: {displayOrderId}</span>
               <FiArrowLeft className="rotate-180 text-xs" />
             </Link>
           </div>
@@ -720,7 +731,7 @@ const ReturnRequestDetail = () => {
             <h2 className="text-sm font-bold text-gray-800 mb-3">Quick Actions</h2>
             <div className="space-y-1.5">
               <Link
-                to={`/admin/orders/${returnRequest.orderId}`}
+                to={`/admin/orders/${displayOrderId}`}
                 className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-xs font-semibold"
               >
                 <FiShoppingBag className="text-sm" />

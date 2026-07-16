@@ -8,6 +8,8 @@ import Coupon from '../../../models/Coupon.model.js';
 import Commission from '../../../models/Commission.model.js';
 import ReturnRequest from '../../../models/ReturnRequest.model.js';
 import Admin from '../../../models/Admin.model.js';
+import User from '../../../models/User.model.js';
+import WalletTransaction from '../../../models/WalletTransaction.model.js';
 import { generateOrderId } from '../../../utils/generateOrderId.js';
 import { generateTrackingNumber } from '../../../utils/generateTrackingNumber.js';
 import mongoose from 'mongoose';
@@ -395,14 +397,28 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 }
             }
 
+            // Wallet payment processing
+            let finalPaymentStatus = 'pending';
+            if (normalizedPaymentMethod === 'wallet') {
+                if (!userId) {
+                    throw new ApiError(401, 'You must be logged in to use wallet payment.');
+                }
+                const user = await User.findById(userId).session(session);
+                if (!user || (user.walletBalance || 0) < total) {
+                    throw new ApiError(400, 'Insufficient wallet balance.');
+                }
+                user.walletBalance -= total;
+                await user.save({ session });
+                finalPaymentStatus = 'paid';
+            }
+
             const [createdOrder] = await Order.create([{
                 orderId: generateOrderId(),
                 userId,
                 items: enrichedItems,
                 shippingAddress,
                 paymentMethod: normalizedPaymentMethod,
-                // Keep every new order pending until gateway/webhook confirmation is implemented.
-                paymentStatus: 'pending',
+                paymentStatus: finalPaymentStatus,
                 subtotal,
                 shipping,
                 tax,
@@ -414,6 +430,23 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 idempotencyScope: idempotencyKey ? idempotencyScope : undefined,
             }], { session });
             order = createdOrder;
+
+            // Record wallet transaction if paid by wallet
+            if (normalizedPaymentMethod === 'wallet') {
+                const user = await User.findById(userId).session(session);
+                await WalletTransaction.create(
+                    [{
+                        user: userId,
+                        amount: total,
+                        type: 'debit',
+                        description: `Payment for order ${order.orderId}`,
+                        referenceModel: 'Order',
+                        referenceId: order._id,
+                        balanceAfter: user.walletBalance
+                    }],
+                    { session }
+                );
+            }
 
             // 7. Deduct stock atomically to prevent oversell under concurrent checkout.
             for (const item of enrichedItems) {
@@ -538,9 +571,9 @@ export const placeOrder = asyncHandler(async (req, res) => {
         ? 'Duplicate order request ignored. Returning existing order.'
         : 'Order placed successfully.';
 
-    // Notify vendors for COD orders immediately
-    if (!idempotentReplay && (normalizedPaymentMethod === 'cod' || normalizedPaymentMethod === 'cash')) {
-        // Update order status to processing for COD
+    // Notify vendors for COD/Wallet orders immediately
+    if (!idempotentReplay && (normalizedPaymentMethod === 'cod' || normalizedPaymentMethod === 'cash' || normalizedPaymentMethod === 'wallet')) {
+        // Update order status to processing
         await Order.updateOne({ _id: order._id }, { 
             $set: { 
                 status: 'processing'
@@ -854,6 +887,32 @@ export const cancelOrder = asyncHandler(async (req, res) => {
                 },
                 { session }
             );
+
+            // Refund to wallet if order was paid
+            if (order.paymentStatus === 'paid') {
+                const user = await User.findById(req.user.id).session(session);
+                if (user) {
+                    const amountToRefund = order.total;
+                    user.walletBalance = (user.walletBalance || 0) + amountToRefund;
+                    await user.save({ session });
+
+                    await WalletTransaction.create(
+                        [{
+                            user: user._id,
+                            amount: amountToRefund,
+                            type: 'credit',
+                            description: `Refund for cancelled order ${order.orderId}`,
+                            referenceModel: 'Order',
+                            referenceId: order._id,
+                            balanceAfter: user.walletBalance
+                        }],
+                        { session }
+                    );
+
+                    order.paymentStatus = 'refunded';
+                    await order.save({ session });
+                }
+            }
         });
     } finally {
         await session.endSession();

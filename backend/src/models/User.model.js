@@ -25,6 +25,7 @@ const userSchema = new mongoose.Schema(
         referralCode: { type: String, unique: true, sparse: true, index: true },
         referredBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         referralPoints: { type: Number, default: 0 },
+        walletBalance: { type: Number, default: 0, min: 0 },
         isDeleted: { type: Boolean, default: false },
         deletedAt: { type: Date },
     },

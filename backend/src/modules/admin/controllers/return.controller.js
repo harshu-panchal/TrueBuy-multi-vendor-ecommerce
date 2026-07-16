@@ -6,6 +6,8 @@ import { createNotification } from '../../../services/notification.service.js';
 import { ApiError } from '../../../utils/ApiError.js';
 import { ApiResponse } from '../../../utils/ApiResponse.js';
 import { asyncHandler } from '../../../utils/asyncHandler.js';
+import WalletTransaction from '../../../models/WalletTransaction.model.js';
+import mongoose from 'mongoose';
 
 const enrichReturnItems = (request) => {
     const orderItems = Array.isArray(request?.orderId?.items) ? request.orderId.items : [];
@@ -156,6 +158,51 @@ export const getReturnRequestById = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Assign delivery boy to return request
+ * @route   PATCH /api/admin/return-requests/:id/assign-delivery
+ * @access  Private (Admin)
+ */
+export const assignDelivery = asyncHandler(async (req, res) => {
+    const { deliveryBoyId } = req.body;
+
+    if (!deliveryBoyId) {
+        throw new ApiError(400, 'Delivery boy ID is required');
+    }
+
+    const request = await ReturnRequest.findById(req.params.id);
+    
+    if (!request) {
+        throw new ApiError(404, 'Return request not found');
+    }
+
+    request.assignedDeliveryBoy = deliveryBoyId;
+    if (request.status === 'APPROVED_BY_VENDOR' || request.status === 'REQUESTED' || request.status === 'pending') {
+        request.status = 'PICKUP_ASSIGNED';
+    }
+
+    request.timeline.push({
+        status: request.status,
+        note: 'Assigned to delivery partner for pickup',
+        actorRole: 'admin',
+        actorId: req.user?._id || req.user?.id || null,
+        createdAt: new Date(),
+    });
+
+    await request.save();
+
+    const updatedRequest = await ReturnRequest.findById(req.params.id)
+        .populate('userId', 'name email phone')
+        .populate('orderId', 'orderId total items')
+        .populate('productId', 'name title image price')
+        .populate('vendorId', 'name storeName shopName title email')
+        .populate('assignedDeliveryBoy', 'name email phone');
+
+    res.status(200).json(
+        new ApiResponse(200, normalizeReturnRequest(updatedRequest), 'Delivery boy assigned successfully')
+    );
+});
+
+/**
  * @desc    Update return request status
  * @route   PATCH /api/admin/return-requests/:id/status
  * @access  Private (Admin)
@@ -232,11 +279,43 @@ export const updateReturnRequestStatus = asyncHandler(async (req, res) => {
         }
     }
 
+    const isNewRefund = refundStatus === 'processed' && request.refundStatus !== 'processed';
+
     request.status = nextStatus;
     request.adminNote = nextAdminNote;
     if (refundStatus) request.refundStatus = nextRefundStatus;
 
-    await request.save();
+    if (isNewRefund) {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            await request.save({ session });
+            const user = await User.findById(request.userId).session(session);
+            const rAmount = Number(request.refundAmount || 0);
+            if (user && rAmount > 0) {
+                user.walletBalance = (user.walletBalance || 0) + rAmount;
+                await user.save({ session });
+                
+                await WalletTransaction.create([{
+                    user: user._id,
+                    amount: rAmount,
+                    type: 'credit',
+                    description: `Refund for returned items`,
+                    referenceModel: 'ReturnRequest',
+                    referenceId: request._id,
+                    balanceAfter: user.walletBalance
+                }], { session });
+            }
+            await session.commitTransaction();
+            session.endSession();
+        } catch (err) {
+            await session.abortTransaction();
+            session.endSession();
+            throw err;
+        }
+    } else {
+        await request.save();
+    }
 
     // Return lifecycle side-effects:
     // - On approval, mark linked order as returned (if not terminal).

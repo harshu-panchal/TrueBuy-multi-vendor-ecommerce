@@ -124,6 +124,7 @@ export const login = asyncHandler(async (req, res) => {
 
     const user = await User.findOne({ email: normalizedEmail }).select('+password +deliveryOtp +deliveryOtpGeneratedAt');
     if (!user) throw new ApiError(401, 'Invalid email or password.');
+    if (user.isDeleted) throw new ApiError(401, 'Account deleted. Please contact support.');
     if (!user.isActive) throw new ApiError(403, 'Your account has been deactivated.');
     if (!user.isVerified) {
         await sendOTP(user, 'email_verification');

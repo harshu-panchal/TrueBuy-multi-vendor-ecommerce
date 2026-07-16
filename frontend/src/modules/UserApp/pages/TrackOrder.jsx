@@ -38,19 +38,22 @@ const MobileTrackOrder = () => {
     let mounted = true;
     (async () => {
       setIsResolving(true);
-      if (!order && orderId) {
-        let fetchedOrder = await fetchOrderById(orderId);
+      if (orderId) {
+        let fetchedOrder;
+        if (user?.id) {
+            fetchedOrder = await fetchOrderById(orderId);
+        }
         
-        // If not found in user orders, try public tracking
+        // If not found in user orders or not logged in, try public tracking
         if (!fetchedOrder) {
           fetchedOrder = await fetchPublicTrackingOrder(orderId);
         }
         
         if (mounted && fetchedOrder) {
           setDeliveryOtp(fetchedOrder.deliveryOtp || null);
-        }
-      } else if (order) {
+        } else if (mounted && order) {
           setDeliveryOtp(order.deliveryOtp || null);
+        }
       }
 
       // Always try to fetch return requests for this order
@@ -126,9 +129,9 @@ const MobileTrackOrder = () => {
   const getTrackingSteps = () => {
     const isCancelled = normalizedStatus === 'cancelled';
     const isReturned = normalizedStatus === 'returned';
-    const isProcessingOrLater = ['processing', 'assigned_for_delivery', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
-    const isAssignedOrLater = ['assigned_for_delivery', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
-    const isShippedOrLater = ['shipped', 'delivered', 'returned'].includes(normalizedStatus);
+    const isProcessingOrLater = ['processing', 'assigned_for_delivery', 'partially_delivered', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
+    const isAssignedOrLater = ['assigned_for_delivery', 'partially_delivered', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
+    const isShippedOrLater = ['partially_delivered', 'shipped', 'delivered', 'returned'].includes(normalizedStatus);
     const isDelivered = normalizedStatus === 'delivered';
 
     const steps = [

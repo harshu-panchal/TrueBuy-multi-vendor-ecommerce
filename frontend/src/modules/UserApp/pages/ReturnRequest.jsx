@@ -150,6 +150,33 @@ const ReturnRequest = () => {
     }
     
     setIsSubmitting(true);
+    let uploadedImages = [];
+    if (images.length > 0) {
+      try {
+        const formData = new FormData();
+        images.forEach(img => {
+          if (img.file) {
+            formData.append('images', img.file);
+          }
+        });
+        
+        if (formData.has('images')) {
+          const uploadRes = await api.post('/user/uploads/images', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          const payload = uploadRes.data?.data || uploadRes.data;
+          uploadedImages = payload.map(u => u.url);
+        } else {
+          // If they were already uploaded (e.g. string URLs)
+          uploadedImages = images.map(img => img.preview).filter(u => u && !u.startsWith('data:'));
+        }
+      } catch (err) {
+        toast.error('Failed to upload images');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     const success = await submitReturnRequest({
       orderId,
       productIds: [productId],
@@ -158,7 +185,7 @@ const ReturnRequest = () => {
       vendorId: item.vendorId || item.vendor?._id || 'VEND-DEFAULT', // Ensure vendor ID is captured
       reason: returnReason,
       description: additionalDetails,
-      images: images.map(img => img.preview), // In real app, upload first
+      images: uploadedImages,
       pickupAddress,
       refundMethod,
       bankDetails: refundMethod === 'bank' ? bankDetails : null,

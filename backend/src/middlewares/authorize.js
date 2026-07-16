@@ -33,10 +33,22 @@ export const enforceAccountStatus = async (req, res, next) => {
 
         if (role === 'customer') {
             const user = await User.findById(req.user.id).select('isActive isVerified isDeleted').lean();
-            if (!user) return next(new ApiError(401, 'Account not found.'));
-            if (user.isDeleted) return next(new ApiError(401, 'Account deleted.'));
-            if (!user.isActive) return next(new ApiError(403, 'Account is deactivated. Contact support.'));
-            if (!user.isVerified) return next(new ApiError(403, 'Please verify your email first.'));
+            if (!user) {
+                console.error('[Auth] Customer account not found.', req.user.id);
+                return next(new ApiError(401, 'Account not found.'));
+            }
+            if (user.isDeleted) {
+                console.error('[Auth] Customer account deleted.', req.user.id);
+                return next(new ApiError(401, 'Account deleted.'));
+            }
+            if (!user.isActive) {
+                console.error('[Auth] Customer account deactivated.', req.user.id);
+                return next(new ApiError(403, 'Account is deactivated. Contact support.'));
+            }
+            if (!user.isVerified) {
+                console.error('[Auth] Customer account not verified.', req.user.id);
+                return next(new ApiError(403, 'Please verify your email first.'));
+            }
             return next();
         }
 

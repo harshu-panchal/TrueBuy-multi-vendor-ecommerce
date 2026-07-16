@@ -221,7 +221,7 @@ export const updateReturnRequestStatus = (id, statusOrPayload, adminNote = '') =
 };
 
 export const assignDeliveryToReturn = (id, deliveryBoyId, note = '') => 
-    api.patch(`/admin/returns/${id}/assign`, { deliveryBoyId, note });
+    api.patch(`/admin/return-requests/${id}/assign-delivery`, { deliveryBoyId, note });
 
 export const getAllExchangeRequests = (params = {}) =>
     api.get('/exchange/admin', { params });

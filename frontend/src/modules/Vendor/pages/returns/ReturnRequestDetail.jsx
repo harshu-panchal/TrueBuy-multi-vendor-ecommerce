@@ -44,6 +44,15 @@ const statusTransitions = {
   replacement_shipped: ["completed"],
   rejected: [],
   completed: [],
+  REQUESTED: ["APPROVED_BY_VENDOR", "REJECTED_BY_VENDOR"],
+  APPROVED_BY_VENDOR: ["PICKUP_ASSIGNED", "INSPECTION_PENDING", "COMPLETED"],
+  PICKUP_ASSIGNED: ["PICKED_UP"],
+  PICKED_UP: ["INSPECTION_PENDING", "COMPLETED"],
+  INSPECTION_PENDING: ["APPROVED_BY_VENDOR", "REJECTED_BY_VENDOR"],
+  COMPLETED: [],
+  REJECTED_BY_VENDOR: [],
+  REFUND_INITIATED: ["REFUND_COMPLETED"],
+  REFUND_COMPLETED: [],
 };
 
 const ReturnRequestDetail = () => {
@@ -173,7 +182,8 @@ const ReturnRequestDetail = () => {
   const customerName = customer?.name || "Unknown";
   const customerEmail = customer?.email || "N/A";
   const customerPhone = customer?.phone || "";
-  const orderRef = returnRequest?.orderId || returnRequest?.orderRefId || "N/A";
+  const orderRefRaw = returnRequest?.orderId || returnRequest?.orderRefId || "N/A";
+  const orderRef = typeof orderRefRaw === 'object' ? (orderRefRaw?.orderId || orderRefRaw?._id) : orderRefRaw;
   const requestDateLabel = returnRequest?.requestDate
     ? new Date(returnRequest.requestDate).toLocaleDateString()
     : "N/A";
@@ -268,7 +278,7 @@ const ReturnRequestDetail = () => {
                 <FiEdit className="text-sm" />
                 Edit Status
               </button>
-              {returnRequest.status === "pending" && (
+              {(returnRequest.status === "pending" || returnRequest.status === "REQUESTED") && (
                 <>
                   <button
                     onClick={() => {

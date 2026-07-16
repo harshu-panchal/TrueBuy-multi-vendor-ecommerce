@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiCopy, FiGift, FiShare2, FiFileText, FiShield, FiTrash2 } from 'react-icons/fi';
+import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiCopy, FiGift, FiShare2, FiFileText, FiShield, FiTrash2, FiDollarSign } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -203,6 +203,7 @@ const MobileProfile = () => {
       link: '/notifications',
       badge: unreadNotificationCount > 0 ? unreadNotificationCount : null,
     },
+    { id: 'wallet', label: 'My Wallet', icon: FiDollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50', link: '/wallet' },
     { id: 'referral', label: 'Refer & Earn', icon: FiGift, color: 'text-pink-600', bg: 'bg-pink-50' },
     { id: 'password', label: 'Change Password', icon: FiLock, color: 'text-purple-600', bg: 'bg-purple-50' },
     { id: 'terms', label: 'Terms & Conditions', icon: FiFileText, color: 'text-gray-600', bg: 'bg-gray-100', link: '/support-info' },

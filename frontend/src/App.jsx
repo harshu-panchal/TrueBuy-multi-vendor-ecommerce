@@ -179,6 +179,7 @@ import MobileCampaignSale from "./modules/UserApp/pages/CampaignSale";
 import MobileTrackOrder from "./modules/UserApp/pages/TrackOrder";
 import MobileOrderConfirmation from "./modules/UserApp/pages/OrderConfirmation";
 import MobileReturnRequest from "./modules/UserApp/pages/ReturnRequest";
+import MobileWallet from "./modules/UserApp/pages/Wallet";
 import ComingSoon from "./modules/UserApp/pages/ComingSoon";
 import MobileTermsAndConditions from "./modules/UserApp/pages/UserTerms";
 import MobilePrivacyPolicy from "./modules/UserApp/pages/UserPrivacy";
@@ -463,6 +464,16 @@ const AppRoutes = () => {
           <RouteWrapper>
             <ProtectedRoute>
               <MobileProfile />
+            </ProtectedRoute>
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/wallet"
+        element={
+          <RouteWrapper>
+            <ProtectedRoute>
+              <MobileWallet />
             </ProtectedRoute>
           </RouteWrapper>
         }

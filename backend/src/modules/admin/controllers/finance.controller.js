@@ -4,6 +4,8 @@ import ApiError from '../../../utils/ApiError.js';
 import WithdrawRequest from '../../../models/WithdrawRequest.model.js';
 import Commission from '../../../models/Commission.model.js';
 import Order from '../../../models/Order.model.js';
+import User from '../../../models/User.model.js';
+import WalletTransaction from '../../../models/WalletTransaction.model.js';
 import mongoose from 'mongoose';
 
 // GET /api/admin/finance/withdraw-requests
@@ -56,31 +58,55 @@ export const updateWithdrawRequestStatus = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'Rejection reason is required.');
     }
 
-    request.status = status;
-    if (rejectionReason) request.rejectionReason = rejectionReason;
-    if (transactionId) request.transactionId = transactionId;
-    if (receiptUrl) request.receiptUrl = receiptUrl;
-    if (notes) request.notes = notes;
-    
-    if (status === 'completed') {
-        request.processedAt = new Date();
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+        request.status = status;
+        if (rejectionReason) request.rejectionReason = rejectionReason;
+        if (transactionId) request.transactionId = transactionId;
+        if (receiptUrl) request.receiptUrl = receiptUrl;
+        if (notes) request.notes = notes;
         
-        // If it's a vendor, we might want to mark related commissions as paid.
-        // However, since withdrawal amount might not map 1:1 to orders, 
-        // we usually just track the withdrawal itself.
-        // But if the user wants "Paid Balance" to update, we need logic here.
-        
-        // Logic for Vendor:
-        if (request.userType === 'vendor') {
-            // Find pending commissions for this vendor and mark them as paid 
-            // up to the withdrawn amount? Or just mark all that were included.
-            // For simplicity, we'll just let the withdrawal request stand as the "Paid" record.
+        if (status === 'completed') {
+            request.processedAt = new Date();
+            
+            // Logic for Vendor:
+            if (request.userType === 'vendor') {
+                // Find pending commissions for this vendor and mark them as paid 
+                // up to the withdrawn amount? Or just mark all that were included.
+                // For simplicity, we'll just let the withdrawal request stand as the "Paid" record.
+            }
+        } else if (status === 'rejected' && request.userType === 'user') {
+            // Refund the user's wallet
+            const user = await User.findById(request.userId).session(session);
+            if (user) {
+                user.walletBalance = (user.walletBalance || 0) + request.amount;
+                await user.save({ session });
+                
+                const transaction = new WalletTransaction({
+                    user: user._id,
+                    amount: request.amount,
+                    type: 'credit',
+                    description: `Refund for rejected withdrawal request`,
+                    referenceModel: 'Withdrawal',
+                    referenceId: request._id,
+                    balanceAfter: user.walletBalance
+                });
+                await transaction.save({ session });
+            }
         }
+
+        await request.save({ session });
+        await session.commitTransaction();
+        session.endSession();
+
+        res.status(200).json(new ApiResponse(200, request, `Withdrawal request ${status}.`));
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        throw error;
     }
-
-    await request.save();
-
-    res.status(200).json(new ApiResponse(200, request, `Withdrawal request ${status}.`));
 });
 
 // GET /api/admin/finance/stats

@@ -5,11 +5,13 @@ import * as wishlistController from '../controllers/wishlist.controller.js';
 import * as reviewController from '../controllers/review.controller.js';
 import * as orderController from '../controllers/order.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
+import * as walletController from '../controllers/wallet.controller.js';
+import * as uploadController from '../controllers/upload.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter, otpLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
-import { uploadSingle } from '../../../middlewares/upload.js';
+import { uploadSingle, uploadMultiple } from '../../../middlewares/upload.js';
 import {
     registerSchema,
     loginSchema,
@@ -47,6 +49,7 @@ router.get('/auth/profile', ...customerAuth, authController.getProfile);
 router.get('/auth/delivery-otp', ...customerAuth, authController.getDeliveryOtp);
 router.put('/auth/profile', ...customerAuth, validate(updateProfileSchema), authController.updateProfile);
 router.post('/auth/profile/avatar', ...customerAuth, uploadSingle('avatar'), authController.uploadProfileAvatar);
+router.post('/uploads/images', ...customerAuth, uploadMultiple('images', 5), uploadController.uploadImages);
 router.post('/auth/change-password', ...customerAuth, validate(changePasswordSchema), authController.changePassword);
 router.delete('/auth/profile', ...customerAuth, authController.deleteAccount);
 
@@ -78,6 +81,10 @@ router.patch('/orders/:id/cancel', ...customerAuth, orderController.cancelOrder)
 router.post('/orders/:id/returns', ...customerAuth, validate(createReturnRequestSchema), orderController.createReturnRequest);
 router.get('/returns', ...customerAuth, orderController.getUserReturnRequests);
 router.get('/returns/:id', ...customerAuth, orderController.getUserReturnRequestById);
+
+// Wallet routes (protected)
+router.get('/wallet', ...customerAuth, walletController.getWalletBalanceAndHistory);
+router.post('/wallet/withdraw', ...customerAuth, walletController.requestWithdrawal);
 
 // Notification routes (protected)
 router.get('/notifications', ...customerAuth, notificationController.getUserNotifications);

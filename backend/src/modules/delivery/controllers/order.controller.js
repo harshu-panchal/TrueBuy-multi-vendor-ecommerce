@@ -11,6 +11,7 @@ import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
 import { completeExchangeAfterDelivery } from '../../exchange/services/exchange.service.js';
 import { calculateDistanceKm } from '../../../utils/distance.js';
+import { syncOrderStatusFromSubOrders } from '../../user/services/orderStatusAggregator.service.js';
 
 const DELIVERY_OTP_TTL_MS = 10 * 60 * 1000;
 const DELIVERY_OTP_MAX_ATTEMPTS = 5;
@@ -443,10 +444,20 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
             }
         }
         
-        const plat = order.pickupAddress?.lat;
-        const plng = order.pickupAddress?.lng;
-        const dlat = order.dropoffAddress?.lat;
-        const dlng = order.dropoffAddress?.lng;
+        let plat = order.pickupAddress?.lat;
+        let plng = order.pickupAddress?.lng;
+        if (!plat || !plng) {
+            const vendorDoc = await mongoose.model('Vendor').findById(order.vendorId);
+            plat = vendorDoc?.address?.lat;
+            plng = vendorDoc?.address?.lng;
+        }
+
+        let dlat = order.dropoffAddress?.lat;
+        let dlng = order.dropoffAddress?.lng;
+        if (!dlat || !dlng) {
+            dlat = order.parentOrderId?.shippingAddress?.lat;
+            dlng = order.parentOrderId?.shippingAddress?.lng;
+        }
         
         const distanceKmFromBody = Number(req.body.distanceKm);
         const distance = !isNaN(distanceKmFromBody) && distanceKmFromBody > 0 
@@ -457,6 +468,9 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
         order.deliveryEarnings = baseFee + (distance * perKmFee);
     }
     await order.save();
+    
+    // Sync main order status
+    await syncOrderStatusFromSubOrders(order.parentOrderId);
 
     if (status === 'delivered' && String(order.sourceType || '') === 'exchange_replacement') {
         await completeExchangeAfterDelivery({

@@ -179,6 +179,7 @@ router.get('/finance/stats', ...adminAuth, financeController.getFinanceStats);
 router.get('/return-requests', ...adminAuth, returnController.getAllReturnRequests);
 router.get('/return-requests/:id', ...adminAuth, returnController.getReturnRequestById);
 router.patch('/return-requests/:id/status', ...adminAuth, returnController.updateReturnRequestStatus);
+router.patch('/return-requests/:id/assign-delivery', ...adminAuth, returnController.assignDelivery);
 
 // ─── Support Tickets ──────────────────────────────────────────────────────────
 router.get('/support/tickets', ...adminAuth, supportController.getAllTickets);

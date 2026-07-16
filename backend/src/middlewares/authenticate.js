@@ -9,6 +9,7 @@ import asyncHandler from '../utils/asyncHandler.js';
 export const authenticate = asyncHandler(async (req, res, next) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.error('[Auth] Authentication required. No token provided.', req.path);
         throw new ApiError(401, 'Authentication required. No token provided.');
     }
 
@@ -18,6 +19,7 @@ export const authenticate = asyncHandler(async (req, res, next) => {
         req.user = decoded; // { id, role, email }
         next();
     } catch (err) {
+        console.error('[Auth] Invalid or expired token.', err.message, req.path);
         throw new ApiError(401, 'Invalid or expired token.');
     }
 });

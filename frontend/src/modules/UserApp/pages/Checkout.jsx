@@ -17,6 +17,7 @@ import { useCartStore } from "../../../shared/store/useStore";
 import { useAuthStore } from "../../../shared/store/authStore";
 import { useAddressStore } from "../../../shared/store/addressStore";
 import { useOrderStore } from "../../../shared/store/orderStore";
+import { useWalletStore } from "../../../shared/store/useWalletStore";
 import { formatPrice } from "../../../shared/utils/helpers";
 import api from "../../../shared/utils/api";
 import toast from "react-hot-toast";
@@ -323,11 +324,14 @@ const MobileCheckout = () => {
       document.body.appendChild(script);
     });
 
+  const { balance: walletBalance, fetchWallet } = useWalletStore();
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchAddresses().catch(() => null);
+      fetchWallet().catch(() => null);
     }
-  }, [isAuthenticated, fetchAddresses]);
+  }, [isAuthenticated, fetchAddresses, fetchWallet]);
 
   useEffect(() => {
     let cancelled = false;
@@ -976,26 +980,38 @@ const MobileCheckout = () => {
                       Payment Method
                     </h2>
                     <div className="space-y-3 mb-6">
-                      {["online", "cod"].map((method) => (
-                        <label
-                          key={method}
-                          className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all ${formData.paymentMethod === method
-                            ? "border-primary-500 bg-primary-50"
-                            : "border-gray-200"
+                      {["online", "cod", "wallet"].map((method) => {
+                        const isWalletDisabled = method === 'wallet' && walletBalance < total;
+                        return (
+                          <label
+                            key={method}
+                            className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                              isWalletDisabled ? "opacity-50 cursor-not-allowed bg-gray-50 border-gray-200" :
+                              formData.paymentMethod === method ? "border-primary-500 bg-primary-50 cursor-pointer" : "border-gray-200 cursor-pointer"
                             }`}>
-                          <input
-                            type="radio"
-                            name="paymentMethod"
-                            value={method}
-                            checked={formData.paymentMethod === method}
-                            onChange={handleInputChange}
-                            className="w-5 h-5 text-primary-500"
-                          />
-                          <span className="font-semibold text-gray-800 capitalize text-base">
-                            {method === "online" ? "Online Payment" : "Cash On Delivery"}
-                          </span>
-                        </label>
-                      ))}
+                            <input
+                              type="radio"
+                              name="paymentMethod"
+                              value={method}
+                              checked={formData.paymentMethod === method}
+                              onChange={handleInputChange}
+                              disabled={isWalletDisabled}
+                              className="w-5 h-5 text-primary-500"
+                            />
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-gray-800 capitalize text-base">
+                                {method === "online" ? "Online Payment" : method === "cod" ? "Cash On Delivery" : "Wallet Balance"}
+                              </span>
+                              {method === "wallet" && (
+                                <span className="text-xs text-gray-500">
+                                  Available: {formatPrice(walletBalance)}
+                                  {isWalletDisabled && <span className="text-red-500 ml-1">(Insufficient)</span>}
+                                </span>
+                              )}
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
 
                     {/* Shipping Options */}

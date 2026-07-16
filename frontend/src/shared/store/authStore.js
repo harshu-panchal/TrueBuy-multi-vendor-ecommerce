@@ -27,6 +27,9 @@ export const useAuthStore = create(
             throw new Error('Invalid login response from server.');
           }
 
+          localStorage.setItem('token', accessToken);
+          localStorage.setItem('refresh-token', refreshToken);
+
           set({
             user,
             token: accessToken,
@@ -35,9 +38,6 @@ export const useAuthStore = create(
             pendingEmail: null,
             isLoading: false,
           });
-
-          localStorage.setItem('token', accessToken);
-          localStorage.setItem('refresh-token', refreshToken);
 
           return { success: true, user };
         } catch (error) {
@@ -108,6 +108,9 @@ export const useAuthStore = create(
             throw new Error('Invalid OTP verification response from server.');
           }
 
+          localStorage.setItem('token', accessToken);
+          localStorage.setItem('refresh-token', refreshToken);
+
           set({
             user,
             token: accessToken,
@@ -116,9 +119,6 @@ export const useAuthStore = create(
             pendingEmail: null,
             isLoading: false,
           });
-
-          localStorage.setItem('token', accessToken);
-          localStorage.setItem('refresh-token', refreshToken);
           return { success: true, user };
         } catch (error) {
           set({ isLoading: false });
