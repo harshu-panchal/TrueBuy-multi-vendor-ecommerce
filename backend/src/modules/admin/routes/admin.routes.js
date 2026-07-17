@@ -257,10 +257,10 @@ router.get('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'par
 router.put('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'params'), validate(policyUpdateSchema), systemController.updatePolicy);
 
 // ——— Subscriptions ——————————————————————————————————————————————————————
-router.post('/subscription-plans', ...adminAuth, validate(createSubscriptionPlanSchema), subscriptionController.createPlan);
-router.get('/subscription-plans', ...adminAuth, subscriptionController.getAllPlans);
-router.get('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.getPlanById);
-router.put('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), validate(updateSubscriptionPlanSchema), subscriptionController.updatePlan);
-router.delete('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.deletePlan);
+// router.post('/subscription-plans', ...adminAuth, validate(createSubscriptionPlanSchema), subscriptionController.createPlan);
+// router.get('/subscription-plans', ...adminAuth, subscriptionController.getAllPlans);
+// router.get('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.getPlanById);
+// router.put('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), validate(updateSubscriptionPlanSchema), subscriptionController.updatePlan);
+// router.delete('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.deletePlan);
 
 export default router;

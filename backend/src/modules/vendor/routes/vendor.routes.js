@@ -138,9 +138,9 @@ router.post('/uploads/image', ...vendorAuth, uploadSingle('image'), uploadContro
 router.post('/uploads/images', ...vendorAuth, uploadMultiple('images', 8), uploadController.uploadImages);
 
 // Subscriptions
-router.get('/subscription-plans', ...vendorAuth, subscriptionController.getAvailablePlans);
-router.post('/subscription/purchase', ...vendorAuth, validate(purchaseSubscriptionSchema), subscriptionController.purchasePlan);
-router.get('/subscriptions', ...vendorAuth, subscriptionController.getMySubscriptions);
-router.get('/subscription/usage', ...vendorAuth, subscriptionController.getSubscriptionUsage);
+// router.get('/subscription-plans', ...vendorAuth, subscriptionController.getAvailablePlans);
+// router.post('/subscription/purchase', ...vendorAuth, validate(purchaseSubscriptionSchema), subscriptionController.purchasePlan);
+// router.get('/subscriptions', ...vendorAuth, subscriptionController.getMySubscriptions);
+// router.get('/subscription/usage', ...vendorAuth, subscriptionController.getSubscriptionUsage);
 
 export default router;

@@ -238,7 +238,7 @@ const PaymentShippingSettings = () => {
                       options={[
                         { value: 'stripe', label: 'Stripe' },
                         { value: 'paypal', label: 'PayPal' },
-                        { value: 'razorpay', label: 'Razorpay' },
+                        // { value: 'razorpay', label: 'Razorpay' },
                       ]}
                     />
                   </div>

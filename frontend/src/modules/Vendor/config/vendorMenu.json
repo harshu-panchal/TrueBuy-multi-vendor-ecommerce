@@ -13,13 +13,7 @@
                          "Manage Products",
                          "Add Product"
                      ]
-    },
-    {
-        "title":  "Subscriptions",
-        "route":  "/vendor/subscriptions",
-        "children":  [
 
-                     ]
     },
     {
         "title":  "Orders",

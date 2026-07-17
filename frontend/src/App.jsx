@@ -588,8 +588,8 @@ const AppRoutes = () => {
         <Route path="vendors/:id" element={<VendorDetail />} />
         
         {/* Subscriptions */}
-        <Route path="subscriptions" element={<AdminSubscriptions />} />
-        <Route path="subscriptions/add" element={<AdminSubscriptions />} />
+        {/* <Route path="subscriptions" element={<AdminSubscriptions />} /> */}
+        {/* <Route path="subscriptions/add" element={<AdminSubscriptions />} /> */}
 
         {/* Promotions */}
         <Route path="promotions" element={<Navigate to="discounts" replace />} />
@@ -713,14 +713,14 @@ const AppRoutes = () => {
       <Route path="/vendor/support-info" element={<VendorTerms />} />
       <Route path="/vendor/privacy" element={<VendorPrivacy />} />
       
-      <Route
+      {/* <Route
         path="/vendor/onboarding/subscription"
         element={
           <VendorProtectedRoute>
             <OnboardingSubscription />
           </VendorProtectedRoute>
         }
-      />
+      /> */}
       
       <Route
         path="/vendor/pending-approval"
@@ -746,7 +746,7 @@ const AppRoutes = () => {
         />
         <Route path="products/add-product" element={<VendorAddProduct />} />
         <Route path="products/:id" element={<VendorProductForm />} />
-        <Route path="subscriptions" element={<VendorSubscriptions />} />
+        {/* <Route path="subscriptions" element={<VendorSubscriptions />} /> */}
         <Route path="orders" element={<VendorOrders />} />
         <Route path="orders/all-orders" element={<VendorAllOrders />} />
         <Route path="orders/order-tracking" element={<VendorOrderTracking />} />

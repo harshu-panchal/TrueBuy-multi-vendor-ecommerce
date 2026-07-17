@@ -100,14 +100,7 @@
       "Vendor Analytics"
     ]
   },
-  {
-    "title": "Subscriptions",
-    "route": "/admin/subscriptions",
-    "children": [
-      "Manage Plans",
-      "Add Plan"
-    ]
-  },
+
   {
     "title": "Promotions",
     "route": "/admin/promotions",

@@ -85,7 +85,7 @@ const sanitizeAutofillFormData = (value) => {
     zipCode: safeText(source.zipCode),
     state: safeText(source.state),
     country: safeText(source.country),
-    paymentMethod: safeText(source.paymentMethod || "online") || "online",
+    paymentMethod: safeText(source.paymentMethod || "cod") || "cod",
   };
 };
 
@@ -188,7 +188,7 @@ const MobileCheckout = () => {
     country: "",
     lat: null,
     lng: null,
-    paymentMethod: "online",
+    paymentMethod: "cod",
   });
 
   const [errors, setErrors] = useState({});
@@ -980,7 +980,7 @@ const MobileCheckout = () => {
                       Payment Method
                     </h2>
                     <div className="space-y-3 mb-6">
-                      {["online", "cod", "wallet"].map((method) => {
+                      {["cod", "wallet"].map((method) => { /* temporarily removed "online" */
                         const isWalletDisabled = method === 'wallet' && walletBalance < total;
                         return (
                           <label

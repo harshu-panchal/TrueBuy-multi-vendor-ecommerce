@@ -4,6 +4,9 @@ import VendorSubscription from '../models/VendorSubscription.model.js';
 import Product from '../models/Product.model.js';
 
 export const checkVendorProductLimit = asyncHandler(async (req, res, next) => {
+    // TEMPORARILY BYPASS SUBSCRIPTION LIMITS FOR IOS REVIEW
+    return next();
+
     const vendorId = req.user.id;
 
     // 1. Find all active subscriptions that haven't expired
