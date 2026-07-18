@@ -11,8 +11,9 @@ export const useVendorSubscriptionStore = create((set, get) => ({
   fetchAvailablePlans: async () => {
     set({ isLoading: true });
     try {
-      const response = await api.get("/vendor/subscription-plans");
-      set({ availablePlans: response.data });
+      // const response = await api.get("/vendor/subscription-plans");
+      // set({ availablePlans: response.data });
+      set({ availablePlans: [] });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to fetch plans");
     } finally {
@@ -23,8 +24,9 @@ export const useVendorSubscriptionStore = create((set, get) => ({
   fetchMySubscriptions: async () => {
     set({ isLoading: true });
     try {
-      const response = await api.get("/vendor/subscriptions");
-      set({ mySubscriptions: response.data });
+      // const response = await api.get("/vendor/subscriptions");
+      // set({ mySubscriptions: response.data });
+      set({ mySubscriptions: [] });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to fetch subscriptions");
     } finally {
@@ -34,8 +36,9 @@ export const useVendorSubscriptionStore = create((set, get) => ({
 
   fetchUsage: async () => {
     try {
-      const response = await api.get("/vendor/subscription/usage");
-      set({ usage: response.data });
+      // const response = await api.get("/vendor/subscription/usage");
+      // set({ usage: response.data });
+      set({ usage: null });
     } catch (error) {
       console.error("Failed to fetch subscription usage", error);
     }
@@ -44,7 +47,7 @@ export const useVendorSubscriptionStore = create((set, get) => ({
   purchasePlan: async (planId, paymentId) => {
     set({ isLoading: true });
     try {
-      await api.post("/vendor/subscription/purchase", { planId, paymentId });
+      // await api.post("/vendor/subscription/purchase", { planId, paymentId });
       toast.success("Subscription purchased successfully");
       await get().fetchMySubscriptions();
       await get().fetchUsage();

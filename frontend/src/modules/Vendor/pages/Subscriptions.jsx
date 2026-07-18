@@ -12,14 +12,12 @@ const Subscriptions = () => {
     isLoading,
     fetchAvailablePlans,
     fetchMySubscriptions,
-    fetchUsage,
     purchasePlan,
   } = useVendorSubscriptionStore();
 
   useEffect(() => {
     fetchAvailablePlans();
     fetchMySubscriptions();
-    fetchUsage();
   }, []);
 
   const handlePurchase = async (planId) => {

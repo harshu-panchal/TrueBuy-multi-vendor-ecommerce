@@ -21,7 +21,6 @@ const VendorDashboard = () => {
   const { vendor } = useVendorAuthStore();
   const { products, total: totalProductsCount, fetchProducts } = useVendorProductStore();
   const { returnRequests, fetchReturnRequests } = useReturnStore();
-  const { usage, fetchUsage } = useVendorSubscriptionStore();
 
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -84,8 +83,7 @@ const VendorDashboard = () => {
 
     loadDashboardData();
     fetchReturnRequests();
-    fetchUsage();
-  }, [vendorId, fetchProducts, products.length, fetchReturnRequests, fetchUsage]);
+  }, [vendorId, fetchProducts, products.length, fetchReturnRequests]);
 
   // Sync product counts whenever the product store updates
   useEffect(() => {
@@ -177,31 +175,6 @@ const VendorDashboard = () => {
             </p>
           </div>
           <FiArrowRight className="text-indigo-400" />
-        </motion.div>
-      )}
-
-      {/* Subscription Limit Banner */}
-      {usage && usage.remainingProducts <= 5 && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          onClick={() => navigate('/vendor/subscriptions')}
-          className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-center gap-4 cursor-pointer hover:shadow-sm transition-all shadow-orange-100/20"
-        >
-          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-orange-600 shadow-sm flex-shrink-0">
-            <FiCreditCard size={24} />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="bg-orange-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Product Limit Alert</span>
-              <p className="text-orange-900 font-bold text-sm">Low Product Limit Remaining</p>
-            </div>
-            <p className="text-orange-700/80 text-xs mt-0.5">
-              You only have <span className="font-bold underline">{usage.remainingProducts}</span> products remaining. 
-              Purchase a new subscription plan to add more products.
-            </p>
-          </div>
-          <FiArrowRight className="text-orange-400" />
         </motion.div>
       )}
 
