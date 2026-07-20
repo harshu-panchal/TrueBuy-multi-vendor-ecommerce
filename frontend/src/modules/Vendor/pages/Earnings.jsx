@@ -181,7 +181,7 @@ const Earnings = () => {
         </div>
         <button
           onClick={handleOpenWithdrawModal}
-          className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-200 font-medium group">
+          className="flex items-center gap-2 bg-black text-white px-6 py-2.5 rounded-xl hover:bg-gray-900 transition-all shadow-lg shadow-gray-200 font-medium group">
           <FiDollarSign className="group-hover:scale-110 transition-transform" />
           <span>Request Payout</span>
         </button>
