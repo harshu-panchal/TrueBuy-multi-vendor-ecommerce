@@ -504,8 +504,8 @@ const Earnings = () => {
                  </div>
               </div>
               
-              <form onSubmit={handleWithdrawRequest} className="flex flex-col overflow-hidden max-h-full">
-                <div className="p-5 sm:p-8 space-y-4 sm:space-y-6 overflow-y-auto flex-1">
+              <form onSubmit={handleWithdrawRequest} className="flex flex-col flex-1 min-h-0 w-full">
+                <div className="p-5 sm:p-8 space-y-4 sm:space-y-6 overflow-y-auto flex-1 min-h-0 custom-scrollbar">
                   <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between">
                      <span className="text-sm text-purple-700 font-medium">Available Balance</span>
                      <span className="text-lg sm:text-xl font-bold text-purple-900">{formatPrice(financeSummary?.withdrawableBalance || 0)}</span>
