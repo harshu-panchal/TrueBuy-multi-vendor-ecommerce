@@ -132,6 +132,11 @@ const PaymentSettings = () => {
         paypalEmail: formData.paypalEmail,
         paymentMethods: formData.paymentMethods,
       });
+      
+      // Refresh vendor profile in store to fetch the newly saved bank details
+      const { fetchProfile } = useVendorAuthStore.getState();
+      await fetchProfile();
+      
       toast.success('Payment settings saved successfully');
     } catch {
       // api.js shows toast

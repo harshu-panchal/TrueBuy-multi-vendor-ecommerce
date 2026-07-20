@@ -69,8 +69,12 @@ const getChildRoute = (parentRoute, childName) => {
       "Order Tracking": "/admin/orders/order-tracking",
     },
     "/admin/catalog": {
+      Categories: "/admin/categories",
+      "Manage Products": "/admin/products/manage-products",
+      "Product Reviews": "/admin/reviews",
       Manufacturers: "/admin/catalog/manufacturers",
       "Product Tags": "/admin/catalog/product-tags",
+      "Low Stock Report": "/admin/reports/inventory-report",
       "Recycle Bin": "/admin/catalog/recycle-bin",
       Stores: "/admin/catalog/stores",
       "Product Attributes": "/admin/catalog/product-attributes",
@@ -78,8 +82,10 @@ const getChildRoute = (parentRoute, childName) => {
       "Checkout Attributes": "/admin/catalog/checkout-attributes",
     },
     "/admin/sales": {
+      Orders: "/admin/orders",
       Shipments: "/admin/sales/shipments",
       "Recurring Payments": "/admin/sales/recurring-payments",
+      "Return Requests": "/admin/return-requests",
       "Gift Cards": "/admin/sales/gift-cards",
       "Current Shopping Carts": "/admin/sales/shopping-carts",
       "Current Wishlists": "/admin/sales/wishlists",
@@ -99,14 +105,12 @@ const getChildRoute = (parentRoute, childName) => {
       "Manage Brands": "/admin/brands/manage-brands",
     },
     "/admin/customers": {
-      "View Customers": "/admin/customers/view-customers",
-      Addresses: "/admin/customers/addresses",
-      Transactions: "/admin/customers/transactions",
-      Roles: "/admin/customers/roles",
-      "Online Customers": "/admin/customers/online-customers",
-      "Customer Reports": "/admin/customers/reports",
+      Customers: "/admin/customers/view-customers",
+      "Customer roles": "/admin/customers/roles",
+      "Online customers": "/admin/customers/online-customers",
+      "Customer reports": "/admin/customers/reports",
+      "External authentication methods": "/admin/customers/external-auth",
       "Activity Log": "/admin/customers/activity-log",
-      "External Authentication Methods": "/admin/customers/external-auth",
     },
     "/admin/delivery": {
       "Delivery Boys": "/admin/delivery/delivery-boys",
@@ -392,6 +396,16 @@ const AdminSidebar = ({ isOpen, onClose }) => {
               className="overflow-hidden">
               <div className="ml-4 mt-1 pl-4 border-l-2 border-slate-600 space-y-1">
                 {item.children.map((child, index) => {
+                  if (child === "ATTRIBUTES") {
+                    return (
+                      <div key={index} className="px-3 pt-3 pb-1 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        {child}
+                      </div>
+                    );
+                  }
+                  if (child === "DIVIDER") {
+                    return <div key={`div-${index}`} className="my-2 mx-3 border-b border-slate-700/50"></div>;
+                  }
                   const childRoute = getChildRoute(item.route, child);
                   const isChildActive =
                     location.pathname === childRoute ||

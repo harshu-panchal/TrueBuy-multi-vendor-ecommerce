@@ -74,7 +74,7 @@ export const createWithdrawRequest = asyncHandler(async (req, res) => {
     }
 
     // 2. Get bank details from Vendor model
-    const vendor = await Vendor.findById(vendorId).select('+bankDetails');
+    const vendor = await Vendor.findById(vendorId).select('+bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
     if (!vendor.bankDetails || !vendor.bankDetails.accountNumber) {
         throw new ApiError(400, 'Please update your bank details before requesting a withdrawal.');
     }

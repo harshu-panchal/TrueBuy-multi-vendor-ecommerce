@@ -301,7 +301,7 @@ export const logout = asyncHandler(async (req, res) => {
 
 // GET /api/vendor/auth/profile
 export const getProfile = asyncHandler(async (req, res) => {
-    const vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry');
+    const vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     res.status(200).json(new ApiResponse(200, vendor, 'Profile fetched.'));
 });
@@ -351,7 +351,7 @@ export const updateBankDetails = asyncHandler(async (req, res) => {
         req.user.id,
         { $set: updates },
         { new: true, runValidators: true }
-    ).select('-password -otp -otpExpiry');
+    ).select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
 
     res.status(200).json(new ApiResponse(200, vendor, 'Bank details updated.'));
 });

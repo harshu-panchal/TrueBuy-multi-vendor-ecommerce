@@ -4,22 +4,20 @@
     "route": "/admin/dashboard",
     "children": []
   },
-  {
-    "title": "Orders",
-    "route": "/admin/orders",
-    "children": [
-      "All Orders",
-      "Order Tracking"
-    ]
-  },
+
   {
     "title": "Catalog",
     "route": "/admin/catalog",
     "children": [
+      "Categories",
+      "Manage Products",
+      "Product Reviews",
       "Manufacturers",
       "Product Tags",
+      "Low Stock Report",
       "Recycle Bin",
       "Stores",
+      "ATTRIBUTES",
       "Product Attributes",
       "Specification Attributes",
       "Checkout Attributes"
@@ -29,37 +27,29 @@
     "title": "Sales",
     "route": "/admin/sales",
     "children": [
+      "Orders",
       "Shipments",
       "Recurring Payments",
+      "Return Requests",
       "Gift Cards",
+      "DIVIDER",
       "Current Shopping Carts",
       "Current Wishlists",
+      "DIVIDER",
       "Bestsellers",
       "Products Never Purchased"
     ]
   },
-  {
-    "title": "Return Requests",
-    "route": "/admin/return-requests",
-    "children": []
-  },
+
   {
     "title": "Products",
     "route": "/admin/products",
     "children": [
-      "Manage Products",
       "Tax & Pricing",
       "Product Ratings"
     ]
   },
-  {
-    "title": "Categories",
-    "route": "/admin/categories",
-    "children": [
-      "Manage Categories",
-      "Category Order"
-    ]
-  },
+
   {
     "title": "Brands",
     "route": "/admin/brands",
@@ -71,14 +61,13 @@
     "title": "Customers",
     "route": "/admin/customers",
     "children": [
-      "View Customers",
-      "Addresses",
-      "Transactions",
-      "Roles",
-      "Online Customers",
-      "Customer Reports",
-      "Activity Log",
-      "External Authentication Methods"
+      "Customers",
+      "Customer roles",
+      "Online customers",
+      "Customer reports",
+      "External authentication methods",
+      "DIVIDER",
+      "Activity Log"
     ]
   },
   {
