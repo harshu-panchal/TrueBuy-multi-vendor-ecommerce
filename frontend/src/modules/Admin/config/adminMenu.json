@@ -172,15 +172,18 @@
     "title": "Configuration",
     "route": "/admin/configuration",
     "children": [
-      "Plans",
-      "UpLevel ID",
+      "Plan",
+      "Set Uplevel",
+      "Settings",
       "Regional Settings",
+      "Payment methods",
       "Lists",
-      "Payment Methods",
       "Email Accounts",
       "Activity Types",
+      "DIVIDER",
       "Import",
       "Export",
+      "DIVIDER",
       "Themes"
     ]
   },

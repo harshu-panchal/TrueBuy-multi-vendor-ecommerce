@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   FiDollarSign,
@@ -140,6 +141,14 @@ const Earnings = () => {
     }
   };
 
+  const handleOpenWithdrawModal = () => {
+    if (!financeSummary?.withdrawableBalance || financeSummary.withdrawableBalance <= 0) {
+      toast.error("You have no available balance to withdraw.");
+      return;
+    }
+    setIsWithdrawModalOpen(true);
+  };
+
   if (!vendorId) {
     return (
       <div className="text-center py-12">
@@ -171,7 +180,7 @@ const Earnings = () => {
           </p>
         </div>
         <button
-          onClick={() => setIsWithdrawModalOpen(true)}
+          onClick={handleOpenWithdrawModal}
           className="flex items-center gap-2 bg-purple-600 text-white px-6 py-2.5 rounded-xl hover:bg-purple-700 transition-all shadow-lg shadow-purple-200 font-medium group">
           <FiDollarSign className="group-hover:scale-110 transition-transform" />
           <span>Request Payout</span>
@@ -225,7 +234,7 @@ const Earnings = () => {
                     <FiDollarSign className="text-xl" />
                   </div>
                   <button 
-                    onClick={() => setIsWithdrawModalOpen(true)}
+                    onClick={handleOpenWithdrawModal}
                     className="text-xs bg-purple-600 text-white px-2 py-1 rounded-md hover:bg-purple-700 transition-colors">
                     Withdraw
                   </button>
@@ -398,7 +407,7 @@ const Earnings = () => {
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-bold text-gray-800">Withdrawal Requests</h2>
                     <button 
-                      onClick={() => setIsWithdrawModalOpen(true)}
+                      onClick={handleOpenWithdrawModal}
                       className="flex items-center gap-2 text-purple-600 hover:text-purple-700 font-bold text-sm bg-purple-50 px-4 py-2 rounded-lg transition-all">
                       <FiPlus /> New Request
                     </button>
@@ -469,9 +478,10 @@ const Earnings = () => {
       </div>
 
       {/* Withdrawal Request Modal */}
-      <AnimatePresence>
-        {isWithdrawModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {createPortal(
+        <AnimatePresence>
+          {isWithdrawModalOpen && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -483,22 +493,22 @@ const Earnings = () => {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-              <div className="bg-purple-600 p-8 text-white relative">
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+              <div className="bg-purple-600 p-6 sm:p-8 text-white relative flex-shrink-0">
                  <div className="relative z-10">
-                    <h2 className="text-2xl font-bold mb-2">Request Payout</h2>
+                    <h2 className="text-xl sm:text-2xl font-bold mb-2">Request Payout</h2>
                     <p className="text-purple-100 text-sm">Enter the amount you want to withdraw to your bank account.</p>
                  </div>
-                 <div className="absolute right-0 top-0 p-8 opacity-10">
-                    <FiDollarSign size={100} />
+                 <div className="absolute right-0 top-0 p-8 opacity-10 hidden sm:block">
+                    <FiDollarSign size={80} />
                  </div>
               </div>
               
-              <form onSubmit={handleWithdrawRequest} className="p-8 space-y-6">
-                <div className="space-y-4">
+              <form onSubmit={handleWithdrawRequest} className="flex flex-col overflow-hidden max-h-full">
+                <div className="p-5 sm:p-8 space-y-4 sm:space-y-6 overflow-y-auto flex-1">
                   <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between">
                      <span className="text-sm text-purple-700 font-medium">Available Balance</span>
-                     <span className="text-xl font-bold text-purple-900">{formatPrice(financeSummary?.withdrawableBalance || 0)}</span>
+                     <span className="text-lg sm:text-xl font-bold text-purple-900">{formatPrice(financeSummary?.withdrawableBalance || 0)}</span>
                   </div>
 
                   <div>
@@ -510,11 +520,20 @@ const Earnings = () => {
                         value={withdrawAmount}
                         onChange={(e) => setWithdrawAmount(e.target.value)}
                         placeholder="0.00"
-                        className="w-full pl-8 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all font-bold text-xl"
+                        className={`w-full pl-8 pr-4 py-3 sm:py-4 bg-gray-50 border rounded-2xl focus:ring-2 focus:border-transparent outline-none transition-all font-bold text-lg sm:text-xl ${
+                          Number(withdrawAmount) > (financeSummary?.withdrawableBalance || 0)
+                            ? 'border-red-500 focus:ring-red-500 text-red-600'
+                            : 'border-gray-200 focus:ring-purple-500 text-gray-800'
+                        }`}
                         required
                         max={financeSummary?.withdrawableBalance}
                       />
                     </div>
+                    {Number(withdrawAmount) > (financeSummary?.withdrawableBalance || 0) && (
+                      <p className="text-red-500 text-xs mt-2 font-medium flex items-center gap-1">
+                        <FiAlertCircle /> Amount cannot exceed available balance.
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -523,37 +542,39 @@ const Earnings = () => {
                       value={withdrawNotes}
                       onChange={(e) => setWithdrawNotes(e.target.value)}
                       placeholder="e.g. Urgent business expense"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-none h-24"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all resize-none h-20 sm:h-24"
                     />
+                  </div>
+
+                  <div className="p-3 sm:p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-2 sm:gap-3">
+                     <FiAlertCircle className="text-amber-600 mt-1 flex-shrink-0" />
+                     <p className="text-xs text-amber-700 leading-relaxed">
+                       Payouts are processed within 2-3 business days. Ensure <strong>Bank Details</strong> are correct.
+                     </p>
                   </div>
                 </div>
 
-                <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
-                   <FiAlertCircle className="text-amber-600 mt-1 flex-shrink-0" />
-                   <p className="text-xs text-amber-700 leading-relaxed">
-                     Payouts are typically processed within 2-3 business days. Ensure your <strong>Bank Details</strong> are correct in settings.
-                   </p>
-                </div>
-
-                <div className="flex gap-3">
+                <div className="p-4 sm:p-6 bg-white border-t border-gray-100 flex gap-2 sm:gap-3 flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => setIsWithdrawModalOpen(false)}
-                    className="flex-1 px-6 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-colors">
+                    className="flex-1 px-4 py-3 sm:px-6 sm:py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold hover:bg-gray-200 transition-colors text-sm sm:text-base">
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmitting || !withdrawAmount || Number(withdrawAmount) <= 0}
-                    className="flex-[2] px-6 py-4 bg-purple-600 text-white rounded-2xl font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl shadow-purple-200">
+                    disabled={isSubmitting || !withdrawAmount || Number(withdrawAmount) <= 0 || Number(withdrawAmount) > (financeSummary?.withdrawableBalance || 0)}
+                    className="flex-[2] px-4 py-3 sm:px-6 sm:py-4 bg-purple-600 text-white rounded-2xl font-bold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-xl shadow-purple-200 text-sm sm:text-base">
                     {isSubmitting ? "Processing..." : "Submit Request"}
                   </button>
                 </div>
               </form>
             </motion.div>
           </div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </motion.div>
   );
 };
