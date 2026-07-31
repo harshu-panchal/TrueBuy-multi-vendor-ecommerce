@@ -164,82 +164,99 @@ const ProfileSettings = () => {
 
         <div className="p-3 sm:p-4 md:p-6">
           {activeSection === 'profile' && (
-            <form onSubmit={handleProfileSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    onInput={(e) => {
-                      e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, "");
-                    }}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                  />
+            <div className="space-y-6">
+              <form onSubmit={handleProfileSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Full Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/[^A-Za-z\s]/g, "");
+                      }}
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={vendor.email || ''}
+                      readOnly
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone || ""}
+                      onChange={handleChange}
+                      onInput={(e) => {
+                        e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      }}
+                      maxLength="10"
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      GST Number
+                    </label>
+                    <input
+                      type="text"
+                      name="gstNumber"
+                      value={formData.gstNumber || ''}
+                      onChange={handleChange}
+                      placeholder="22AAAAA0000A1Z5"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all uppercase"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Email <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={vendor.email || ''}
-                    readOnly
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-                  />
+                <div className="flex justify-end pt-4 border-t border-gray-200">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base disabled:opacity-50"
+                  >
+                    <FiSave />
+                    Save Profile
+                  </button>
                 </div>
+              </form>
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Phone Number <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone || ""}
-                    onChange={handleChange}
-                    onInput={(e) => {
-                      e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
-                    }}
-                    maxLength="10"
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    GST Number
-                  </label>
-                  <input
-                    type="text"
-                    name="gstNumber"
-                    value={formData.gstNumber || ''}
-                    onChange={handleChange}
-                    placeholder="22AAAAA0000A1Z5"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all uppercase"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-4 border-t border-gray-200">
+              <div className="p-4 border border-red-200 rounded-lg bg-red-50/60">
+                <h3 className="text-sm font-semibold text-red-800 mb-1">Danger Zone</h3>
+                <p className="text-sm text-red-700 mb-4">
+                  Permanently deactivate your vendor account. Active orders must be completed or cancelled first.
+                </p>
                 <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base disabled:opacity-50"
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 sm:px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold text-sm sm:text-base"
                 >
-                  <FiSave />
-                  Save Profile
+                  <FiTrash2 />
+                  Delete Account
                 </button>
               </div>
-            </form>
+            </div>
           )}
 
           {activeSection === 'password' && (
