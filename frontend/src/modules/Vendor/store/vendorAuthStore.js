@@ -7,6 +7,7 @@ import {
   forgotVendorPassword,
   verifyVendorResetOTP,
   resetVendorPassword,
+  deleteVendorAccount,
 } from "../services/vendorService";
 
 export const useVendorAuthStore = create(
@@ -134,20 +135,6 @@ export const useVendorAuthStore = create(
         localStorage.removeItem("vendor-refresh-token");
       },
 
-      // Delete Account action
-      deleteAccount: async () => {
-        set({ isLoading: true });
-        try {
-          await api.delete('/vendor/auth/profile');
-          get().logout();
-          set({ isLoading: false });
-          return { success: true };
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
       setAuth: (vendor, accessToken, refreshToken) => {
         set({
           vendor,
@@ -195,6 +182,27 @@ export const useVendorAuthStore = create(
             set({ vendor, isLoading: false });
           }
           return { success: true, vendor };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      // Soft-delete vendor account
+      deleteAccount: async (password) => {
+        set({ isLoading: true });
+        try {
+          await deleteVendorAccount(password);
+          set({
+            vendor: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          localStorage.removeItem("vendor-token");
+          localStorage.removeItem("vendor-refresh-token");
+          return { success: true };
         } catch (error) {
           set({ isLoading: false });
           throw error;

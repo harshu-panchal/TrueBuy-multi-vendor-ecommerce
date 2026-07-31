@@ -156,3 +156,7 @@ export const verifyPhoneOtpSchema = Joi.object({
 export const checkReferralSchema = Joi.object({
     referralCode: Joi.string().trim().required(),
 });
+
+export const deleteAccountSchema = Joi.object({
+    password: Joi.string().required(),
+});

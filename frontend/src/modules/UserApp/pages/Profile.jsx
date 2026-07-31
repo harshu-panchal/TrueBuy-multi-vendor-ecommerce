@@ -25,6 +25,10 @@ const MobileProfile = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [deliveryOtp, setDeliveryOtp] = useState('');
   const [deliveryOtpGeneratedAt, setDeliveryOtpGeneratedAt] = useState(null);
   const [isDeliveryOtpLoading, setIsDeliveryOtpLoading] = useState(false);
@@ -145,14 +149,22 @@ const MobileProfile = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-      try {
-        await deleteAccount();
-        navigate('/home');
-        toast.success('Account deleted successfully');
-      } catch (error) {
-        toast.error(error.message || 'Failed to delete account');
-      }
+    if (!deletePassword.trim()) {
+      toast.error('Please enter your password to confirm');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      await deleteAccount(deletePassword);
+      setShowDeleteModal(false);
+      setDeletePassword('');
+      toast.success('Account deleted successfully');
+      navigate('/home');
+    } catch {
+      // Error toast handled by API interceptor.
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -289,6 +301,13 @@ const MobileProfile = () => {
                       <FiShield className="text-lg" />
                       Privacy Policy
                     </Link>
+                    <button
+                      onClick={() => setShowDeleteModal(true)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-left font-medium text-red-600 hover:bg-red-50"
+                    >
+                      <FiTrash2 className="text-lg" />
+                      Delete Account
+                    </button>
                   </div>
                 </div>
               </div>
@@ -397,7 +416,7 @@ const MobileProfile = () => {
                     </div>
 
                     {/* Logout Option */}
-                    <div className="pt-2">
+                    <div className="pt-2 space-y-3">
                       <button
                         onClick={handleLogout}
                         className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-red-600 font-bold text-sm shadow-sm border border-red-50 hover:bg-red-50 transition-colors bg-white"
@@ -405,13 +424,9 @@ const MobileProfile = () => {
                         <FiLogOut className="text-lg" />
                         <span>Sign Out</span>
                       </button>
-                    </div>
-
-                    {/* Delete Account Option */}
-                    <div className="pt-2">
                       <button
-                        onClick={handleDeleteAccount}
-                        className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-red-600 font-bold text-sm shadow-sm border border-red-100 hover:bg-red-50 transition-colors bg-white"
+                        onClick={() => setShowDeleteModal(true)}
+                        className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-red-700 font-bold text-sm shadow-sm border border-red-100 hover:bg-red-50 transition-colors bg-white"
                       >
                         <FiTrash2 className="text-lg" />
                         <span>Delete Account</span>
@@ -855,6 +870,90 @@ const MobileProfile = () => {
               </div>
             </div>
           </div>
+
+          {/* Delete Account Modal */}
+          <AnimatePresence>
+            {showDeleteModal && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+                onClick={() => {
+                  if (!isDeletingAccount) {
+                    setShowDeleteModal(false);
+                    setDeletePassword('');
+                  }
+                }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 sm:p-6"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="w-10 h-10 rounded-xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                      <FiTrash2 className="text-lg" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Delete Account</h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        This will permanently deactivate your account. You will not be able to log in again.
+                        Active orders must be completed or cancelled first.
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Confirm with your password
+                  </label>
+                  <div className="relative mb-5">
+                    <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type={showDeletePassword ? 'text' : 'password'}
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      disabled={isDeletingAccount}
+                      className="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-gray-200 focus:border-red-500 focus:outline-none transition-colors text-sm sm:text-base"
+                      placeholder="Enter your password"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowDeletePassword((prev) => !prev)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showDeletePassword ? <FiEyeOff /> : <FiEye />}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                    <button
+                      type="button"
+                      disabled={isDeletingAccount}
+                      onClick={() => {
+                        setShowDeleteModal(false);
+                        setDeletePassword('');
+                      }}
+                      className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isDeletingAccount}
+                      onClick={handleDeleteAccount}
+                      className="px-4 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
       </MobileLayout>
     </PageTransition>
   );

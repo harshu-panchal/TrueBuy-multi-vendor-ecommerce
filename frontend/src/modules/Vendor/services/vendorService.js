@@ -66,6 +66,13 @@ export const getVendorProfile = () => api.get('/vendor/auth/profile');
  */
 export const updateVendorProfile = (data) => api.put('/vendor/auth/profile', data);
 
+/**
+ * Soft-delete vendor account (requires password confirmation)
+ * @param {string} password
+ */
+export const deleteVendorAccount = (password) =>
+    api.delete('/vendor/auth/account', { data: { password } });
+
 
 // ─── PRODUCTS ──────────────────────────────────────────────────────────────────
 

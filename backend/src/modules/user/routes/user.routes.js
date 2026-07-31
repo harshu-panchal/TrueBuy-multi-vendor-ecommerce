@@ -24,6 +24,7 @@ import {
     resetPasswordSchema,
     updateProfileSchema,
     changePasswordSchema,
+    deleteAccountSchema,
 } from '../validators/auth.validator.js';
 import {
     createAddressSchema,
@@ -51,7 +52,7 @@ router.put('/auth/profile', ...customerAuth, validate(updateProfileSchema), auth
 router.post('/auth/profile/avatar', ...customerAuth, uploadSingle('avatar'), authController.uploadProfileAvatar);
 router.post('/uploads/images', ...customerAuth, uploadMultiple('images', 5), uploadController.uploadImages);
 router.post('/auth/change-password', ...customerAuth, validate(changePasswordSchema), authController.changePassword);
-router.delete('/auth/profile', ...customerAuth, authController.deleteAccount);
+router.delete('/auth/account', ...customerAuth, validate(deleteAccountSchema), authController.deleteAccount);
 
 // Address routes (protected)
 router.get('/addresses', ...customerAuth, addressController.getAddresses);

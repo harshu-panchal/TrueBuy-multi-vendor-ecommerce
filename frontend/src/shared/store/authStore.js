@@ -200,20 +200,6 @@ export const useAuthStore = create(
         localStorage.removeItem('address-storage');
       },
 
-      // Delete Account action
-      deleteAccount: async () => {
-        set({ isLoading: true });
-        try {
-          await api.delete('/user/auth/profile');
-          get().logout();
-          set({ isLoading: false });
-          return { success: true };
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
       // Fetch latest profile
       fetchProfile: async () => {
         try {
@@ -265,6 +251,31 @@ export const useAuthStore = create(
             newPassword,
           });
           set({ isLoading: false });
+          return { success: true };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      // Soft-delete account (requires password confirmation)
+      deleteAccount: async (password) => {
+        set({ isLoading: true });
+        try {
+          await api.delete('/user/auth/account', { data: { password } });
+          set({
+            user: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            pendingEmail: null,
+            isLoading: false,
+          });
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh-token');
+          localStorage.removeItem('cart-storage');
+          localStorage.removeItem('wishlist-storage');
+          localStorage.removeItem('address-storage');
           return { success: true };
         } catch (error) {
           set({ isLoading: false });
