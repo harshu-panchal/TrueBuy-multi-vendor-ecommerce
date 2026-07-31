@@ -140,3 +140,7 @@ export const verifyReferralSchema = Joi.object({
         'string.empty': 'Referral code is required.',
     }),
 });
+
+export const deleteAccountSchema = Joi.object({
+    password: Joi.string().required(),
+});

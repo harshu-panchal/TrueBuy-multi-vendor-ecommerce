@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import User from '../../../models/User.model.js';
+import Order from '../../../models/Order.model.js';
 import { generateTokens } from '../../../utils/generateToken.js';
 import { sendOTP } from '../../../services/otp.service.js';
 import { sendEmail } from '../../../services/email.service.js';
@@ -327,6 +328,37 @@ export const changePassword = asyncHandler(async (req, res) => {
     await user.save();
 
     res.status(200).json(new ApiResponse(200, null, 'Password changed successfully.'));
+});
+
+// DELETE /api/user/auth/account
+export const deleteAccount = asyncHandler(async (req, res) => {
+    const { password } = req.body;
+    if (!password) throw new ApiError(400, 'Password is required to delete your account.');
+
+    const user = await User.findById(req.user.id).select('+password +refreshTokenHash +refreshTokenExpiresAt');
+    if (!user) throw new ApiError(404, 'User not found.');
+    if (!user.isActive) throw new ApiError(400, 'Account is already deactivated.');
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) throw new ApiError(400, 'Incorrect password.');
+
+    const openOrders = await Order.countDocuments({
+        userId: user._id,
+        isDeleted: { $ne: true },
+        status: { $in: ['pending', 'processing', 'shipped'] },
+    });
+    if (openOrders > 0) {
+        throw new ApiError(
+            400,
+            'Cannot delete account while you have active orders. Please wait until they are delivered or cancelled.'
+        );
+    }
+
+    user.isActive = false;
+    await clearRefreshSession(user);
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json(new ApiResponse(200, null, 'Account deleted successfully.'));
 });
 
 // POST /api/user/auth/profile/avatar

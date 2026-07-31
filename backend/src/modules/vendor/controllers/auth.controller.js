@@ -3,6 +3,8 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
 import Admin from '../../../models/Admin.model.js';
+import Order from '../../../models/Order.model.js';
+import Product from '../../../models/Product.model.js';
 import { generateTokens } from '../../../utils/generateToken.js';
 import { sendOTP } from '../../../services/otp.service.js';
 import { createNotification } from '../../../services/notification.service.js';
@@ -293,6 +295,46 @@ export const updateProfile = asyncHandler(async (req, res) => {
     const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
     const vendor = await Vendor.findByIdAndUpdate(req.user.id, updates, { new: true, runValidators: true }).select('-password -otp -otpExpiry');
     res.status(200).json(new ApiResponse(200, vendor, 'Profile updated.'));
+});
+
+// DELETE /api/vendor/auth/account
+export const deleteAccount = asyncHandler(async (req, res) => {
+    const { password } = req.body;
+    if (!password) throw new ApiError(400, 'Password is required to delete your account.');
+
+    const vendor = await Vendor.findById(req.user.id).select('+password +refreshTokenHash +refreshTokenExpiresAt');
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    if (vendor.status === 'suspended' && vendor.suspensionReason === 'Account deleted by vendor') {
+        throw new ApiError(400, 'Account is already deleted.');
+    }
+
+    const isMatch = await vendor.comparePassword(password);
+    if (!isMatch) throw new ApiError(400, 'Incorrect password.');
+
+    const openOrders = await Order.countDocuments({
+        isDeleted: { $ne: true },
+        vendorItems: {
+            $elemMatch: {
+                vendorId: vendor._id,
+                status: { $in: ['pending', 'processing', 'shipped'] },
+            },
+        },
+    });
+    if (openOrders > 0) {
+        throw new ApiError(
+            400,
+            'Cannot delete account while you have active orders. Please complete or cancel them first.'
+        );
+    }
+
+    vendor.status = 'suspended';
+    vendor.suspensionReason = 'Account deleted by vendor';
+    await clearRefreshSession(vendor);
+    await vendor.save({ validateBeforeSave: false });
+
+    await Product.updateMany({ vendorId: vendor._id }, { $set: { isActive: false } });
+
+    res.status(200).json(new ApiResponse(200, null, 'Account deleted successfully.'));
 });
 
 // PUT /api/vendor/auth/bank-details

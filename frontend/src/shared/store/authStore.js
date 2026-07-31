@@ -243,6 +243,31 @@ export const useAuthStore = create(
         }
       },
 
+      // Soft-delete account (requires password confirmation)
+      deleteAccount: async (password) => {
+        set({ isLoading: true });
+        try {
+          await api.delete('/user/auth/account', { data: { password } });
+          set({
+            user: null,
+            token: null,
+            refreshToken: null,
+            isAuthenticated: false,
+            pendingEmail: null,
+            isLoading: false,
+          });
+          localStorage.removeItem('token');
+          localStorage.removeItem('refresh-token');
+          localStorage.removeItem('cart-storage');
+          localStorage.removeItem('wishlist-storage');
+          localStorage.removeItem('address-storage');
+          return { success: true };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       // Upload profile avatar
       uploadProfileAvatar: async (file) => {
         if (!file) {

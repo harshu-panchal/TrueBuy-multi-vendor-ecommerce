@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
-import { FiSave, FiUser, FiLock, FiShield } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { FiSave, FiUser, FiLock, FiShield, FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import toast from 'react-hot-toast';
 
 const ProfileSettings = () => {
-  const { vendor, updateProfile, logout } = useVendorAuthStore();
+  const navigate = useNavigate();
+  const { vendor, updateProfile, logout, deleteAccount, isLoading } = useVendorAuthStore();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -15,6 +17,10 @@ const ProfileSettings = () => {
     confirmPassword: '',
   });
   const [activeSection, setActiveSection] = useState('profile');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [showDeletePassword, setShowDeletePassword] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   useEffect(() => {
     if (vendor) {
@@ -78,6 +84,32 @@ const ProfileSettings = () => {
       });
     } catch (error) {
       toast.error('Failed to change password');
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/vendor/login');
+    toast.success('Logged out successfully');
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword.trim()) {
+      toast.error('Please enter your password to confirm');
+      return;
+    }
+
+    setIsDeletingAccount(true);
+    try {
+      await deleteAccount(deletePassword);
+      setShowDeleteModal(false);
+      setDeletePassword('');
+      toast.success('Account deleted successfully');
+      navigate('/vendor/login');
+    } catch {
+      // Error toast handled by API interceptor.
+    } finally {
+      setIsDeletingAccount(false);
     }
   };
 
@@ -157,10 +189,9 @@ const ProfileSettings = () => {
                   <input
                     type="email"
                     name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    value={vendor.email || ''}
+                    readOnly
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                   />
                 </div>
 
@@ -200,7 +231,8 @@ const ProfileSettings = () => {
               <div className="flex justify-end pt-4 border-t border-gray-200">
                 <button
                   type="submit"
-                  className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base"
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all font-semibold text-sm sm:text-base disabled:opacity-50"
                 >
                   <FiSave />
                   Save Profile
@@ -302,21 +334,118 @@ const ProfileSettings = () => {
                 </ul>
               </div>
 
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
                 <button
-                  onClick={logout}
+                  onClick={handleLogout}
                   className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold text-sm sm:text-base"
                 >
                   Logout
+                </button>
+              </div>
+
+              <div className="p-4 border border-red-200 rounded-lg bg-red-50/60">
+                <h3 className="text-sm font-semibold text-red-800 mb-1">Danger Zone</h3>
+                <p className="text-sm text-red-700 mb-4">
+                  Deleting your account suspends your vendor profile, deactivates all products, and signs you out.
+                  Active orders must be completed or cancelled first. This cannot be undone from the app.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 sm:px-6 py-2 bg-white text-red-700 border border-red-300 rounded-lg hover:bg-red-100 transition-all font-semibold text-sm sm:text-base"
+                >
+                  <FiTrash2 />
+                  Delete Account
                 </button>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+            onClick={() => {
+              if (!isDeletingAccount) {
+                setShowDeleteModal(false);
+                setDeletePassword('');
+              }
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-md bg-white rounded-xl shadow-xl p-5 sm:p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+                  <FiTrash2 className="text-lg" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">Delete Account</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Enter your password to confirm. Your store will be suspended and products deactivated.
+                  </p>
+                </div>
+              </div>
+
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Confirm with your password
+              </label>
+              <div className="relative mb-5">
+                <FiLock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type={showDeletePassword ? 'text' : 'password'}
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  disabled={isDeletingAccount}
+                  className="w-full pl-12 pr-12 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDeletePassword((prev) => !prev)}
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showDeletePassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end">
+                <button
+                  type="button"
+                  disabled={isDeletingAccount}
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeletePassword('');
+                  }}
+                  className="px-4 py-2.5 rounded-lg border border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isDeletingAccount}
+                  onClick={handleDeleteAccount}
+                  className="px-4 py-2.5 rounded-lg bg-red-600 text-white font-semibold text-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
 
 export default ProfileSettings;
-
