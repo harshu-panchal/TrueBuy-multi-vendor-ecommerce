@@ -23,7 +23,9 @@ const errorHandler = (err, req, res, next) => {
             field: e.path,
             message: e.message,
         }));
-        error = new ApiError(400, 'Validation failed', errors);
+        // Use the first specific validation error as the main message instead of a generic "Validation failed"
+        const mainMessage = errors.length > 0 ? errors[0].message : 'Validation failed';
+        error = new ApiError(400, mainMessage, errors);
     }
 
     // Mongoose cast error (invalid ObjectId)

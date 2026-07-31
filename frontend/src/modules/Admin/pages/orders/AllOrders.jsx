@@ -181,7 +181,7 @@ const OrderItemsDropdown = ({ items, orderTotal }) => {
                   {normalizedItems.map((item, index) => {
                     const itemTotal = (item.price || 0) * (item.quantity || 1);
                     const itemId =
-                      item.id || item.itemId || `ITEM-${index + 1}`;
+                      item.productId || item.id || item.itemId || `ITEM-${index + 1}`;
                     return (
                       <tr key={item.id || index} className="hover:bg-gray-50">
                         <td className="px-2 sm:px-4 py-2 text-sm text-gray-800 font-medium whitespace-nowrap">
@@ -403,12 +403,12 @@ const AllOrders = () => {
       const response = await getAllOrders(params);
 
       // Normalize data to match existing UI structure
-      const normalizedOrders = response.data.orders.map(order => ({
+      const normalizedOrders = (response.data.orders || []).map(order => ({
         ...order,
         id: order.orderId || order._id,
         customer: {
-          name: order.userId?.name || 'Unknown',
-          email: order.userId?.email || ''
+          name: order.userId?.name || order.shippingAddress?.name || 'Unknown',
+          email: order.userId?.email || order.shippingAddress?.email || ''
         },
         date: order.createdAt,
         finalTotal: order.total

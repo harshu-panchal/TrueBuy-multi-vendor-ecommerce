@@ -27,6 +27,9 @@ export const useAuthStore = create(
             throw new Error('Invalid login response from server.');
           }
 
+          localStorage.setItem('token', accessToken);
+          localStorage.setItem('refresh-token', refreshToken);
+
           set({
             user,
             token: accessToken,
@@ -35,9 +38,6 @@ export const useAuthStore = create(
             pendingEmail: null,
             isLoading: false,
           });
-
-          localStorage.setItem('token', accessToken);
-          localStorage.setItem('refresh-token', refreshToken);
 
           return { success: true, user };
         } catch (error) {
@@ -60,7 +60,7 @@ export const useAuthStore = create(
       },
 
       // Register action
-      register: async (name, email, password, phone) => {
+      register: async (name, email, password, phone, referralCode) => {
         set({ isLoading: true });
         try {
           const normalizedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
@@ -69,6 +69,7 @@ export const useAuthStore = create(
             email,
             password,
             ...(normalizedPhone ? { phone: normalizedPhone } : {}),
+            ...(referralCode ? { referralCode } : {}),
           };
 
           await api.post('/user/auth/register', payload);
@@ -107,6 +108,9 @@ export const useAuthStore = create(
             throw new Error('Invalid OTP verification response from server.');
           }
 
+          localStorage.setItem('token', accessToken);
+          localStorage.setItem('refresh-token', refreshToken);
+
           set({
             user,
             token: accessToken,
@@ -115,9 +119,6 @@ export const useAuthStore = create(
             pendingEmail: null,
             isLoading: false,
           });
-
-          localStorage.setItem('token', accessToken);
-          localStorage.setItem('refresh-token', refreshToken);
           return { success: true, user };
         } catch (error) {
           set({ isLoading: false });
@@ -197,6 +198,34 @@ export const useAuthStore = create(
         localStorage.removeItem('cart-storage');
         localStorage.removeItem('wishlist-storage');
         localStorage.removeItem('address-storage');
+      },
+
+      // Delete Account action
+      deleteAccount: async () => {
+        set({ isLoading: true });
+        try {
+          await api.delete('/user/auth/profile');
+          get().logout();
+          set({ isLoading: false });
+          return { success: true };
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
+      // Fetch latest profile
+      fetchProfile: async () => {
+        try {
+          const response = await api.get('/user/auth/profile');
+          const payload = response?.data ?? response;
+          const user = payload?.user || payload;
+          set({ user: { ...get().user, ...user } });
+          return { success: true, user };
+        } catch (error) {
+          console.error('Failed to fetch profile', error);
+          return { success: false, error };
+        }
       },
 
       // Update user profile

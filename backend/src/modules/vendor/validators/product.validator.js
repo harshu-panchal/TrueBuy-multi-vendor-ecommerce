@@ -3,7 +3,7 @@ import Joi from 'joi';
 const objectId = Joi.string().trim().hex().length(24);
 
 export const createProductSchema = Joi.object({
-    name: Joi.string().trim().min(2).max(200).required(),
+    name: Joi.string().trim().min(2).max(200).pattern(/^(?!^-?\d*\.?\d+$).+$/).message("Product name cannot contain only numbers").required(),
     description: Joi.string().allow('').optional(),
     price: Joi.number().min(0).required(),
     originalPrice: Joi.number().min(0).optional(),
@@ -41,8 +41,8 @@ export const createProductSchema = Joi.object({
         })
     ).optional(),
     variants: Joi.object({
-        sizes: Joi.array().items(Joi.string()),
-        colors: Joi.array().items(Joi.string()),
+        sizes: Joi.array().items(Joi.string().valid('XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'xs', 's', 'm', 'l', 'xl', 'xxl', '3xl', '4xl').messages({ 'any.only': 'Sizes can only be XS, S, M, L, XL, XXL, 3XL, or 4XL' })),
+        colors: Joi.array().items(Joi.string().pattern(/^[a-zA-Z\s]+$/).message("Colors can only contain letters and spaces")),
         attributes: Joi.array().items(
             Joi.object({
                 name: Joi.string().trim().allow('').optional(),
@@ -71,7 +71,7 @@ export const createProductSchema = Joi.object({
 }).unknown(true);
 
 export const updateProductSchema = Joi.object({
-    name: Joi.string().trim().min(2).max(200).optional(),
+    name: Joi.string().trim().min(2).max(200).pattern(/^(?!^-?\d*\.?\d+$).+$/).message("Product name cannot contain only numbers").optional(),
     description: Joi.string().allow('').optional(),
     price: Joi.number().min(0).optional(),
     originalPrice: Joi.number().min(0).allow(null).optional(),
@@ -109,8 +109,8 @@ export const updateProductSchema = Joi.object({
         })
     ).optional(),
     variants: Joi.object({
-        sizes: Joi.array().items(Joi.string()),
-        colors: Joi.array().items(Joi.string()),
+        sizes: Joi.array().items(Joi.string().valid('XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'xs', 's', 'm', 'l', 'xl', 'xxl', '3xl', '4xl').messages({ 'any.only': 'Sizes can only be XS, S, M, L, XL, XXL, 3XL, or 4XL' })),
+        colors: Joi.array().items(Joi.string().pattern(/^[a-zA-Z\s]+$/).message("Colors can only contain letters and spaces")),
         attributes: Joi.array().items(
             Joi.object({
                 name: Joi.string().trim().allow('').optional(),

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, matchPath, useNavigate } from "react-router-dom";
-import { FiHeart } from "react-icons/fi";
+import { FiHeart, FiSearch } from "react-icons/fi";
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from "../../../shared/components/ProductCard";
 import AnimatedBanner from "../components/Mobile/AnimatedBanner";
@@ -500,6 +500,21 @@ const MobileHome = () => {
             transform: `translateY(${Math.min(pullDistance, 80)}px)`,
             transition: isPulling ? "none" : "transform 0.3s ease-out",
           }}>
+          {/* Search Bar Container */}
+          <div className="px-4 pt-4 lg:hidden">
+            <div 
+              onClick={() => navigate('/search')}
+              className="w-full relative cursor-text group"
+            >
+              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl z-10 transition-colors group-hover:text-primary-500">
+                <FiSearch />
+              </div>
+              <div className="w-full pl-12 pr-4 py-3 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 flex items-center justify-between text-base transition-all group-hover:shadow-md group-hover:border-primary-200">
+                <span>Search products...</span>
+              </div>
+            </div>
+          </div>
+
           {/* Hero Banner */}
           <div className="px-4 py-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

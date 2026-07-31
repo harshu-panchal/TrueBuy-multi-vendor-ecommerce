@@ -14,6 +14,7 @@ import * as reviewController from '../controllers/review.controller.js';
 import * as shippingController from '../controllers/shipping.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as financeController from '../controllers/finance.controller.js';
+import * as subscriptionController from '../controllers/subscription.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -38,7 +39,9 @@ import {
     updateProductSchema,
     productIdParamSchema,
 } from '../validators/product.validator.js';
+import { purchaseSubscriptionSchema } from '../validators/subscription.validator.js';
 import { uploadSingle, uploadMultiple, uploadDocumentSingle } from '../../../middlewares/upload.js';
+import { checkVendorProductLimit } from '../../../middlewares/checkVendorProductLimit.js';
 
 const router = Router();
 const vendorAuth = [authenticate, authorize('vendor'), enforceAccountStatus];
@@ -56,13 +59,14 @@ router.post('/auth/refresh', validate(refreshTokenSchema), authController.refres
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...vendorAuth, authController.getProfile);
 router.put('/auth/profile', ...vendorAuth, validate(updateVendorProfileSchema), authController.updateProfile);
+router.delete('/auth/profile', ...vendorAuth, authController.deleteAccount);
 router.put('/auth/bank-details', ...vendorAuth, validate(updateBankDetailsSchema), authController.updateBankDetails);
 router.delete('/auth/account', ...vendorAuth, validate(deleteAccountSchema), authController.deleteAccount);
 
 // Products
 router.get('/products', ...vendorAuth, productController.getVendorProducts);
 router.get('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.getVendorProductById);
-router.post('/products', ...vendorAuth, validate(createProductSchema), productController.createProduct);
+router.post('/products', ...vendorAuth, checkVendorProductLimit, validate(createProductSchema), productController.createProduct);
 router.put('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), validate(updateProductSchema), productController.updateProduct);
 router.delete('/products/:id', ...vendorAuth, validate(productIdParamSchema, 'params'), productController.deleteProduct);
 router.patch('/stock/:productId', ...vendorAuth, productController.updateStock);
@@ -134,5 +138,11 @@ router.delete('/shipping/rates/:id', ...vendorAuth, shippingController.deleteShi
 // Uploads (Cloudinary via temp local multer upload)
 router.post('/uploads/image', ...vendorAuth, uploadSingle('image'), uploadController.uploadImage);
 router.post('/uploads/images', ...vendorAuth, uploadMultiple('images', 8), uploadController.uploadImages);
+
+// Subscriptions
+// router.get('/subscription-plans', ...vendorAuth, subscriptionController.getAvailablePlans);
+// router.post('/subscription/purchase', ...vendorAuth, validate(purchaseSubscriptionSchema), subscriptionController.purchasePlan);
+// router.get('/subscriptions', ...vendorAuth, subscriptionController.getMySubscriptions);
+// router.get('/subscription/usage', ...vendorAuth, subscriptionController.getSubscriptionUsage);
 
 export default router;

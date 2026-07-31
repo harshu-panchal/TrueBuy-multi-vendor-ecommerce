@@ -41,6 +41,8 @@ const vendorSchema = new mongoose.Schema(
             state: String,
             zipCode: String,
             country: String,
+            lat: Number,
+            lng: Number,
         },
         bankDetails: {
             accountName: { type: String, select: false },
@@ -90,6 +92,8 @@ const vendorSchema = new mongoose.Schema(
             canBuyWholesale: { type: Boolean, default: true },
             canSellWholesale: { type: Boolean, default: false },
         },
+        isDeleted: { type: Boolean, default: false },
+        deletedAt: { type: Date },
     },
     { timestamps: true }
 );

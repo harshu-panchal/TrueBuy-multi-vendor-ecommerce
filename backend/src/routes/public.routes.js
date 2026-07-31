@@ -19,8 +19,12 @@ import {
     removeFcmTokenSchema,
     testFcmTokenSchema,
 } from '../validators/fcm.validator.js';
+import { getPublicLegalSettings } from '../modules/admin/controllers/system.controller.js';
 
 const router = Router();
+
+// GET /api/settings/legal (public)
+router.get('/settings/legal', getPublicLegalSettings);
 
 const toPublicVendor = (vendorDoc) => {
     const vendor = typeof vendorDoc?.toObject === 'function'
@@ -226,6 +230,34 @@ const getProductDetail = asyncHandler(async (req, res) => {
     if (!product) throw new ApiError(404, 'Product not found.');
     res.status(200).json(new ApiResponse(200, product, 'Product detail.'));
 });
+
+// GET /api/products/:id/stock
+router.get('/products/:id/stock', asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id).select('stockQuantity variants.stockMap');
+    if (!product) throw new ApiError(404, 'Product not found.');
+    
+    let availableStock = Number(product.stockQuantity || 0);
+    const variantKey = String(req.query.variantKey || '').trim();
+    
+    if (variantKey && product.variants?.stockMap) {
+        let variantStock = Number(product.variants.stockMap.get(variantKey));
+        
+        if (!Number.isFinite(variantStock)) {
+            for (const [key, val] of product.variants.stockMap.entries()) {
+                if (String(key).toLowerCase() === variantKey.toLowerCase()) {
+                    variantStock = Number(val);
+                    break;
+                }
+            }
+        }
+
+        if (Number.isFinite(variantStock)) {
+            availableStock = Math.max(0, variantStock);
+        }
+    }
+    
+    res.status(200).json(new ApiResponse(200, { availableStock }, 'Stock fetched.'));
+}));
 
 // GET /api/products/:id
 router.get('/products/:id', getProductDetail);
@@ -531,8 +563,31 @@ router.get('/campaigns/:slug', asyncHandler(async (req, res) => {
 // GET /api/orders/track/:id (public order tracking)
 router.get('/orders/track/:id', asyncHandler(async (req, res) => {
     const { default: Order } = await import('../models/Order.model.js');
-    const order = await Order.findOne({ orderId: req.params.id }).select('orderId status trackingNumber estimatedDelivery deliveredAt createdAt updatedAt cancelledAt');
+    const { default: User } = await import('../models/User.model.js');
+    
+    const order = await Order.findOne({ orderId: req.params.id }).select('orderId status trackingNumber estimatedDelivery deliveredAt createdAt updatedAt cancelledAt userId').lean();
     if (!order) throw new ApiError(404, 'Order not found.');
+
+    if (['processing', 'shipped', 'in-transit', 'out_for_delivery'].includes(order.status)) {
+        if (order.userId) {
+            const user = await User.findById(order.userId).select('+deliveryOtp');
+            if (user && user.deliveryOtp) {
+                order.deliveryOtp = user.deliveryOtp;
+            }
+        }
+        
+        // Fallback for guest orders or if static OTP isn't available: Check SubOrders
+        if (!order.deliveryOtp) {
+            const { default: SubOrder } = await import('../models/SubOrder.model.js');
+            const subOrders = await SubOrder.find({ parentOrderId: order._id }).select('+deliveryOtpDebug');
+            const subOrderWithOtp = subOrders.find(so => so.deliveryOtpDebug);
+            if (subOrderWithOtp) {
+                order.deliveryOtp = subOrderWithOtp.deliveryOtpDebug;
+            }
+        }
+    }
+
+
     res.status(200).json(new ApiResponse(200, order, 'Order tracking info.'));
 }));
 

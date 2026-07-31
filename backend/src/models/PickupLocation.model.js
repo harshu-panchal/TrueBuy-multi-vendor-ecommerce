@@ -10,6 +10,8 @@ const pickupLocationSchema = new mongoose.Schema(
         zipCode: String,
         country: String,
         phone: String,
+        lat: Number,
+        lng: Number,
         isDefault: { type: Boolean, default: false },
     },
     { timestamps: true }

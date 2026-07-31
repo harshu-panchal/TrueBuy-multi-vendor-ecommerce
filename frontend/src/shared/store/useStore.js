@@ -33,6 +33,14 @@ export const useCartStore = create(
       items: [],
       ownerUserId: null,
       addItem: (item) => {
+        const authState = useAuthStore.getState();
+        if (!authState.isAuthenticated) {
+          toast.error("Please login to add items to your cart");
+          setPostLoginAction("add_to_cart", item);
+          redirectToLogin();
+          return false;
+        }
+
         const currentUserId = getCurrentAuthUserId();
         const ownerUserId = String(get().ownerUserId || "").trim();
         if (currentUserId && ownerUserId && ownerUserId !== currentUserId) {
@@ -125,7 +133,7 @@ export const useCartStore = create(
           }),
           ownerUserId: state.ownerUserId,
         })),
-      updateQuantity: (id, quantity, variant = null) => {
+      updateQuantity: (id, quantity, variant = null, newStockQuantity = null) => {
         if (quantity <= 0) {
           get().removeItem(id, variant);
           return;
@@ -137,7 +145,12 @@ export const useCartStore = create(
           const candidate = String(item.cartLineKey || getCartLineKey(item.id, item.variant));
           return candidate === getCartLineKey(id, variant);
         });
-        const availableStock = Number(targetItem?.stockQuantity);
+        
+        let availableStock = Number(targetItem?.stockQuantity);
+        if (newStockQuantity !== null && Number.isFinite(newStockQuantity)) {
+          availableStock = newStockQuantity;
+        }
+
         if (Number.isFinite(availableStock) && quantity > availableStock) {
           toast.error(`Only ${availableStock} items available in stock`);
           quantity = availableStock;
@@ -147,10 +160,11 @@ export const useCartStore = create(
           items: state.items.map((item) =>
             (() => {
               if (String(item.id) !== String(id)) return item;
-              if (!variant) return { ...item, quantity };
+              const updateData = { quantity, ...(newStockQuantity !== null && { stockQuantity: newStockQuantity }) };
+              if (!variant) return { ...item, ...updateData };
               const candidate = String(item.cartLineKey || getCartLineKey(item.id, item.variant));
               return candidate === getCartLineKey(id, variant)
-                ? { ...item, quantity }
+                ? { ...item, ...updateData }
                 : item;
             })()
           ),

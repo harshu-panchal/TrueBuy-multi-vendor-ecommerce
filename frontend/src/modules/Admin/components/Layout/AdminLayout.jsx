@@ -17,7 +17,7 @@ const AdminLayout = () => {
   const bottomPadding = bottomNavHeight + 8;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen overflow-hidden bg-gray-50 flex">
       {/* Sidebar */}
       <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FiHeart, FiArrowLeft, FiGrid, FiList } from "react-icons/fi";
+import { FiHeart, FiGrid, FiList } from "react-icons/fi";
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import MobileLayout from "../components/Layout/MobileLayout";
@@ -50,15 +50,11 @@ const MobileWishlist = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="w-full pb-24">
+        <div className="w-full">
             {/* Header */}
             <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-40 shadow-sm">
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0">
-                  <FiArrowLeft className="text-xl text-gray-700" />
-                </button>
+
                 <div className="flex-1 min-w-0">
                   <h1 className="text-lg font-bold text-gray-800 truncate">
                     My Wishlist

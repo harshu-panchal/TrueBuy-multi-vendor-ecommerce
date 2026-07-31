@@ -2,11 +2,14 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Order from '../../../models/Order.model.js';
+import SubOrder from '../../../models/SubOrder.model.js';
 import Product from '../../../models/Product.model.js';
 import Coupon from '../../../models/Coupon.model.js';
 import Commission from '../../../models/Commission.model.js';
 import ReturnRequest from '../../../models/ReturnRequest.model.js';
 import Admin from '../../../models/Admin.model.js';
+import User from '../../../models/User.model.js';
+import WalletTransaction from '../../../models/WalletTransaction.model.js';
 import { generateOrderId } from '../../../utils/generateOrderId.js';
 import { generateTrackingNumber } from '../../../utils/generateTrackingNumber.js';
 import mongoose from 'mongoose';
@@ -264,7 +267,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
     for (const item of items) {
         const product = await Product.findById(item.productId).populate(
             'vendorId',
-            'commissionRate storeName shippingEnabled defaultShippingRate freeShippingThreshold'
+            'commissionRate storeName shippingEnabled defaultShippingRate freeShippingThreshold address'
         );
         if (!product) throw new ApiError(404, `Product not found: ${item.productId}`);
         if (product.stock === 'out_of_stock') throw new ApiError(400, `${product.name} is out of stock.`);
@@ -313,6 +316,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
             vendorMap[vid] = {
                 vendorId: product.vendorId._id,
                 vendorName: product.vendorId.storeName,
+                address: product.vendorId.address,
                 commissionRate: product.vendorId.commissionRate || 10,
                 shippingEnabled: product.vendorId.shippingEnabled !== false,
                 defaultShippingRate: product.vendorId.defaultShippingRate,
@@ -393,15 +397,28 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 }
             }
 
+            // Wallet payment processing
+            let finalPaymentStatus = 'pending';
+            if (normalizedPaymentMethod === 'wallet') {
+                if (!userId) {
+                    throw new ApiError(401, 'You must be logged in to use wallet payment.');
+                }
+                const user = await User.findById(userId).session(session);
+                if (!user || (user.walletBalance || 0) < total) {
+                    throw new ApiError(400, 'Insufficient wallet balance.');
+                }
+                user.walletBalance -= total;
+                await user.save({ session });
+                finalPaymentStatus = 'paid';
+            }
+
             const [createdOrder] = await Order.create([{
                 orderId: generateOrderId(),
                 userId,
                 items: enrichedItems,
-                vendorItems,
                 shippingAddress,
                 paymentMethod: normalizedPaymentMethod,
-                // Keep every new order pending until gateway/webhook confirmation is implemented.
-                paymentStatus: 'pending',
+                paymentStatus: finalPaymentStatus,
                 subtotal,
                 shipping,
                 tax,
@@ -409,12 +426,27 @@ export const placeOrder = asyncHandler(async (req, res) => {
                 total,
                 couponCode: couponCode?.toUpperCase(),
                 couponDiscount,
-                trackingNumber: generateTrackingNumber(),
-                estimatedDelivery: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // +5 days
                 idempotencyKey: idempotencyKey || undefined,
                 idempotencyScope: idempotencyKey ? idempotencyScope : undefined,
             }], { session });
             order = createdOrder;
+
+            // Record wallet transaction if paid by wallet
+            if (normalizedPaymentMethod === 'wallet') {
+                const user = await User.findById(userId).session(session);
+                await WalletTransaction.create(
+                    [{
+                        user: userId,
+                        amount: total,
+                        type: 'debit',
+                        description: `Payment for order ${order.orderId}`,
+                        referenceModel: 'Order',
+                        referenceId: order._id,
+                        balanceAfter: user.walletBalance
+                    }],
+                    { session }
+                );
+            }
 
             // 7. Deduct stock atomically to prevent oversell under concurrent checkout.
             for (const item of enrichedItems) {
@@ -454,6 +486,32 @@ export const placeOrder = asyncHandler(async (req, res) => {
                     { session }
                 );
             }
+
+            // 8. Generate SubOrders
+            const subOrdersToCreate = vendorItems.map((vGroup, idx) => {
+                const vendorData = vendorMap[String(vGroup.vendorId)];
+                return {
+                    subOrderId: `${createdOrder.orderId}-V${idx + 1}`,
+                    parentOrderId: createdOrder._id,
+                    vendorId: vGroup.vendorId,
+                    vendorName: vGroup.vendorName,
+                    items: vGroup.items,
+                    subtotal: vGroup.subtotal,
+                    shipping: vGroup.shipping,
+                    tax: vGroup.tax,
+                    discount: vGroup.discount,
+                    total: parseFloat((vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount).toFixed(2)),
+                    status: 'pending',
+                    trackingNumber: generateTrackingNumber(),
+                    pickupAddress: vendorData?.address || {},
+                    dropoffAddress: shippingAddress,
+                };
+            });
+            const createdSubOrders = await Promise.all(
+                subOrdersToCreate.map(data => new SubOrder(data).save({ session }))
+            );
+            
+            order.subOrders = createdSubOrders; // Attach for COD notification logic
 
             // 8. Record commissions
             const commissionDocs = Object.values(vendorMap).map((v) => ({
@@ -513,29 +571,31 @@ export const placeOrder = asyncHandler(async (req, res) => {
         ? 'Duplicate order request ignored. Returning existing order.'
         : 'Order placed successfully.';
 
-    // Notify vendors for COD orders immediately
-    if (!idempotentReplay && (normalizedPaymentMethod === 'cod' || normalizedPaymentMethod === 'cash')) {
-        // Update order status to processing for COD
+    // Notify vendors for COD/Wallet orders immediately
+    if (!idempotentReplay && (normalizedPaymentMethod === 'cod' || normalizedPaymentMethod === 'cash' || normalizedPaymentMethod === 'wallet')) {
+        // Update order status to processing
         await Order.updateOne({ _id: order._id }, { 
             $set: { 
-                status: 'processing',
-                'vendorItems.$[].status': 'processing'
+                status: 'processing'
             } 
+        });
+        await SubOrder.updateMany({ parentOrderId: order._id }, {
+            $set: { status: 'processing' }
         });
 
         // Notify vendors
-        if (Array.isArray(order.vendorItems)) {
-            for (const vGroup of order.vendorItems) {
+        if (Array.isArray(order.subOrders)) {
+            for (const subOrder of order.subOrders) {
                 await createNotification({
-                    recipientId: vGroup.vendorId,
+                    recipientId: subOrder.vendorId,
                     recipientType: 'vendor',
                     title: 'New Order Received',
-                    message: `You have received a new order ${order.orderId}.`,
+                    message: `You have received a new order ${subOrder.subOrderId}.`,
                     type: 'order',
                     data: {
-                        orderId: String(order.orderId),
-                        amount: vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount,
-                        itemCount: vGroup.items.length
+                        orderId: String(subOrder.subOrderId),
+                        amount: subOrder.total,
+                        itemCount: subOrder.items.length
                     }
                 });
             }
@@ -694,31 +754,28 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     order.razorpaySignature = razorpaySignature;
     order.paidAt = new Date();
 
-    if (Array.isArray(order.vendorItems) && order.vendorItems.length > 0) {
-        order.vendorItems = order.vendorItems.map((vendorGroup) => ({
-            ...vendorGroup.toObject(),
-            status: vendorGroup.status === 'pending' ? 'processing' : vendorGroup.status,
-        }));
-    }
+    await SubOrder.updateMany(
+        { parentOrderId: order._id, status: 'pending' },
+        { $set: { status: 'processing' } }
+    );
 
     await order.save();
 
     // Notify vendors about the confirmed payment and new order
-    if (Array.isArray(order.vendorItems)) {
-        for (const vGroup of order.vendorItems) {
-            await createNotification({
-                recipientId: vGroup.vendorId,
-                recipientType: 'vendor',
-                title: 'New Order Received',
-                message: `You have received a new order ${order.orderId}. Payment confirmed.`,
-                type: 'order',
-                data: {
-                    orderId: String(order.orderId),
-                    amount: vGroup.subtotal + vGroup.shipping + vGroup.tax - vGroup.discount,
-                    itemCount: vGroup.items.length
-                }
-            });
-        }
+    const subOrders = await SubOrder.find({ parentOrderId: order._id });
+    for (const subOrder of subOrders) {
+        await createNotification({
+            recipientId: subOrder.vendorId,
+            recipientType: 'vendor',
+            title: 'New Order Received',
+            message: `You have received a new order ${subOrder.subOrderId}. Payment confirmed.`,
+            type: 'order',
+            data: {
+                orderId: String(subOrder.subOrderId),
+                amount: subOrder.total,
+                itemCount: subOrder.items.length
+            }
+        });
     }
 
     res.status(200).json(new ApiResponse(200, {
@@ -734,15 +791,33 @@ export const getUserOrders = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (page - 1) * limit;
     const filter = { userId: req.user.id, sourceType: { $ne: 'exchange_replacement' } };
-    const orders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit));
+    const rawOrders = await Order.find(filter).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)).lean();
+    
+    // Attach suborders
+    const orders = await Promise.all(rawOrders.map(async (order) => {
+        const subOrders = await SubOrder.find({ parentOrderId: order._id }).lean();
+        return { ...order, subOrders };
+    }));
     const total = await Order.countDocuments(filter);
     res.status(200).json(new ApiResponse(200, { orders, total, page: Number(page), pages: Math.ceil(total / limit) }, 'Orders fetched.'));
 });
 
 // GET /api/user/orders/:id
 export const getOrderDetail = asyncHandler(async (req, res) => {
-    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id, sourceType: { $ne: 'exchange_replacement' } });
+    const order = await Order.findOne({ orderId: req.params.id, userId: req.user.id, sourceType: { $ne: 'exchange_replacement' } }).lean();
     if (!order) throw new ApiError(404, 'Order not found.');
+    
+    if (['processing', 'shipped', 'in-transit', 'out_for_delivery'].includes(order.status)) {
+        const { default: User } = await import('../../../models/User.model.js');
+        const user = await User.findById(req.user.id).select('+deliveryOtp');
+        if (user && user.deliveryOtp) {
+            order.deliveryOtp = user.deliveryOtp;
+        }
+    }
+
+    const subOrders = await SubOrder.find({ parentOrderId: order._id }).lean();
+    order.subOrders = subOrders;
+
     res.status(200).json(new ApiResponse(200, order, 'Order detail fetched.'));
 });
 
@@ -758,12 +833,12 @@ export const cancelOrder = asyncHandler(async (req, res) => {
             order.status = 'cancelled';
             order.cancelledAt = new Date();
             order.cancellationReason = req.body.reason || 'Cancelled by customer';
-            if (Array.isArray(order.vendorItems)) {
-                order.vendorItems = order.vendorItems.map((vendorGroup) => ({
-                    ...vendorGroup.toObject(),
-                    status: 'cancelled',
-                }));
-            }
+            
+            await SubOrder.updateMany(
+                { parentOrderId: order._id },
+                { $set: { status: 'cancelled', cancelledAt: order.cancelledAt, cancellationReason: order.cancellationReason } }
+            );
+            
             await order.save({ session });
 
             // Restore stock and status
@@ -812,6 +887,32 @@ export const cancelOrder = asyncHandler(async (req, res) => {
                 },
                 { session }
             );
+
+            // Refund to wallet if order was paid
+            if (order.paymentStatus === 'paid') {
+                const user = await User.findById(req.user.id).session(session);
+                if (user) {
+                    const amountToRefund = order.total;
+                    user.walletBalance = (user.walletBalance || 0) + amountToRefund;
+                    await user.save({ session });
+
+                    await WalletTransaction.create(
+                        [{
+                            user: user._id,
+                            amount: amountToRefund,
+                            type: 'credit',
+                            description: `Refund for cancelled order ${order.orderId}`,
+                            referenceModel: 'Order',
+                            referenceId: order._id,
+                            balanceAfter: user.walletBalance
+                        }],
+                        { session }
+                    );
+
+                    order.paymentStatus = 'refunded';
+                    await order.save({ session });
+                }
+            }
         });
     } finally {
         await session.endSession();

@@ -103,7 +103,7 @@ const VendorHeader = ({ onMenuClick, sidebarOpen }) => {
           />
 
           {/* Logo - Mobile Only */}
-          <div className={`lg:hidden flex items-center relative w-20 overflow-visible transition-all duration-300 ${sidebarOpen ? "translate-x-64" : ""}`}>
+          <div className="lg:hidden flex items-center relative w-20 overflow-visible transition-all duration-300">
             <img
               src={appLogo.src}
               alt={appLogo.alt}

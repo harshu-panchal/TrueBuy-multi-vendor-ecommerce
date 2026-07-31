@@ -48,32 +48,39 @@ const DeliveryLogin = () => {
       toast.success('Login successful!');
       navigate('/delivery/dashboard', { replace: true });
     } catch (error) {
-      toast.error(error.message || 'Invalid credentials');
+      console.error('Login failed:', error);
     }
   };
 
   return (
     <PageTransition>
       <div className="min-h-screen bg-gray-50 flex flex-col items-center">
-        {/* Dark Header with Pattern */}
-        <div className="w-full bg-[#111111] relative overflow-hidden h-64 lg:h-56 flex flex-col items-center justify-center">
-          {/* Geometric Pattern Overlay */}
-          <div className="absolute inset-0 opacity-20 pointer-events-none"
-            style={{
-              backgroundImage: `radial-gradient(circle at 10px 10px, #333 2px, transparent 0)`,
-              backgroundSize: '30px 30px'
-            }}>
-          </div>
-          <div className="absolute inset-0 opacity-10 pointer-events-none"
-            style={{
-              backgroundImage: `linear-gradient(45deg, #444 25%, transparent 25%, transparent 75%, #444 75%, #444), 
-                                  linear-gradient(45deg, #444 25%, transparent 25%, transparent 75%, #444 75%, #444)`,
-              backgroundSize: '60px 60px',
-              backgroundPosition: '0 0, 30px 30px'
-            }}>
-          </div>
-
+      <div className="w-full bg-[#111111] relative overflow-hidden h-[260px] lg:h-[280px] flex flex-col items-center justify-center pt-2">
+        {/* Geometric Pattern Overlay */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none"
+          style={{
+            backgroundImage: `radial-gradient(circle at 10px 10px, #333 2px, transparent 0)`,
+            backgroundSize: '30px 30px'
+          }}>
         </div>
+        <div className="absolute inset-0 opacity-10 pointer-events-none"
+          style={{
+            backgroundImage: `linear-gradient(45deg, #444 25%, transparent 25%, transparent 75%, #444 75%, #444), 
+                                linear-gradient(45deg, #444 25%, transparent 25%, transparent 75%, #444 75%, #444)`,
+            backgroundSize: '60px 60px',
+            backgroundPosition: '0 0, 30px 30px'
+          }}>
+        </div>
+
+        {/* Logo container */}
+        <div className="z-10 flex flex-col items-center justify-center pb-8 lg:pb-16">
+          {appLogo.src ? (
+            <img src={appLogo.src} alt={appLogo.alt} className="w-48 sm:w-56 lg:w-64 h-auto object-contain" />
+          ) : (
+            <h1 className="text-3xl font-bold text-white">LOGO</h1>
+          )}
+        </div>
+      </div>
 
         {/* Login Card */}
         <motion.div
@@ -166,6 +173,12 @@ const DeliveryLogin = () => {
                   <Link to="/delivery/register" className="text-black font-bold hover:underline">
                     Register here
                   </Link>
+                </p>
+                <p className="mt-8 text-center text-sm text-gray-500">
+                  By logging in, you agree to our <br />
+                  <Link to="/delivery/privacy" className="hover:text-black hover:underline transition-colors">Privacy Policy</Link>
+                  {' '}and{' '}
+                  <Link to="/delivery/support-info" className="hover:text-black hover:underline transition-colors">Terms & Conditions</Link>
                 </p>
               </div>
             </div>

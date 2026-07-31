@@ -10,6 +10,7 @@ import {
   FiShare2,
   FiCheckCircle,
   FiTrash2,
+  FiX,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useCartStore, useUIStore } from "../../../shared/store/useStore";
@@ -35,6 +36,77 @@ import PageTransition from "../../../shared/components/PageTransition";
 import Badge from "../../../shared/components/Badge";
 import ProductCard from "../../../shared/components/ProductCard";
 import { getVariantSignature } from "../../../shared/utils/variant";
+
+const formatPriceForDisplay = (price) => {
+  return typeof price === "number" ? formatPrice(price) : price;
+};
+
+const ShareModal = ({ isOpen, onClose, product }) => {
+  if (!isOpen || !product) return null;
+
+  const url = window.location.href;
+  const text = `Check out ${product.name} on TrueBuy!`;
+
+  const shareOptions = [
+    {
+      name: "WhatsApp",
+      link: `https://wa.me/?text=${encodeURIComponent(text + " " + url)}`,
+      color: "bg-[#25D366] hover:bg-[#128C7E]",
+    },
+    {
+      name: "Facebook",
+      link: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+      color: "bg-[#1877F2] hover:bg-[#0c59c4]",
+    },
+    {
+      name: "Twitter",
+      link: `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+      color: "bg-[#1DA1F2] hover:bg-[#0c85d0]",
+    },
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 p-4 transition-opacity" onClick={onClose}>
+      <motion.div 
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        className="bg-white rounded-t-3xl sm:rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <h3 className="font-bold text-lg text-gray-800">Share Product</h3>
+          <button onClick={onClose} className="p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors">
+            <FiX size={20} />
+          </button>
+        </div>
+        <div className="p-5 flex flex-col gap-3">
+          {shareOptions.map((opt) => (
+            <a
+              key={opt.name}
+              href={opt.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`w-full py-3.5 rounded-xl text-white font-semibold text-center transition-colors shadow-sm ${opt.color}`}
+            >
+              Share on {opt.name}
+            </a>
+          ))}
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(url);
+              toast.success("Link copied to clipboard");
+              onClose();
+            }}
+            className="w-full py-3.5 rounded-xl bg-gray-100 text-gray-700 font-semibold text-center hover:bg-gray-200 transition-colors mt-2"
+          >
+            Copy Link
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 const resolveVariantPrice = (product, selectedVariant) => {
   const basePrice = Number(product?.price) || 0;
@@ -170,6 +242,7 @@ const MobileProductDetail = () => {
   const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [isValidatingStock, setIsValidatingStock] = useState(false);
 
   const { items, addItem, removeItem } = useCartStore();
   const triggerCartAnimation = useUIStore(
@@ -183,6 +256,7 @@ const MobileProductDetail = () => {
   const { fetchReviews, sortReviews, addReview } = useReviewsStore();
   const { getAllOrders } = useOrderStore();
   const { user, isAuthenticated } = useAuthStore();
+  const [showShareModal, setShowShareModal] = useState(false);
   const vendor = useMemo(() => {
     if (!product) return null;
     if (product.vendor?.id) return product.vendor;
@@ -308,7 +382,7 @@ const MobileProductDetail = () => {
     );
   }
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
     if (product.stock === "out_of_stock") {
       toast.error("Product is out of stock");
@@ -331,20 +405,31 @@ const MobileProductDetail = () => {
     }
 
     const finalPrice = resolveVariantPrice(product, selectedVariant);
-    const variantKey = getVariantSignature(selectedVariant || {});
-    const variantStockValue = Number(
-      product?.variants?.stockMap?.[variantKey] ??
-      product?.variants?.stockMap?.get?.(variantKey)
-    );
-    const effectiveStock = Number.isFinite(variantStockValue)
-      ? variantStockValue
-      : Number(product.stockQuantity || 0);
-    if (effectiveStock <= 0) {
+    
+    setIsValidatingStock(true);
+    let backendStock = Number(product.stockQuantity || 0);
+    try {
+        const variantKey = getVariantSignature(selectedVariant || {});
+        const res = await api.get(`/products/${product.id}/stock`, { params: { variantKey } });
+        backendStock = res.data?.data?.availableStock ?? backendStock;
+    } catch(err) {
+        console.error(err);
+        const variantKey = getVariantSignature(selectedVariant || {});
+        const variantStockValue = Number(
+          product?.variants?.stockMap?.[variantKey] ??
+          product?.variants?.stockMap?.get?.(variantKey)
+        );
+        backendStock = Number.isFinite(variantStockValue) ? variantStockValue : backendStock;
+    } finally {
+        setIsValidatingStock(false);
+    }
+
+    if (backendStock <= 0) {
       toast.error("Selected variant is out of stock");
       return;
     }
-    if (quantity > effectiveStock) {
-      toast.error(`Only ${effectiveStock} item(s) available for selected variant`);
+    if (quantity > backendStock) {
+      toast.error(`Only ${backendStock} item(s) available for selected variant`);
       return;
     }
 
@@ -355,7 +440,7 @@ const MobileProductDetail = () => {
       image: product.image,
       quantity: quantity,
       variant: selectedVariant,
-      stockQuantity: effectiveStock,
+      stockQuantity: backendStock,
       vendorId: product.vendorId,
       vendorName: vendor?.storeName || vendor?.name || product.vendorName,
     });
@@ -388,19 +473,46 @@ const MobileProductDetail = () => {
     }
   };
 
-  const handleQuantityChange = (change) => {
-    const newQuantity = quantity + change;
+  const selectedAvailableStock = useMemo(() => {
     const variantKey = getVariantSignature(selectedVariant || {});
     const variantStockValue = Number(
       product?.variants?.stockMap?.[variantKey] ??
       product?.variants?.stockMap?.get?.(variantKey)
     );
-    const maxStock = Number.isFinite(variantStockValue)
-      ? Math.max(0, variantStockValue)
-      : Number(product?.stockQuantity || 0);
-    if (newQuantity >= 1 && newQuantity <= (maxStock || 10)) {
-      setQuantity(newQuantity);
+    if (Number.isFinite(variantStockValue)) {
+      return Math.max(0, variantStockValue);
     }
+    return Number(product?.stockQuantity || 0);
+  }, [product, selectedVariant]);
+
+  const handleQuantityChange = async (change) => {
+    const newQuantity = quantity + change;
+    if (newQuantity < 1) return;
+
+    if (change > 0) {
+      setIsValidatingStock(true);
+      try {
+        const variantKey = getVariantSignature(selectedVariant || {});
+        const res = await api.get(`/products/${product.id}/stock`, {
+          params: { variantKey }
+        });
+        const backendStock = res.data?.data?.availableStock ?? selectedAvailableStock;
+        
+        if (newQuantity > backendStock) {
+          toast.error(`Only ${backendStock} item(s) available in stock`);
+          return;
+        }
+      } catch (error) {
+        if (newQuantity > selectedAvailableStock) {
+          toast.error(`Only ${selectedAvailableStock} item(s) available in stock`);
+          return;
+        }
+      } finally {
+        setIsValidatingStock(false);
+      }
+    }
+
+    setQuantity(newQuantity);
   };
 
   const productImages = useMemo(() => {
@@ -427,17 +539,7 @@ const MobileProductDetail = () => {
     return resolveVariantPrice(product, selectedVariant);
   }, [product, selectedVariant]);
 
-  const selectedAvailableStock = useMemo(() => {
-    const variantKey = getVariantSignature(selectedVariant || {});
-    const variantStockValue = Number(
-      product?.variants?.stockMap?.[variantKey] ??
-      product?.variants?.stockMap?.get?.(variantKey)
-    );
-    if (Number.isFinite(variantStockValue)) {
-      return Math.max(0, variantStockValue);
-    }
-    return Number(product?.stockQuantity || 0);
-  }, [product, selectedVariant]);
+
 
   const productFaqs = useMemo(() => {
     if (!Array.isArray(product?.faqs)) return [];
@@ -484,7 +586,7 @@ const MobileProductDetail = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={true}>
-        <div className="w-full pb-24 lg:pb-12 max-w-[1440px] mx-auto">
+        <div className="w-full lg:pb-12 max-w-[1440px] mx-auto">
           {/* Back Button */}
           <div className="px-4 pt-4 lg:pt-6 lg:px-8 mb-3">
             <button
@@ -636,23 +738,25 @@ const MobileProductDetail = () => {
                       <div className="flex items-center bg-gray-100 rounded-xl p-1 border border-gray-200">
                         <button
                           onClick={() => handleQuantityChange(-1)}
-                          disabled={quantity <= 1}
+                          disabled={quantity <= 1 || isValidatingStock}
                           className="w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-sm hover:shadow-md disabled:shadow-none disabled:bg-transparent disabled:opacity-50 transition-all text-gray-700">
                           <FiMinus />
                         </button>
                         <span className="w-12 text-center font-bold text-gray-900 text-lg">
-                          {quantity}
+                          {isValidatingStock ? <span className="opacity-50">...</span> : quantity}
                         </span>
                         <button
                           onClick={() => handleQuantityChange(1)}
-                          disabled={quantity >= (selectedAvailableStock || 10)}
+                          disabled={isValidatingStock}
                           className="w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-sm hover:shadow-md disabled:shadow-none disabled:bg-transparent disabled:opacity-50 transition-all text-gray-700">
                           <FiPlus />
                         </button>
                       </div>
-                      <span className="text-sm text-gray-500">
-                        {selectedAvailableStock} {product.unit}s available
-                      </span>
+                      {selectedAvailableStock > 0 && selectedAvailableStock <= (product.lowStockThreshold || 10) && (
+                        <span className="text-sm text-orange-600 font-medium">
+                          Only {selectedAvailableStock} {product.unit}s left!
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -661,16 +765,18 @@ const MobileProductDetail = () => {
                 <div className="hidden lg:grid grid-cols-5 gap-3 py-2">
                   <button
                     onClick={handleAddToCart}
-                    disabled={isOutOfStock}
+                    disabled={isOutOfStock || isValidatingStock}
                     className={`col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${isOutOfStock
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
                       : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5"
                       }`}>
                     <FiShoppingBag className="text-xl" />
                     <span>
-                      {isOutOfStock
-                        ? "Out of Stock"
-                        : "Add to Cart"}
+                      {isValidatingStock 
+                        ? "Validating..."
+                        : isOutOfStock
+                          ? "Out of Stock"
+                          : "Add to Cart"}
                     </span>
                   </button>
 
@@ -686,18 +792,7 @@ const MobileProductDetail = () => {
                   </button>
 
                   <button
-                    onClick={() => {
-                      if (navigator.share) {
-                        navigator.share({
-                          title: product.name,
-                          text: `Check out ${product.name}`,
-                          url: window.location.href,
-                        });
-                      } else {
-                        navigator.clipboard.writeText(window.location.href);
-                        toast.success("Link copied to clipboard");
-                      }
-                    }}
+                    onClick={() => setShowShareModal(true)}
                     className="col-span-1 py-4 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-semibold transition-all duration-300 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center">
                     <FiShare2 className="text-2xl" />
                   </button>
@@ -834,18 +929,7 @@ const MobileProductDetail = () => {
               />
             </button>
             <button
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: product.name,
-                    text: `Check out ${product.name}`,
-                    url: window.location.href,
-                  });
-                } else {
-                  navigator.clipboard.writeText(window.location.href);
-                  toast.success("Link copied to clipboard");
-                }
-              }}
+              onClick={() => setShowShareModal(true)}
               className="p-3 bg-gray-100 text-gray-700 rounded-xl font-semibold transition-all duration-300">
               <FiShare2 className="text-xl" />
             </button>
@@ -866,6 +950,12 @@ const MobileProductDetail = () => {
           </div>
         </div>
       </MobileLayout>
+      
+      <ShareModal 
+        isOpen={showShareModal} 
+        onClose={() => setShowShareModal(false)} 
+        product={product} 
+      />
     </PageTransition>
   );
 };

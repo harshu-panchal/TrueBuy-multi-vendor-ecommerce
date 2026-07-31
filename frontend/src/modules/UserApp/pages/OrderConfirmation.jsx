@@ -86,7 +86,7 @@ const MobileOrderConfirmation = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full min-h-screen pt-8 pb-24 lg:pt-16 bg-gray-50 flex flex-col items-center px-4">
+        <div className="w-full min-h-screen pt-8 lg:pt-16 bg-gray-50 flex flex-col items-center px-4">
           <div className="w-full max-w-lg lg:max-w-5xl">
             {/* Header Success Section - Centered on all views */}
             <motion.div

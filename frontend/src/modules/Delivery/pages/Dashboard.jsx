@@ -122,10 +122,15 @@ const DeliveryDashboard = () => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending':
+      case 'processing':
         return 'bg-yellow-100 text-yellow-800';
-      case 'in-transit':
+      case 'assigned_for_delivery':
         return 'bg-blue-100 text-blue-800';
+      case 'in-transit':
+      case 'shipped':
+        return 'bg-purple-100 text-purple-800';
       case 'completed':
+      case 'delivered':
         return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -337,12 +342,12 @@ const DeliveryDashboard = () => {
           </div>
 
           <div className="space-y-3">
-            {returnRequests.length === 0 ? (
+            {returnRequests.filter(req => req.status !== 'COMPLETED' && req.status !== 'RETURNED').length === 0 ? (
               <div className="text-sm text-gray-500 py-6 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
                 No return pickups assigned.
               </div>
             ) : (
-              returnRequests.map((req, index) => (
+              returnRequests.filter(req => req.status !== 'COMPLETED' && req.status !== 'RETURNED').map((req, index) => (
                 <div 
                   key={req.id}
                   onClick={() => navigate(`/delivery/return-pickup/${req.id}`)}

@@ -6,7 +6,7 @@ import Admin from '../../../models/Admin.model.js';
 import { generateTokens } from '../../../utils/generateToken.js';
 import { createNotification } from '../../../services/notification.service.js';
 import { sendEmail } from '../../../services/email.service.js';
-import { cleanupLocalFiles } from '../../../services/upload.service.js';
+import { cleanupLocalFiles, uploadLocalFileToCloudinaryAndCleanup } from '../../../services/upload.service.js';
 import {
     clearRefreshSession,
     decodeRefreshTokenOrThrow,
@@ -32,10 +32,23 @@ export const register = asyncHandler(async (req, res) => {
 
     const normalizedEmail = String(email || '').trim().toLowerCase();
     let deliveryBoy = null;
+    let drivingLicenseUrl = '';
+    let aadharCardUrl = '';
 
     try {
-        const existing = await DeliveryBoy.findOne({ email: normalizedEmail });
-        if (existing) throw new ApiError(409, 'Email already registered.');
+        const existing = await DeliveryBoy.findOne({ 
+            $or: [{ email: normalizedEmail }, { phone: String(phone || '').trim() }] 
+        });
+        if (existing) throw new ApiError(409, 'Email or phone number already registered.');
+
+        // Upload documents to Cloudinary
+        const [drivingLicenseResult, aadharCardResult] = await Promise.all([
+            uploadLocalFileToCloudinaryAndCleanup(drivingLicenseFile.path, 'delivery-docs'),
+            uploadLocalFileToCloudinaryAndCleanup(aadharCardFile.path, 'delivery-docs')
+        ]);
+        
+        drivingLicenseUrl = drivingLicenseResult.url;
+        aadharCardUrl = aadharCardResult.url;
 
         deliveryBoy = await DeliveryBoy.create({
             name: String(name || '').trim(),
@@ -46,8 +59,8 @@ export const register = asyncHandler(async (req, res) => {
             vehicleType: String(vehicleType || '').trim(),
             vehicleNumber: String(vehicleNumber || '').trim(),
             documents: {
-                drivingLicense: getUploadedPath(drivingLicenseFile),
-                aadharCard: getUploadedPath(aadharCardFile),
+                drivingLicense: drivingLicenseUrl,
+                aadharCard: aadharCardUrl,
             },
             applicationStatus: 'pending',
             isActive: false,
@@ -327,7 +340,8 @@ export const updateProfile = asyncHandler(async (req, res) => {
 export const updateAvatar = asyncHandler(async (req, res) => {
     if (!req.file) throw new ApiError(400, 'Please upload an image.');
 
-    const avatarPath = `/uploads/delivery-avatars/${req.file.filename}`;
+    const uploadResult = await uploadLocalFileToCloudinaryAndCleanup(req.file.path, 'delivery-avatars');
+    const avatarPath = uploadResult.url;
     
     const deliveryBoy = await DeliveryBoy.findByIdAndUpdate(
         req.user.id,
@@ -338,4 +352,22 @@ export const updateAvatar = asyncHandler(async (req, res) => {
     if (!deliveryBoy) throw new ApiError(404, 'Delivery partner not found.');
 
     res.status(200).json(new ApiResponse(200, { avatar: deliveryBoy.avatar }, 'Avatar updated successfully.'));
+});
+
+// DELETE /api/delivery/auth/profile
+export const deleteAccount = asyncHandler(async (req, res) => {
+    const deliveryBoy = await DeliveryBoy.findById(req.user.id);
+    if (!deliveryBoy) throw new ApiError(404, 'Delivery account not found.');
+
+    deliveryBoy.isDeleted = true;
+    deliveryBoy.isActive = false;
+    deliveryBoy.status = 'offline';
+    deliveryBoy.isAvailable = false;
+    deliveryBoy.deletedAt = new Date();
+    deliveryBoy.refreshTokenHash = undefined;
+    deliveryBoy.refreshTokenExpiresAt = undefined;
+    
+    await deliveryBoy.save();
+
+    res.status(200).json(new ApiResponse(200, null, 'Delivery account deleted successfully.'));
 });

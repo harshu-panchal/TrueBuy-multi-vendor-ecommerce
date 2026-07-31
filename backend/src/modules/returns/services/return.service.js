@@ -18,14 +18,67 @@ const sanitizePaging = ({ page = 1, limit = 20 }) => {
     return { numericPage, numericLimit };
 };
 
+const mapReturnItems = (raw) => {
+    const requestItems = Array.isArray(raw?.items) ? raw.items : [];
+    const orderItems = Array.isArray(raw?.orderId?.items) ? raw.orderId.items : [];
+    const product = raw?.productId && typeof raw.productId === 'object' ? raw.productId : null;
+
+    return requestItems.map((item) => {
+        const itemProductId = String(item?.productId || '');
+        const matchedOrderItem = orderItems.find(
+            (orderItem) => String(orderItem?.productId || '') === itemProductId
+        );
+
+        return {
+            ...item,
+            name: item?.name || product?.name || matchedOrderItem?.name || 'Deleted Product',
+            title: item?.title || item?.name || product?.title || product?.name || matchedOrderItem?.title || matchedOrderItem?.name || 'Deleted Product',
+            price: Number(item?.price ?? product?.price ?? matchedOrderItem?.price ?? 0),
+            image: item?.image || product?.image || matchedOrderItem?.image || '',
+        };
+    });
+};
+
 const mapReturnRequest = (entry) => {
     const raw = typeof entry?.toObject === 'function' ? entry.toObject() : entry;
+    const customer = raw?.userId && typeof raw.userId === 'object'
+        ? {
+            id: String(raw.userId._id || ''),
+            name: raw.userId?.name || 'Deleted Customer',
+            email: raw.userId?.email || 'N/A',
+            phone: raw.userId?.phone || '',
+        }
+        : {
+            id: raw?.userId ? String(raw.userId) : '',
+            name: 'Deleted Customer',
+            email: 'N/A',
+            phone: '',
+        };
+    const vendor = raw?.vendorId && typeof raw.vendorId === 'object'
+        ? {
+            id: String(raw.vendorId._id || ''),
+            name: raw.vendorId?.name || raw.vendorId?.storeName || raw.vendorId?.shopName || 'Deleted Vendor',
+            title: raw.vendorId?.title || raw.vendorId?.storeName || raw.vendorId?.shopName || raw.vendorId?.name || 'Deleted Vendor',
+            email: raw.vendorId?.email || 'N/A',
+        }
+        : {
+            id: raw?.vendorId ? String(raw.vendorId) : '',
+            name: 'Deleted Vendor',
+            title: 'Deleted Vendor',
+            email: 'N/A',
+        };
+    const deliveryBoyId = raw?.assignedDeliveryBoy || raw?.deliveryBoyId || null;
+
     return {
         ...raw,
         id: String(raw?._id || ''),
         status: normalizeStatusValue(raw?.status),
         orderId: raw?.orderId?.orderId || String(raw?.orderId?._id || raw?.orderId || ''),
         orderRefId: raw?.orderId?._id ? String(raw.orderId._id) : null,
+        customer,
+        vendor,
+        deliveryBoyId,
+        items: mapReturnItems(raw),
     };
 };
 
@@ -142,10 +195,10 @@ export const listReturnRequests = async ({ filter = {}, page = 1, limit = 20, st
 
     const [rows, total] = await Promise.all([
         ReturnRequest.find(query)
-            .populate('orderId', 'orderId status total')
+            .populate('orderId', 'orderId status total items')
             .populate('productId', 'name image price')
             .populate('userId', 'name email phone')
-            .populate('vendorId', 'storeName email')
+            .populate('vendorId', 'name storeName shopName title email')
             .populate('assignedDeliveryBoy', 'name email phone')
             .sort({ createdAt: -1 })
             .skip((numericPage - 1) * numericLimit)

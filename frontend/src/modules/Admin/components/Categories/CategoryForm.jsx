@@ -54,6 +54,14 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
     }
   }, [category, parentId]);
 
+  // Prevent background scrolling when modal is open
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, []);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData({

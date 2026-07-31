@@ -25,6 +25,8 @@ const MobileOrderDetail = () => {
   const [returnReason, setReturnReason] = useState('Product issue');
   const [returnVendorId, setReturnVendorId] = useState('');
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const order = getOrder(orderId);
   const shippingAddress = order?.shippingAddress || {};
   const orderItems = Array.isArray(order?.items) ? order.items : [];
@@ -115,19 +117,26 @@ const MobileOrderDetail = () => {
     navigate('/checkout');
   };
 
-  const handleCancel = async () => {
-    if (window.confirm('Are you sure you want to cancel this order?')) {
-      if (['pending', 'processing'].includes(order.status)) {
-        try {
-          await cancelOrder(order.id);
-          toast.success('Order cancelled successfully');
-          navigate('/orders');
-        } catch (error) {
-          toast.error(error?.message || 'Failed to cancel order');
-        }
-      } else {
-        toast.error('This order cannot be cancelled');
+  const handleCancelClick = () => {
+    setShowCancelModal(true);
+  };
+
+  const confirmCancel = async () => {
+    if (['pending', 'processing'].includes(order.status)) {
+      try {
+        setIsCancelling(true);
+        await cancelOrder(order.id);
+        toast.success('Order cancelled successfully');
+        setShowCancelModal(false);
+        navigate('/orders');
+      } catch (error) {
+        toast.error(error?.message || 'Failed to cancel order');
+      } finally {
+        setIsCancelling(false);
       }
+    } else {
+      toast.error('This order cannot be cancelled');
+      setShowCancelModal(false);
     }
   };
 
@@ -173,7 +182,7 @@ const MobileOrderDetail = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={true}>
-          <div className="w-full pb-24">
+          <div className="w-full">
             {/* Header */}
             <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30">
               <div className="flex items-center gap-3 mb-3">
@@ -224,6 +233,7 @@ const MobileOrderDetail = () => {
                               </div>
                               <div className="flex-1 min-w-0">
                                 <h3 className="font-semibold text-gray-800 text-sm mb-1">{item.name}</h3>
+                                <p className="text-xs text-gray-500 mb-0.5">ID: {item.productId || item.id}</p>
                                 <p className="text-xs text-gray-600">
                                   {formatPrice(item.price)} x {item.quantity}
                                 </p>
@@ -331,6 +341,7 @@ const MobileOrderDetail = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-gray-800 text-sm mb-1">{item.name}</h3>
+                          <p className="text-xs text-gray-500 mb-0.5">ID: {item.productId || item.id}</p>
                           <p className="text-xs text-gray-600">
                             {formatPrice(item.price)} x {item.quantity}
                           </p>
@@ -502,7 +513,7 @@ const MobileOrderDetail = () => {
               <div className="space-y-2">
                 {['pending', 'processing'].includes(order.status) && (
                   <button
-                    onClick={handleCancel}
+                    onClick={handleCancelClick}
                     className="w-full py-3 bg-red-50 text-red-600 rounded-xl font-semibold hover:bg-red-100 transition-colors"
                   >
                     Cancel Order
@@ -526,6 +537,47 @@ const MobileOrderDetail = () => {
             </div>
           </div>
 
+          {/* Cancel Order Modal */}
+          {showCancelModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden"
+              >
+                <div className="p-6">
+                  <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-4 mx-auto">
+                    <FiAlertCircle size={24} />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 text-center mb-2">Cancel Order?</h3>
+                  <p className="text-gray-500 text-center text-sm mb-6">
+                    Are you sure you want to cancel this order? This action cannot be undone.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowCancelModal(false)}
+                      disabled={isCancelling}
+                      className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      No, Keep It
+                    </button>
+                    <button
+                      onClick={confirmCancel}
+                      disabled={isCancelling}
+                      className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+                    >
+                      {isCancelling ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        'Yes, Cancel'
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
       </MobileLayout>
     </PageTransition>
   );

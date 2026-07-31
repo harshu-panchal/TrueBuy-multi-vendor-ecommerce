@@ -12,7 +12,7 @@ import {
 
 } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import { getAllOrders } from '../services/adminService';
+import { getAllSubOrders } from '../services/adminService';
 
 const Orders = () => {
   const navigate = useNavigate();
@@ -24,8 +24,8 @@ const Orders = () => {
     const fetchOrders = async () => {
       setIsLoading(true);
       try {
-        const response = await getAllOrders({ limit: 1000 });
-        setOrders(response.data.orders || []);
+        const response = await getAllSubOrders({ limit: 1000 });
+        setOrders(response.data.subOrders || []);
       } catch (error) {
         console.error("Orders overview fetch error:", error);
       } finally {

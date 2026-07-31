@@ -150,6 +150,33 @@ const ReturnRequest = () => {
     }
     
     setIsSubmitting(true);
+    let uploadedImages = [];
+    if (images.length > 0) {
+      try {
+        const formData = new FormData();
+        images.forEach(img => {
+          if (img.file) {
+            formData.append('images', img.file);
+          }
+        });
+        
+        if (formData.has('images')) {
+          const uploadRes = await api.post('/user/uploads/images', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          const payload = uploadRes.data?.data || uploadRes.data;
+          uploadedImages = payload.map(u => u.url);
+        } else {
+          // If they were already uploaded (e.g. string URLs)
+          uploadedImages = images.map(img => img.preview).filter(u => u && !u.startsWith('data:'));
+        }
+      } catch (err) {
+        toast.error('Failed to upload images');
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     const success = await submitReturnRequest({
       orderId,
       productIds: [productId],
@@ -158,7 +185,7 @@ const ReturnRequest = () => {
       vendorId: item.vendorId || item.vendor?._id || 'VEND-DEFAULT', // Ensure vendor ID is captured
       reason: returnReason,
       description: additionalDetails,
-      images: images.map(img => img.preview), // In real app, upload first
+      images: uploadedImages,
       pickupAddress,
       refundMethod,
       bankDetails: refundMethod === 'bank' ? bankDetails : null,
@@ -192,7 +219,7 @@ const ReturnRequest = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={false} showCartBar={false}>
-        <div className="w-full pb-24 bg-gray-50 min-h-screen">
+        <div className="w-full bg-gray-50 min-h-screen">
           {/* Header */}
           <div className="px-4 py-4 bg-white border-b border-gray-200 sticky top-1 z-30 flex items-center gap-3">
             <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-full">

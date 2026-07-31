@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import toast from "react-hot-toast";
+import { updateSettings as apiUpdateSettings } from "../../modules/Admin/services/adminService";
 import logoImage from "../../assets/tru_buy-removebg-preview.png";
 
 const defaultSettings = {
@@ -83,9 +84,21 @@ const defaultSettings = {
     priceDisplayFormat: "INR", // Currency format
   },
   content: {
-    privacyPolicy: "",
-    termsConditions: "",
-    refundPolicy: "",
+    privacyPolicy: {
+      user: "",
+      vendor: "",
+      delivery: "",
+    },
+    termsConditions: {
+      user: "",
+      vendor: "",
+      delivery: "",
+    },
+    refundPolicy: {
+      user: "",
+      vendor: "",
+      delivery: "",
+    },
   },
   features: {
     wishlistEnabled: true,
@@ -156,16 +169,31 @@ export const useSettingsStore = create(
       isLoading: false,
 
       // Initialize settings
-      initialize: () => {
+      initialize: async () => {
         const savedSettings = localStorage.getItem("admin-settings");
         if (savedSettings) {
           set({ settings: JSON.parse(savedSettings) });
         } else {
           set({ settings: defaultSettings });
-          localStorage.setItem(
-            "admin-settings",
-            JSON.stringify(defaultSettings)
-          );
+        }
+        
+        try {
+          // Fetch latest from backend
+          const { getSettings: apiGetSettings } = await import("../../modules/Admin/services/adminService");
+          const response = await apiGetSettings();
+          if (response?.data) {
+            const mergedSettings = { ...defaultSettings };
+            Object.keys(response.data).forEach(key => {
+              mergedSettings[key] = {
+                ...mergedSettings[key],
+                ...response.data[key]
+              };
+            });
+            set({ settings: mergedSettings });
+            localStorage.setItem("admin-settings", JSON.stringify(mergedSettings));
+          }
+        } catch (error) {
+          console.error("Failed to sync settings from server:", error);
         }
       },
 
@@ -179,7 +207,7 @@ export const useSettingsStore = create(
       },
 
       // Update settings
-      updateSettings: (category, settingsData) => {
+      updateSettings: async (category, settingsData) => {
         set({ isLoading: true });
         try {
           const currentSettings = get().settings;
@@ -190,6 +218,10 @@ export const useSettingsStore = create(
               ...settingsData,
             },
           };
+          
+          // Call API to save to database
+          await apiUpdateSettings({ category, ...settingsData });
+          
           set({ settings: updatedSettings, isLoading: false });
           localStorage.setItem(
             "admin-settings",

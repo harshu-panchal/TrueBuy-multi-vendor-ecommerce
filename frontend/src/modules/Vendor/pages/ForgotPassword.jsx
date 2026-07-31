@@ -13,7 +13,18 @@ const VendorForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [step, setStep] = useState("request");
   const [codes, setCodes] = useState(Array(OTP_LENGTH).fill(""));
+  const [timer, setTimer] = useState(0);
   const inputRefs = useRef([]);
+
+  useEffect(() => {
+    let interval;
+    if (timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [timer]);
 
   useEffect(() => {
     if (step === "verify" && inputRefs.current[0]) {
@@ -31,6 +42,7 @@ const VendorForgotPassword = () => {
     try {
       await forgotPassword(email.trim().toLowerCase());
       toast.success("If the email exists, reset OTP has been sent.");
+      setTimer(60);
       setStep("verify");
     } catch {
       // Global api interceptor shows toast
@@ -130,7 +142,7 @@ const VendorForgotPassword = () => {
           </form>
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-6">
-            <div className="flex justify-center gap-3">
+            <div className="flex justify-center gap-1 sm:gap-3">
               {codes.map((code, index) => (
                 <input
                   key={index}
@@ -142,7 +154,7 @@ const VendorForgotPassword = () => {
                   onChange={(e) => handleCodeChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={index === 0 ? handlePaste : undefined}
-                  className="w-12 h-12 text-center text-xl font-bold bg-white border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 text-gray-800"
+                  className="w-10 sm:w-12 h-12 sm:h-12 text-center text-xl font-bold bg-white border-2 border-gray-200 rounded-lg sm:rounded-xl focus:outline-none focus:border-primary-500 text-gray-800"
                 />
               ))}
             </div>
@@ -151,11 +163,11 @@ const VendorForgotPassword = () => {
               <button
                 type="button"
                 onClick={handleRequestOtp}
-                disabled={isLoading}
+                disabled={isLoading || timer > 0}
                 className="text-sm text-primary-600 hover:text-primary-700 font-medium disabled:text-gray-400 inline-flex items-center gap-2"
               >
-                <FiRefreshCw />
-                Resend OTP
+                <FiRefreshCw className={timer > 0 ? "opacity-50" : ""} />
+                {timer > 0 ? `Resend in ${timer}s` : "Resend OTP"}
               </button>
               <button
                 type="button"

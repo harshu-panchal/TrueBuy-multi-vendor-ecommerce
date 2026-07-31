@@ -212,11 +212,22 @@ api.interceptors.response.use(
       }
     }
 
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      'Something went wrong';
-    toast.error(message);
+    // Extract the exact error message from the backend
+    const backendMessage = error.response?.data?.message;
+    
+    // Prevent generic Axios messages from being shown to the user
+    let message = backendMessage;
+    if (!message) {
+      message = error.message?.includes('status code') ? null : error.message;
+    }
+    
+    // Only show toast if we have a meaningful message
+    if (message) {
+      toast.error(message);
+    } else if (!error.response) {
+      // Fallback for true network errors
+      toast.error('Network error. Please try again.');
+    }
 
     if (error.response?.status === 401) {
       const activeScope = pathScope;

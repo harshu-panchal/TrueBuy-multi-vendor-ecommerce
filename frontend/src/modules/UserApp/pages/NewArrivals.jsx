@@ -150,7 +150,7 @@ const MobileNewArrivals = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="w-full pb-24">
+        <div className="w-full">
           <div className="px-4 py-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-b border-gray-200 sticky top-1 z-30">
             <div className="flex items-center gap-3 mb-3">
               <button

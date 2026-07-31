@@ -17,7 +17,7 @@ import AnimatedSelect from "../../components/AnimatedSelect";
 import { formatPrice } from "../../../../shared/utils/helpers";
 import { formatDate } from "../../utils/adminHelpers";
 import { useVendorStore } from "../../store/vendorStore";
-import { getAllOrders } from "../../services/adminService";
+import { getAllSubOrders } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 const ManageVendors = () => {
@@ -89,6 +89,11 @@ const ManageVendors = () => {
       key: "id",
       label: "ID",
       sortable: true,
+      render: (value) => (
+        <span className="text-sm text-gray-500 font-mono" title={value}>
+          {value?.length > 10 ? `${value.substring(0, 4)}...${value.substring(value.length - 4)}` : value}
+        </span>
+      ),
     },
     {
       key: "storeName",

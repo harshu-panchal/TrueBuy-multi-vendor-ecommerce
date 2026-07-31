@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiFilter, FiX, FiSearch } from "react-icons/fi";
+import { FiFilter, FiX, FiSearch } from "react-icons/fi";
 import MobileLayout from "../components/Layout/MobileLayout";
 import { categories as fallbackCategories } from "../../../data/categories";
 import { getCatalogProducts } from "../data/catalogData";
@@ -361,11 +361,6 @@ const MobileCategories = () => {
               <div
                 key={`header-${selectedCategoryId}`}
                 className="flex items-center gap-2 md:gap-3">
-                <button
-                  onClick={() => navigate(-1)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0">
-                  <FiArrowLeft className="text-xl text-gray-700" />
-                </button>
                 <div className="flex-1 min-w-0">
                   <h2 className="text-lg font-bold text-gray-800">
                     {selectedCategory.name}

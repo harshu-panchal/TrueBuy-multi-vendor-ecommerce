@@ -49,7 +49,7 @@ const OrderTracking = () => {
     if (!searchQuery) return vendorOrders;
     const q = searchQuery.toLowerCase();
     return vendorOrders.filter((order) =>
-      String(order.orderId ?? order._id ?? "")
+      String((order.subOrderId || order.orderId) ?? order._id ?? "")
         .toLowerCase()
         .includes(q) ||
       String(order.trackingNumber ?? "")
@@ -164,7 +164,7 @@ const OrderTracking = () => {
         ) : filteredOrders.length > 0 ? (
           filteredOrders.map((order) => {
             const vendorData = getVendorOrderData(order);
-            const orderId = order.orderId ?? order._id;
+            const orderId = (order.subOrderId || order.orderId) ?? order._id;
             const orderStatus =
               order.vendorItems?.find(
                 (vi) => vi.vendorId?.toString() === vendorId?.toString()

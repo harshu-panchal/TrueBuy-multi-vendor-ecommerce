@@ -23,7 +23,14 @@ import {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [period, setPeriod] = useState("month");
+  const [period, setPeriod] = useState(() => {
+    return localStorage.getItem("adminDashboardPeriod") || "month";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("adminDashboardPeriod", period);
+  }, [period]);
+
   const [loading, setLoading] = useState(true);
 
   const [stats, setStats] = useState({

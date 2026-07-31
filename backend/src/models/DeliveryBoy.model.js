@@ -57,6 +57,8 @@ const deliveryBoySchema = new mongoose.Schema(
             ifscCode: { type: String, trim: true },
             bankName: { type: String, trim: true },
         },
+        isDeleted: { type: Boolean, default: false },
+        deletedAt: { type: Date },
     },
     { timestamps: true }
 );

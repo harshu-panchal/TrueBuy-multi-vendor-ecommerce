@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as authController from '../controllers/auth.controller.js';
 import * as vendorController from '../controllers/vendor.controller.js';
 import * as orderController from '../controllers/order.controller.js';
+import * as subOrderController from '../controllers/subOrder.controller.js';
 import * as catalogController from '../controllers/catalog.controller.js';
 import * as customerController from '../controllers/customer.controller.js';
 import * as deliveryController from '../controllers/delivery.controller.js';
@@ -16,11 +17,13 @@ import * as uploadController from '../controllers/upload.controller.js';
 import * as systemController from '../controllers/system.controller.js';
 import * as b2bController from '../controllers/b2b.controller.js';
 import * as financeController from '../controllers/finance.controller.js';
+import * as subscriptionController from '../controllers/subscription.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
+import { createSubscriptionPlanSchema, updateSubscriptionPlanSchema, subscriptionPlanIdParamSchema } from '../validators/subscription.validator.js';
 import { refreshTokenSchema, logoutSchema } from '../validators/auth.validator.js';
 import {
     createProductSchema,
@@ -108,8 +111,12 @@ router.get('/analytics/online-customers', ...adminAuth, analyticsController.getO
 router.get('/orders', ...adminAuth, orderController.getAllOrders);
 router.get('/orders/:id', ...adminAuth, orderController.getOrderById);
 router.patch('/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
-router.patch('/orders/:id/assign-delivery', ...adminAuth, orderController.assignDeliveryBoy);
 router.delete('/orders/:id', ...adminAuth, orderController.deleteOrder);
+
+// ─── SubOrders (Product Orders) ───────────────────────────────────────────────
+router.get('/suborders', ...adminAuth, subOrderController.getAllSubOrders);
+router.patch('/suborders/:id/status', ...adminAuth, subOrderController.updateSubOrderStatus);
+router.patch('/suborders/:id/assign-delivery', ...adminAuth, subOrderController.assignDeliveryBoy);
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 router.get('/products', ...adminAuth, catalogController.getAllProducts);
@@ -172,6 +179,7 @@ router.get('/finance/stats', ...adminAuth, financeController.getFinanceStats);
 router.get('/return-requests', ...adminAuth, returnController.getAllReturnRequests);
 router.get('/return-requests/:id', ...adminAuth, returnController.getReturnRequestById);
 router.patch('/return-requests/:id/status', ...adminAuth, returnController.updateReturnRequestStatus);
+router.patch('/return-requests/:id/assign-delivery', ...adminAuth, returnController.assignDelivery);
 
 // ─── Support Tickets ──────────────────────────────────────────────────────────
 router.get('/support/tickets', ...adminAuth, supportController.getAllTickets);
@@ -247,5 +255,12 @@ router.get('/settings', ...adminAuth, systemController.getSettings);
 router.put('/settings', ...adminAuth, validate(settingUpdateSchema), systemController.updateSettings);
 router.get('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'params'), systemController.getPolicy);
 router.put('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'params'), validate(policyUpdateSchema), systemController.updatePolicy);
+
+// ——— Subscriptions ——————————————————————————————————————————————————————
+// router.post('/subscription-plans', ...adminAuth, validate(createSubscriptionPlanSchema), subscriptionController.createPlan);
+// router.get('/subscription-plans', ...adminAuth, subscriptionController.getAllPlans);
+// router.get('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.getPlanById);
+// router.put('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), validate(updateSubscriptionPlanSchema), subscriptionController.updatePlan);
+// router.delete('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.deletePlan);
 
 export default router;

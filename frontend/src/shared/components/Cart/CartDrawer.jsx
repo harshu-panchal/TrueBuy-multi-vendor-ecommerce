@@ -35,12 +35,18 @@ const CartDrawer = () => {
 
   useEffect(() => {
     if (isCartOpen) {
-      document.body.style.overflowY = "hidden";
+      document.body.style.overflow = "hidden";
+      document.documentElement.style.overflow = "hidden";
+      document.body.classList.add("modal-open");
     } else {
-      document.body.style.overflowY = "";
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      document.body.classList.remove("modal-open");
     }
     return () => {
-      document.body.style.overflowY = "";
+      document.body.style.overflow = "";
+      document.documentElement.style.overflow = "";
+      document.body.classList.remove("modal-open");
     };
   }, [isCartOpen]);
 
@@ -143,7 +149,10 @@ const CartDrawer = () => {
                 <div className="flex flex-col gap-1.5 sm:gap-2">
                   <Link
                     to={checkoutLink}
-                    onClick={toggleCart}
+                    onClick={() => {
+                      sessionStorage.removeItem("checkoutStep");
+                      toggleCart();
+                    }}
                     className="w-full gradient-green text-white py-2 sm:py-3 rounded-xl font-semibold text-sm sm:text-base text-center">
                     Proceed to Checkout
                   </Link>

@@ -1,13 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
-import { FiLogOut, FiTruck, FiPackage, FiHome, FiUser, FiMenu, FiBell } from "react-icons/fi";
+import { FiLogOut, FiTruck, FiPackage, FiHome, FiUser, FiMenu, FiBell, FiCreditCard } from "react-icons/fi";
 import { useDeliveryAuthStore } from "../../store/deliveryStore";
 import { useDeliveryNotificationStore } from "../../store/deliveryNotificationStore";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import DeliveryBottomNav from "./DeliveryBottomNav";
 import { appLogo } from "../../../../data/logos";
-import { useEffect } from "react";
+
+const playRingSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const playTone = (freq, type, time, dur, vol) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = type;
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(vol, time + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.01, time + dur);
+      osc.start(time);
+      osc.stop(time + dur);
+    };
+
+    // Fast double ring pattern
+    const now = ctx.currentTime;
+    playTone(880, 'sine', now, 0.3, 0.5);
+    playTone(659.25, 'sine', now + 0.3, 0.6, 0.5);
+    
+    playTone(880, 'sine', now + 1.0, 0.3, 0.5);
+    playTone(659.25, 'sine', now + 1.3, 0.6, 0.5);
+  } catch (error) {
+    console.error("Failed to play ring sound:", error);
+  }
+};
 
 const DeliveryLayout = () => {
   const navigate = useNavigate();
@@ -15,12 +45,20 @@ const DeliveryLayout = () => {
   const { deliveryBoy, logout } = useDeliveryAuthStore();
   const { unreadCount, fetchNotifications } = useDeliveryNotificationStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const prevUnreadRef = useRef(unreadCount);
 
   useEffect(() => {
     fetchNotifications(1);
     const interval = setInterval(() => fetchNotifications(1), 60000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    if (unreadCount > prevUnreadRef.current) {
+      playRingSound();
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount]);
 
   // Prevent body scroll when sidebar is open
   useEffect(() => {
@@ -44,6 +82,7 @@ const DeliveryLayout = () => {
   const menuItems = [
     { icon: FiHome, label: "Dashboard", path: "/delivery/dashboard" },
     { icon: FiPackage, label: "Orders", path: "/delivery/orders" },
+    { icon: FiCreditCard, label: "Wallet", path: "/delivery/finance" },
     { icon: FiBell, label: "Notifications", path: "/delivery/notifications" },
     { icon: FiUser, label: "Profile", path: "/delivery/profile" },
   ];
@@ -67,7 +106,7 @@ const DeliveryLayout = () => {
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md">
         <div className="flex items-center justify-between px-4 py-3">
           {/* Logo Container with reserved space for absolute logo */}
-          <div className={`flex items-center gap-4 transition-all duration-300 ${sidebarOpen ? 'translate-x-64' : ''}`}>
+          <div className="flex items-center gap-4">
             <Link
               to="/delivery/dashboard"
               className="flex items-center flex-shrink-0 overflow-visible relative z-10 w-24 h-8">

@@ -63,10 +63,17 @@ export const updateOrderStatus = (id, status) =>
     api.patch(`/admin/orders/${id}/status`, { status });
 
 export const assignDeliveryBoy = (id, deliveryBoyId) =>
-    api.patch(`/admin/orders/${id}/assign-delivery`, { deliveryBoyId });
+    api.patch(`/admin/suborders/${id}/assign-delivery`, { deliveryBoyId });
 
 export const deleteOrder = (id) =>
     api.delete(`/admin/orders/${id}`);
+
+// ─── SubOrders ────────────────────────────────────────────────────────────────
+export const getAllSubOrders = (params = {}) =>
+    api.get('/admin/suborders', { params });
+
+export const updateSubOrderStatus = (id, status) =>
+    api.patch(`/admin/suborders/${id}/status`, { status });
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
@@ -214,7 +221,7 @@ export const updateReturnRequestStatus = (id, statusOrPayload, adminNote = '') =
 };
 
 export const assignDeliveryToReturn = (id, deliveryBoyId, note = '') => 
-    api.patch(`/admin/returns/${id}/assign`, { deliveryBoyId, note });
+    api.patch(`/admin/return-requests/${id}/assign-delivery`, { deliveryBoyId, note });
 
 export const getAllExchangeRequests = (params = {}) =>
     api.get('/exchange/admin', { params });
@@ -331,4 +338,4 @@ export const getAdminFinanceStats = () =>
     api.get('/admin/finance/stats');
 
 export const processWithdrawRequest = (id, action, data = {}) =>
-    api.post(`/admin/finance/withdraw-request/${id}/${action}`, data);
+    api.patch(`/admin/finance/withdraw-requests/${id}`, { status: action, ...data });

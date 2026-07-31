@@ -23,7 +23,7 @@ export const useDeliveryStore = create(
                     id: boy.id || boy._id,
                     status: boy.status || (boy.isActive ? 'active' : 'inactive'),
                     applicationStatus: boy.applicationStatus || 'approved',
-                    documentUrls: boy.documentUrls || {},
+                    documentUrls: boy.documentUrls || boy.documents || {},
                     totalDeliveries: boy.totalDeliveries ?? boy.stats?.totalDeliveries ?? 0,
                     pendingDeliveries: boy.pendingDeliveries ?? boy.stats?.pendingDeliveries ?? 0,
                     cashInHand: boy.cashInHand ?? boy.stats?.cashInHand ?? 0

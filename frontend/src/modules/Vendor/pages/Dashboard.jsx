@@ -13,7 +13,8 @@ import { useVendorProductStore } from "../store/vendorProductStore";
 import { getVendorOrders, getVendorEarnings } from "../services/vendorService";
 import { formatPrice } from "../../../shared/utils/helpers";
 import { useReturnStore } from "../../../shared/store/returnStore";
-import { FiAlertCircle } from "react-icons/fi";
+import { useVendorSubscriptionStore } from "../../../shared/store/vendorSubscriptionStore";
+import { FiAlertCircle, FiCreditCard } from "react-icons/fi";
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
@@ -102,7 +103,7 @@ const VendorDashboard = () => {
       color: "bg-blue-500",
       bgColor: "bg-blue-50",
       textColor: "text-blue-700",
-      link: "/vendor/products",
+      link: "/vendor/products/manage-products",
     },
     {
       icon: FiShoppingBag,
@@ -273,14 +274,14 @@ const VendorDashboard = () => {
 
                 return (
                 <div
-                  key={order._id ?? order.orderId}
+                  key={order._id ?? (order.subOrderId || order.orderId)}
                   onClick={() =>
-                    navigate(`/vendor/orders/${order.orderId ?? order._id}`)
+                    navigate(`/vendor/orders/${(order.subOrderId || order.orderId) ?? order._id}`)
                   }
                   className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors">
                   <div>
                     <p className="font-semibold text-gray-800">
-                      {order.orderId ?? order._id}
+                      {(order.subOrderId || order.orderId) ?? order._id}
                     </p>
                     <p className="text-sm text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString()}

@@ -18,7 +18,7 @@ import {
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorStore } from "../../store/vendorStore";
-import { getAllOrders, getVendorCommissions } from "../../services/adminService";
+import { getAllSubOrders, getVendorCommissions } from "../../services/adminService";
 import Badge from "../../../../shared/components/Badge";
 import DataTable from "../../components/DataTable";
 import { formatPrice } from "../../../../shared/utils/helpers";
@@ -54,7 +54,7 @@ const VendorDetail = () => {
           let page = 1;
           let pages = 1;
           do {
-            const ordersResponse = await getAllOrders({
+            const ordersResponse = await getAllSubOrders({
               vendorId: id,
               page,
               limit: 200,

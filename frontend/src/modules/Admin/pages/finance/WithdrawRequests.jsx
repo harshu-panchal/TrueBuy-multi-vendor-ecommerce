@@ -15,7 +15,8 @@ import {
 import { 
   getAdminWithdrawRequests, 
   getAdminFinanceStats, 
-  processWithdrawRequest 
+  processWithdrawRequest,
+  uploadAdminImage
 } from '../../services/adminService';
 import { formatPrice } from '../../../../shared/utils/helpers';
 import Badge from '../../../../shared/components/Badge';
@@ -34,6 +35,7 @@ const WithdrawRequests = () => {
   const [actionType, setActionType] = useState(null); // 'approve', 'reject', 'complete'
   const [adminNote, setAdminNote] = useState('');
   const [transactionId, setTransactionId] = useState('');
+  const [receiptFile, setReceiptFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const loadData = async () => {
@@ -43,8 +45,8 @@ const WithdrawRequests = () => {
         getAdminWithdrawRequests({ status: filter }),
         getAdminFinanceStats()
       ]);
-      setRequests(reqs?.requests || []);
-      setStats(financeStats);
+      setRequests(reqs?.data?.requests || []);
+      setStats(financeStats?.data || {});
     } catch (err) {
       console.error('Error loading admin finance data:', err);
     } finally {
@@ -62,16 +64,27 @@ const WithdrawRequests = () => {
 
     setIsProcessing(true);
     try {
+      let receiptUrl = '';
+      if (receiptFile) {
+        toast.loading('Uploading receipt...', { id: 'upload' });
+        const res = await uploadAdminImage(receiptFile, 'finance');
+        receiptUrl = res.data?.url || res.url;
+        toast.dismiss('upload');
+      }
+
       const payload = { 
         adminNote,
-        ...(actionType === 'complete' && { transactionId })
+        ...(actionType === 'complete' && { transactionId }),
+        ...(receiptUrl && { receiptUrl })
       };
       
-      await processWithdrawRequest(selectedRequest._id, actionType, payload);
-      toast.success(`Request ${actionType}ed successfully!`);
+      const targetStatus = actionType === 'complete' ? 'completed' : actionType;
+      await processWithdrawRequest(selectedRequest._id, targetStatus, payload);
+      toast.success(`Request ${actionType}d successfully!`);
       setSelectedRequest(null);
       setAdminNote('');
       setTransactionId('');
+      setReceiptFile(null);
       loadData();
     } catch (err) {
       // Error handled by api
@@ -189,21 +202,21 @@ const WithdrawRequests = () => {
                     </tr>
                   ) : (
                     requests.filter(r => 
-                      r.requester?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                      r.requester?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+                      r.userId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      r.userId?.email?.toLowerCase().includes(searchTerm.toLowerCase())
                     ).map(req => (
                       <tr key={req._id} className="hover:bg-gray-50/50 transition-colors group">
                         <td className="px-6 py-4">
                            <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center font-bold text-gray-600 relative">
-                                 {req.requester?.name?.charAt(0)}
+                                 {req.userId?.name?.charAt(0)}
                                  <div className="absolute -bottom-1 -right-1 bg-white p-1 rounded-full shadow-sm">
-                                    {getRoleIcon(req.requesterModel)}
+                                    {getRoleIcon(req.userModel)}
                                  </div>
                               </div>
                               <div>
-                                 <p className="text-sm font-bold text-gray-800">{req.requester?.name}</p>
-                                 <p className="text-[10px] text-gray-500">{req.requester?.email}</p>
+                                 <p className="text-sm font-bold text-gray-800">{req.userId?.name}</p>
+                                 <p className="text-[10px] text-gray-500">{req.userId?.email}</p>
                               </div>
                            </div>
                         </td>
@@ -217,12 +230,12 @@ const WithdrawRequests = () => {
                         <td className="px-6 py-4">
                            <div className="space-y-1">
                               <p className="text-[10px] text-gray-400 flex items-center justify-between gap-4">
-                                 Total Earned: <span className="font-bold text-gray-600">{formatPrice(req.requester?.totalEarnings || 0)}</span>
+                                 Total Earned: <span className="font-bold text-gray-600">{formatPrice(req.userId?.totalEarnings || 0)}</span>
                               </p>
                               <div className="w-24 h-1 bg-gray-100 rounded-full overflow-hidden">
                                  <div 
                                     className="h-full bg-primary-500" 
-                                    style={{ width: `${Math.min(100, ((req.requester?.totalWithdrawn || 0) / (req.requester?.totalEarnings || 1)) * 100)}%` }}
+                                    style={{ width: `${Math.min(100, ((req.userId?.totalWithdrawn || 0) / (req.userId?.totalEarnings || 1)) * 100)}%` }}
                                  />
                               </div>
                            </div>
@@ -241,7 +254,7 @@ const WithdrawRequests = () => {
                               {req.status === 'pending' && (
                                 <>
                                   <button 
-                                    onClick={() => { setSelectedRequest(req); setActionType('approve'); }}
+                                    onClick={() => { setSelectedRequest(req); setActionType('complete'); }}
                                     className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                                     title="Approve Request"
                                   >
@@ -292,7 +305,7 @@ const WithdrawRequests = () => {
                initial={{ scale: 0.9, opacity: 0, y: 20 }}
                animate={{ scale: 1, opacity: 1, y: 0 }}
                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-               className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+               className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]"
              >
                 <div className={`p-6 text-white ${
                   actionType === 'approve' ? 'bg-blue-600' : 
@@ -306,11 +319,11 @@ const WithdrawRequests = () => {
                    </p>
                 </div>
 
-                <form onSubmit={handleAction} className="p-6 space-y-6">
+                <form onSubmit={handleAction} className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                    <div className="bg-gray-50 p-4 rounded-xl space-y-2">
                       <div className="flex justify-between text-xs">
                          <span className="text-gray-500">Partner:</span>
-                         <span className="font-bold text-gray-800">{selectedRequest.requester?.name}</span>
+                         <span className="font-bold text-gray-800">{selectedRequest.userId?.name}</span>
                       </div>
                       <div className="flex justify-between text-xs">
                          <span className="text-gray-500">Amount:</span>
@@ -318,17 +331,72 @@ const WithdrawRequests = () => {
                       </div>
                    </div>
 
+                   {selectedRequest.bankDetails && (
+                     <div className="bg-primary-50 p-4 rounded-xl space-y-2 border border-primary-100">
+                        <p className="text-[10px] font-black text-primary-600 uppercase tracking-widest mb-1">Bank Details</p>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                           <div>
+                              <span className="text-gray-500 block">Bank Name</span>
+                              <span className="font-bold text-gray-800">{selectedRequest.bankDetails.bankName}</span>
+                           </div>
+                           <div>
+                              <span className="text-gray-500 block">Account Name</span>
+                              <span className="font-bold text-gray-800">{selectedRequest.bankDetails.accountName}</span>
+                           </div>
+                           <div className="col-span-2">
+                              <span className="text-gray-500 block">Account Number</span>
+                              <span className="font-bold text-gray-800 font-mono text-sm">{selectedRequest.bankDetails.accountNumber}</span>
+                           </div>
+                           <div className="col-span-2">
+                              <span className="text-gray-500 block">IFSC Code</span>
+                              <span className="font-bold text-gray-800 uppercase">{selectedRequest.bankDetails.ifscCode}</span>
+                           </div>
+                        </div>
+                     </div>
+                   )}
+
                    {actionType === 'complete' && (
-                     <div>
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Transaction ID / Ref</label>
-                        <input 
-                           type="text"
-                           value={transactionId}
-                           onChange={(e) => setTransactionId(e.target.value)}
-                           placeholder="Enter Bank Transfer ID"
-                           className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-                           required
-                        />
+                     <div className="space-y-4">
+                        <div>
+                           <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Transaction ID / Ref</label>
+                           <input 
+                              type="text"
+                              value={transactionId}
+                              onChange={(e) => setTransactionId(e.target.value)}
+                              placeholder="Enter Bank Transfer ID"
+                              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
+                              required
+                           />
+                        </div>
+                        <div>
+                           <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Transaction Screenshot</label>
+                           {receiptFile ? (
+                              <div className="relative rounded-xl border border-gray-200 overflow-hidden bg-gray-50 group">
+                                 <img 
+                                    src={URL.createObjectURL(receiptFile)} 
+                                    alt="Receipt Preview" 
+                                    className="w-full h-32 object-contain"
+                                 />
+                                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button
+                                       type="button"
+                                       onClick={() => setReceiptFile(null)}
+                                       className="px-4 py-2 bg-white text-rose-600 rounded-lg text-sm font-bold shadow-lg"
+                                    >
+                                       Remove / Change
+                                    </button>
+                                 </div>
+                              </div>
+                           ) : (
+                              <input 
+                                 type="file"
+                                 accept="image/*"
+                                 onChange={(e) => setReceiptFile(e.target.files[0])}
+                                 className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                                 required
+                              />
+                           )}
+                        </div>
                      </div>
                    )}
 
@@ -358,7 +426,12 @@ const WithdrawRequests = () => {
                    <div className="flex gap-3 pt-4 border-t border-gray-100">
                       <button 
                          type="button"
-                         onClick={() => setSelectedRequest(null)}
+                         onClick={() => {
+                            setSelectedRequest(null);
+                            setReceiptFile(null);
+                            setTransactionId('');
+                            setAdminNote('');
+                         }}
                          className="flex-1 px-4 py-3 text-sm font-bold text-gray-500 hover:bg-gray-100 rounded-xl transition-colors"
                       >
                          CANCEL

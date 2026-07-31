@@ -21,7 +21,33 @@ import { verifyReferralCode } from '../../../services/mlm.service.js';
 export const register = asyncHandler(async (req, res) => {
     const { name, email, password, phone, storeName, storeDescription, address, gstNumber } = req.body;
 
+    if (!name || !/^[A-Za-z\s]{2,50}$/.test(name)) throw new ApiError(400, "Please enter a valid full name.");
+    
     const normalizedEmail = String(email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) throw new ApiError(400, "Please enter a valid email address.");
+    
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) throw new ApiError(400, "Please enter a valid 10-digit mobile number.");
+    
+    if (!storeName || !/^[A-Za-z0-9\s&\-.]{3,100}$/.test(storeName)) throw new ApiError(400, "Store name must be between 3 and 100 characters.");
+    
+    if (!storeDescription || storeDescription.length < 20 || storeDescription.length > 500) throw new ApiError(400, "Description must be at least 20 characters.");
+    
+    if (gstNumber && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{3}$/.test(gstNumber)) throw new ApiError(400, "Please enter a valid GST number.");
+    
+    if (!address?.street || address.street.length < 10 || address.street.length > 200) throw new ApiError(400, "Please enter your complete address.");
+    
+    if (!address?.city || !/^[A-Za-z\s]{2,50}$/.test(address.city)) throw new ApiError(400, "Please enter a valid city.");
+    
+    if (!address?.state || !/^[A-Za-z\s]{2,50}$/.test(address.state)) throw new ApiError(400, "Please select your state.");
+    
+    if (!address?.zipCode || !/^[1-9][0-9]{5}$/.test(address.zipCode)) throw new ApiError(400, "Please enter a valid PIN code.");
+    
+    if (!address?.country || String(address.country).trim().length === 0) throw new ApiError(400, "Please select a country.");
+    
+    if (!password || !/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,32}$/.test(password)) {
+        throw new ApiError(400, "Password must contain uppercase, lowercase, number and special character.");
+    }
+
     const existing = await Vendor.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(409, 'Email already registered.');
 
@@ -37,26 +63,6 @@ export const register = asyncHandler(async (req, res) => {
         status: 'pending'
     });
     await sendOTP(vendor, 'vendor_verification');
-
-    // Notify all active admins about a new vendor registration request.
-    const admins = await Admin.find({ isActive: true }).select('_id');
-    await Promise.all(
-        admins.map((admin) =>
-            createNotification({
-                recipientId: admin._id,
-                recipientType: 'admin',
-                title: 'New Vendor Registration',
-                message: `${vendor.storeName || vendor.name} has registered and is awaiting review.`,
-                type: 'system',
-                data: {
-                    vendorId: String(vendor._id),
-                    vendorEmail: vendor.email,
-                    status: vendor.status,
-                },
-            })
-        )
-    );
-
     res.status(201).json(new ApiResponse(201, { vendorId: vendor._id, email: vendor.email }, 'Registration submitted. Please verify your email and await admin approval.'));
 });
 
@@ -101,6 +107,12 @@ export const verifyOTP = asyncHandler(async (req, res) => {
 
     const vendor = await Vendor.findOne({ email }).select('+otp +otpExpiry');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    if (vendor.isVerified) {
+        const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
+        await persistRefreshSession(vendor, refreshToken);
+        return res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, status: vendor.status } }, 'Email is already verified.'));
+    }
+
     if (vendor.otp !== otp) throw new ApiError(400, 'Invalid OTP.');
     if (vendor.otpExpiry < Date.now()) throw new ApiError(400, 'OTP has expired.');
 
@@ -109,7 +121,30 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     vendor.otpExpiry = undefined;
     await vendor.save();
 
-    res.status(200).json(new ApiResponse(200, null, 'Email verified. Awaiting admin approval.'));
+    // Notify all active admins about a new vendor registration request now that email is verified.
+    const admins = await Admin.find({ isActive: true }).select('_id');
+    await Promise.all(
+        admins.map((admin) =>
+            createNotification({
+                recipientId: admin._id,
+                recipientType: 'admin',
+                title: 'New Vendor Registration',
+                message: `${vendor.storeName || vendor.name} has verified their email and is awaiting review.`,
+                type: 'system',
+                data: {
+                    vendorId: String(vendor._id),
+                    vendorEmail: vendor.email,
+                    status: vendor.status,
+                },
+            })
+        )
+    );
+
+    // Auto-login the vendor so they can select a subscription plan
+    const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
+    await persistRefreshSession(vendor, refreshToken);
+
+    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, status: vendor.status } }, 'Email verified. Please select a subscription plan.'));
 });
 
 // POST /api/vendor/auth/resend-otp
@@ -216,7 +251,7 @@ export const login = asyncHandler(async (req, res) => {
     const vendor = await Vendor.findOne({ email }).select('+password');
     if (!vendor) throw new ApiError(401, 'Invalid credentials.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
-    if (vendor.status === 'pending') throw new ApiError(403, 'Your account is pending admin approval.');
+    // Allow pending vendors to login so they can access onboarding subscription page
     if (vendor.status === 'suspended') throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
     if (vendor.status === 'rejected') throw new ApiError(403, 'Your vendor application was rejected.');
 
@@ -225,7 +260,7 @@ export const login = asyncHandler(async (req, res) => {
 
     const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
     await persistRefreshSession(vendor, refreshToken);
-    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, storeLogo: vendor.storeLogo } }, 'Login successful.'));
+    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, storeLogo: vendor.storeLogo, status: vendor.status } }, 'Login successful.'));
 });
 
 // POST /api/vendor/auth/refresh
@@ -236,7 +271,6 @@ export const refresh = asyncHandler(async (req, res) => {
 
     if (!vendor) throw new ApiError(401, 'Invalid refresh token.');
     if (!vendor.isVerified) throw new ApiError(403, 'Please verify your email first.');
-    if (vendor.status === 'pending') throw new ApiError(403, 'Your account is pending admin approval.');
     if (vendor.status === 'suspended') throw new ApiError(403, `Your account has been suspended. Reason: ${vendor.suspensionReason || 'Contact support.'}`);
     if (vendor.status === 'rejected') throw new ApiError(403, 'Your vendor application was rejected.');
 
@@ -269,7 +303,7 @@ export const logout = asyncHandler(async (req, res) => {
 
 // GET /api/vendor/auth/profile
 export const getProfile = asyncHandler(async (req, res) => {
-    const vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry');
+    const vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
     res.status(200).json(new ApiResponse(200, vendor, 'Profile fetched.'));
 });
@@ -359,7 +393,24 @@ export const updateBankDetails = asyncHandler(async (req, res) => {
         req.user.id,
         { $set: updates },
         { new: true, runValidators: true }
-    ).select('-password -otp -otpExpiry');
+    ).select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
 
     res.status(200).json(new ApiResponse(200, vendor, 'Bank details updated.'));
+});
+
+// DELETE /api/vendor/auth/profile
+export const deleteAccount = asyncHandler(async (req, res) => {
+    const vendor = await Vendor.findById(req.user.id);
+    if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    vendor.isDeleted = true;
+    vendor.status = 'suspended';
+    vendor.suspensionReason = 'Account deleted by user.';
+    vendor.deletedAt = new Date();
+    vendor.refreshTokenHash = undefined;
+    vendor.refreshTokenExpiresAt = undefined;
+    
+    await vendor.save();
+
+    res.status(200).json(new ApiResponse(200, null, 'Vendor account deleted successfully.'));
 });

@@ -104,8 +104,10 @@ import Vendors from "./modules/Admin/pages/Vendors";
 import ManageVendors from "./modules/Admin/pages/vendors/ManageVendors";
 import PendingApprovals from "./modules/Admin/pages/vendors/PendingApprovals";
 import VendorDetail from "./modules/Admin/pages/vendors/VendorDetail";
-import CommissionRates from "./modules/Admin/pages/vendors/CommissionRates";
+import AdminCommissionRates from "./modules/Admin/pages/vendors/CommissionRates";
 import AdminVendorAnalytics from "./modules/Admin/pages/vendors/VendorAnalytics";
+
+import AdminSubscriptions from "./modules/Admin/pages/Subscriptions";
 
 // Offers & Sliders child pages
 import HomeSliders from "./modules/Admin/pages/offers/HomeSliders";
@@ -136,10 +138,10 @@ import OrdersCustomersSettings from "./modules/Admin/pages/settings/OrdersCustom
 import ProductsInventorySettings from "./modules/Admin/pages/settings/ProductsInventorySettings";
 import ContentFeaturesSettings from "./modules/Admin/pages/settings/ContentFeaturesSettings";
 import NotificationsSEOSettings from "./modules/Admin/pages/settings/NotificationsSEOSettings";
-// Policies child pages
-import PrivacyPolicy from "./modules/Admin/pages/policies/PrivacyPolicy";
-import RefundPolicy from "./modules/Admin/pages/policies/RefundPolicy";
-import TermsConditions from "./modules/Admin/pages/policies/TermsConditions";
+// Legal child pages
+import PrivacyContent from "./modules/Admin/pages/legal/PrivacyContent";
+import RefundTerms from "./modules/Admin/pages/legal/RefundTerms";
+import LegalTermsConditions from "./modules/Admin/pages/legal/TermsConditions";
 // Firebase child pages
 import PushConfig from "./modules/Admin/pages/firebase/PushConfig";
 import Authentication from "./modules/Admin/pages/firebase/Authentication";
@@ -147,6 +149,7 @@ import Plugins from "./modules/Admin/pages/plugins/Plugins";
 import RouteWrapper from "./shared/components/RouteWrapper";
 import ScrollToTop from "./shared/components/ScrollToTop";
 import AppBootstrap from "./shared/components/AppBootstrap";
+import OfflineFallback from "./shared/components/OfflineFallback";
 
 // Mobile App Routes
 import MobileHome from "./modules/UserApp/pages/Home";
@@ -176,12 +179,17 @@ import MobileCampaignSale from "./modules/UserApp/pages/CampaignSale";
 import MobileTrackOrder from "./modules/UserApp/pages/TrackOrder";
 import MobileOrderConfirmation from "./modules/UserApp/pages/OrderConfirmation";
 import MobileReturnRequest from "./modules/UserApp/pages/ReturnRequest";
+import MobileWallet from "./modules/UserApp/pages/Wallet";
 import ComingSoon from "./modules/UserApp/pages/ComingSoon";
+import MobileTermsAndConditions from "./modules/UserApp/pages/UserTerms";
+import MobilePrivacyPolicy from "./modules/UserApp/pages/UserPrivacy";
 // Delivery Routes
 import DeliveryLogin from "./modules/Delivery/pages/Login";
 import DeliveryRegister from "./modules/Delivery/pages/Register";
 import DeliveryForgotPassword from "./modules/Delivery/pages/ForgotPassword";
 import DeliveryResetPassword from "./modules/Delivery/pages/ResetPassword";
+import DeliveryTerms from "./modules/Delivery/pages/Terms";
+import DeliveryPrivacy from "./modules/Delivery/pages/Privacy";
 import DeliveryProtectedRoute from "./modules/Delivery/components/DeliveryProtectedRoute";
 import DeliveryLayout from "./modules/Delivery/components/Layout/DeliveryLayout";
 import DeliveryDashboard from "./modules/Delivery/pages/Dashboard";
@@ -198,6 +206,8 @@ import VendorReferral from "./modules/Vendor/pages/Referral";
 import VendorVerification from "./modules/Vendor/pages/Verification";
 import VendorForgotPassword from "./modules/Vendor/pages/ForgotPassword";
 import VendorResetPassword from "./modules/Vendor/pages/ResetPassword";
+import VendorTerms from "./modules/Vendor/pages/VendorTerms";
+import VendorPrivacy from "./modules/Vendor/pages/VendorPrivacy";
 import VendorProtectedRoute from "./modules/Vendor/components/VendorProtectedRoute";
 import VendorLayout from "./modules/Vendor/components/Layout/VendorLayout";
 import VendorDashboard from "./modules/Vendor/pages/Dashboard";
@@ -205,6 +215,9 @@ import VendorProducts from "./modules/Vendor/pages/Products";
 import VendorManageProducts from "./modules/Vendor/pages/products/ManageProducts";
 import VendorAddProduct from "./modules/Vendor/pages/products/AddProduct";
 import VendorProductForm from "./modules/Vendor/pages/products/ProductForm";
+import VendorSubscriptions from "./modules/Vendor/pages/Subscriptions";
+import OnboardingSubscription from "./modules/Vendor/pages/OnboardingSubscription";
+import PendingApproval from "./modules/Vendor/pages/PendingApproval";
 import VendorOrders from "./modules/Vendor/pages/Orders";
 import VendorAllOrders from "./modules/Vendor/pages/orders/AllOrders";
 import VendorOrderTracking from "./modules/Vendor/pages/orders/OrderTracking";
@@ -430,11 +443,37 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/support-info"
+        element={
+          <RouteWrapper>
+            <MobileTermsAndConditions />
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/privacy"
+        element={
+          <RouteWrapper>
+            <MobilePrivacyPolicy />
+          </RouteWrapper>
+        }
+      />
+      <Route
         path="/profile"
         element={
           <RouteWrapper>
             <ProtectedRoute>
               <MobileProfile />
+            </ProtectedRoute>
+          </RouteWrapper>
+        }
+      />
+      <Route
+        path="/wallet"
+        element={
+          <RouteWrapper>
+            <ProtectedRoute>
+              <MobileWallet />
             </ProtectedRoute>
           </RouteWrapper>
         }
@@ -543,16 +582,16 @@ const AppRoutes = () => {
         <Route path="delivery/assign-delivery" element={<AssignDelivery />} />
         <Route path="vendors" element={<Vendors />} />
         <Route path="vendors/manage-vendors" element={<ManageVendors />} />
-        <Route
-          path="vendors/pending-approvals"
-          element={<PendingApprovals />}
-        />
-        <Route path="vendors/commission-rates" element={<CommissionRates />} />
-        <Route
-          path="vendors/vendor-analytics"
-          element={<AdminVendorAnalytics />}
-        />
+        <Route path="vendors/pending-approvals" element={<PendingApprovals />} />
+        <Route path="vendors/commission-rates" element={<AdminCommissionRates />} />
+        <Route path="vendors/vendor-analytics" element={<AdminVendorAnalytics />} />
         <Route path="vendors/:id" element={<VendorDetail />} />
+        
+        {/* Subscriptions */}
+        {/* <Route path="subscriptions" element={<AdminSubscriptions />} /> */}
+        {/* <Route path="subscriptions/add" element={<AdminSubscriptions />} /> */}
+
+        {/* Promotions */}
         <Route path="promotions" element={<Navigate to="discounts" replace />} />
         <Route path="promotions/discounts" element={<Discounts />} />
         <Route path="promotions/affiliates" element={<Affiliates />} />
@@ -620,10 +659,10 @@ const AppRoutes = () => {
         <Route path="settings/products-inventory" element={<Settings />} />
         <Route path="settings/content-features" element={<Settings />} />
         <Route path="settings/notifications-seo" element={<Settings />} />
-        <Route path="policies" element={<PrivacyPolicy />} />
-        <Route path="policies/privacy-policy" element={<PrivacyPolicy />} />
-        <Route path="policies/refund-policy" element={<RefundPolicy />} />
-        <Route path="policies/terms-conditions" element={<TermsConditions />} />
+        <Route path="legal" element={<PrivacyContent />} />
+        <Route path="legal/privacy" element={<PrivacyContent />} />
+        <Route path="legal/refund" element={<RefundTerms />} />
+        <Route path="legal/support-info" element={<LegalTermsConditions />} />
         <Route path="firebase" element={<PushConfig />} />
         <Route path="firebase/push-config" element={<PushConfig />} />
         <Route path="firebase/authentication" element={<Authentication />} />
@@ -646,6 +685,8 @@ const AppRoutes = () => {
       <Route path="/delivery/register" element={<DeliveryRegister />} />
       <Route path="/delivery/forgot-password" element={<DeliveryForgotPassword />} />
       <Route path="/delivery/reset-password" element={<DeliveryResetPassword />} />
+      <Route path="/delivery/support-info" element={<DeliveryTerms />} />
+      <Route path="/delivery/privacy" element={<DeliveryPrivacy />} />
       <Route
         path="/delivery"
         element={
@@ -669,6 +710,26 @@ const AppRoutes = () => {
       <Route path="/vendor/verification" element={<VendorVerification />} />
       <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
       <Route path="/vendor/reset-password" element={<VendorResetPassword />} />
+      <Route path="/vendor/support-info" element={<VendorTerms />} />
+      <Route path="/vendor/privacy" element={<VendorPrivacy />} />
+      
+      {/* <Route
+        path="/vendor/onboarding/subscription"
+        element={
+          <VendorProtectedRoute>
+            <OnboardingSubscription />
+          </VendorProtectedRoute>
+        }
+      /> */}
+      
+      <Route
+        path="/vendor/pending-approval"
+        element={
+          <VendorProtectedRoute>
+            <PendingApproval />
+          </VendorProtectedRoute>
+        }
+      />
       <Route
         path="/vendor"
         element={
@@ -685,6 +746,7 @@ const AppRoutes = () => {
         />
         <Route path="products/add-product" element={<VendorAddProduct />} />
         <Route path="products/:id" element={<VendorProductForm />} />
+        {/* <Route path="subscriptions" element={<VendorSubscriptions />} /> */}
         <Route path="orders" element={<VendorOrders />} />
         <Route path="orders/all-orders" element={<VendorAllOrders />} />
         <Route path="orders/order-tracking" element={<VendorOrderTracking />} />
@@ -756,6 +818,7 @@ function App() {
           v7_relativeSplatPath: true,
         }}>
         <AppBootstrap />
+        <OfflineFallback />
         <ScrollToTop />
         <AppRoutes />
         <CartDrawer />

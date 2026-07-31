@@ -2,6 +2,7 @@ import asyncHandler from '../../../utils/asyncHandler.js';
 import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Order from '../../../models/Order.model.js';
+import SubOrder from '../../../models/SubOrder.model.js';
 import DeliveryBoy from '../../../models/DeliveryBoy.model.js';
 import User from '../../../models/User.model.js';
 import Commission from '../../../models/Commission.model.js';
@@ -41,7 +42,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
         if (endDate) filter.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
     }
     if (req.query.vendorId) {
-        filter['vendorItems.vendorId'] = req.query.vendorId;
+        filter['items.vendorId'] = req.query.vendorId;
     }
     if (userId) {
         filter.userId = userId;
@@ -53,7 +54,7 @@ export const getAllOrders = asyncHandler(async (req, res) => {
     const [orders, total] = await Promise.all([
         Order.find(filter)
             .populate('userId', 'name email phone')
-            .populate('deliveryBoyId', 'name phone')
+            .populate('items.vendorId', 'address')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(numericLimit)
@@ -76,11 +77,14 @@ export const getOrderById = asyncHandler(async (req, res) => {
         isDeleted: { $ne: true },
     })
         .populate('userId', 'name email phone')
-        .populate('deliveryBoyId', 'name phone email vehicleType vehicleNumber')
         .populate('items.productId', 'name images price')
         .lean();
 
     if (!order) throw new ApiError(404, 'Order not found.');
+
+    const subOrders = await SubOrder.find({ parentOrderId: order._id }).lean();
+    order.subOrders = subOrders;
+
     res.status(200).json(new ApiResponse(200, order, 'Order fetched.'));
 });
 
@@ -130,32 +134,28 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 
     if (nextStatus === 'processing') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'processing' };
-        });
+        await SubOrder.updateMany(
+            { parentOrderId: order._id, status: { $nin: ['cancelled', 'delivered'] } },
+            { $set: { status: 'processing' } }
+        );
     }
     if (nextStatus === 'shipped') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'shipped' };
-        });
+        await SubOrder.updateMany(
+            { parentOrderId: order._id, status: { $nin: ['cancelled', 'delivered'] } },
+            { $set: { status: 'shipped' } }
+        );
     }
     if (nextStatus === 'delivered') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'cancelled') return vi;
-            return { ...vi.toObject(), status: 'delivered' };
-        });
+        await SubOrder.updateMany(
+            { parentOrderId: order._id, status: { $ne: 'cancelled' } },
+            { $set: { status: 'delivered', deliveredAt: new Date() } }
+        );
     }
     if (nextStatus === 'cancelled') {
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'cancelled' };
-        });
+        await SubOrder.updateMany(
+            { parentOrderId: order._id, status: { $ne: 'delivered' } },
+            { $set: { status: 'cancelled', cancelledAt: new Date() } }
+        );
     }
 
     if (nextStatus === 'cancelled' && previousStatus !== 'cancelled' && ['pending', 'processing', 'shipped'].includes(previousStatus)) {
@@ -218,7 +218,7 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
 
     const vendorIds = [
         ...new Set(
-            (order.vendorItems || [])
+            (order.items || [])
                 .map((item) => String(item?.vendorId || '').trim())
                 .filter(Boolean)
         ),
@@ -261,104 +261,6 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 
     res.status(200).json(new ApiResponse(200, order, 'Order status updated.'));
-});
-
-// PATCH /api/admin/orders/:id/assign-delivery
-export const assignDeliveryBoy = asyncHandler(async (req, res) => {
-    const { deliveryBoyId } = req.body;
-    if (!deliveryBoyId) throw new ApiError(400, 'deliveryBoyId is required.');
-
-    const deliveryBoy = await DeliveryBoy.findById(deliveryBoyId).select('name isActive applicationStatus');
-    if (!deliveryBoy) throw new ApiError(404, 'Delivery boy not found.');
-    if (!deliveryBoy.isActive) throw new ApiError(400, 'Delivery boy is inactive.');
-    if (deliveryBoy.applicationStatus !== 'approved') {
-        throw new ApiError(400, 'Delivery boy is not approved.');
-    }
-
-    const filter = {
-        $or: [{ orderId: req.params.id }, { _id: req.params.id.match(/^[0-9a-fA-F]{24}$/) ? req.params.id : null }],
-        isDeleted: { $ne: true },
-    };
-    const order = await Order.findOne(filter);
-    if (!order) throw new ApiError(404, 'Order not found.');
-
-    if (['cancelled', 'returned', 'delivered'].includes(String(order.status))) {
-        throw new ApiError(409, `Cannot assign delivery for ${order.status} order.`);
-    }
-
-    const previousDeliveryBoyId = order.deliveryBoyId ? String(order.deliveryBoyId) : '';
-    const isReassigned = previousDeliveryBoyId && previousDeliveryBoyId !== String(deliveryBoyId);
-
-    order.deliveryBoyId = deliveryBoyId;
-    if (order.status === 'pending') {
-        order.status = 'processing';
-        // Keep vendor-facing status in sync with order lifecycle.
-        order.vendorItems = (order.vendorItems || []).map((vi) => {
-            const current = String(vi?.status || 'pending');
-            if (current === 'cancelled' || current === 'delivered') return vi;
-            return { ...vi.toObject(), status: 'processing' };
-        });
-    }
-    await order.save();
-
-    await createNotification({
-        recipientId: deliveryBoy._id,
-        recipientType: 'delivery',
-        title: isReassigned ? 'Order reassigned' : 'New order assigned',
-        message: `${order.orderId} has been ${isReassigned ? 'reassigned to you' : 'assigned to you'}.`,
-        type: 'order',
-        data: {
-            orderId: String(order.orderId),
-            reassigned: isReassigned ? 'true' : 'false',
-            assignedAt: new Date().toISOString(),
-        },
-    });
-
-    const assignmentTasks = [];
-    if (order.userId) {
-        assignmentTasks.push(
-            createNotification({
-                recipientId: order.userId,
-                recipientType: 'user',
-                title: isReassigned ? 'Delivery partner updated' : 'Delivery assigned',
-                message: `Order ${order.orderId} has a delivery partner assigned.`,
-                type: 'order',
-                data: {
-                    orderId: String(order.orderId),
-                    deliveryBoyId: String(deliveryBoy._id),
-                },
-            })
-        );
-    }
-
-    const vendorIds = [
-        ...new Set(
-            (order.vendorItems || [])
-                .map((item) => String(item?.vendorId || '').trim())
-                .filter(Boolean)
-        ),
-    ];
-    vendorIds.forEach((vendorId) => {
-        assignmentTasks.push(
-            createNotification({
-                recipientId: vendorId,
-                recipientType: 'vendor',
-                title: isReassigned ? 'Delivery reassigned' : 'Delivery assigned',
-                message: `Order ${order.orderId} has been assigned to a delivery partner.`,
-                type: 'order',
-                data: {
-                    orderId: String(order.orderId),
-                    deliveryBoyId: String(deliveryBoy._id),
-                },
-            })
-        );
-    });
-
-    if (assignmentTasks.length > 0) {
-        await Promise.allSettled(assignmentTasks);
-    }
-
-    res.status(200).json(new ApiResponse(200, order, 'Delivery boy assigned.'));
 });
 
 // DELETE /api/admin/orders/:id

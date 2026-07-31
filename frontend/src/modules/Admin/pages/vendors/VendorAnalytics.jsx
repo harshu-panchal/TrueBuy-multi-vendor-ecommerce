@@ -10,7 +10,7 @@ import {
 import { motion } from "framer-motion";
 import { formatPrice } from "../../../../shared/utils/helpers";
 import { useVendorStore } from "../../store/vendorStore";
-import { getAllOrders } from "../../services/adminService";
+import { getAllSubOrders } from "../../services/adminService";
 
 const VendorAnalytics = () => {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ const VendorAnalytics = () => {
         let page = 1;
         let pages = 1;
         do {
-          const response = await getAllOrders({ page, limit: 200 });
+          const response = await getAllSubOrders({ page, limit: 200 });
           const payload = response?.data ?? response;
           const orderPage = Array.isArray(payload?.orders) ? payload.orders : [];
           fetchedOrders.push(...orderPage);

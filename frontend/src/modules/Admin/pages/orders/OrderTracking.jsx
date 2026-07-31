@@ -11,7 +11,7 @@ import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import Badge from "../../../../shared/components/Badge";
 import { formatDateTime } from '../../utils/adminHelpers';
-import { getAllOrders } from "../../services/adminService";
+import { getAllSubOrders } from "../../services/adminService";
 
 const OrderTracking = () => {
   const navigate = useNavigate();
@@ -25,8 +25,8 @@ const OrderTracking = () => {
     const fetchOrders = async () => {
       setIsLoading(true);
       try {
-        const response = await getAllOrders({ limit: 100 });
-        const normalizedOrders = response.data.orders.map(order => ({
+        const response = await getAllSubOrders({ limit: 100 });
+        const normalizedOrders = response.data.subOrders.map(order => ({
           ...order,
           id: order.orderId || order._id,
           customer: {

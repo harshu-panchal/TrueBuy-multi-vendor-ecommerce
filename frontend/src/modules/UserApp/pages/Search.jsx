@@ -185,11 +185,11 @@ const MobileSearch = () => {
     recognition.onerror = (event) => {
       setIsListening(false);
       if (event.error === 'not-allowed') {
-        toast.error('Microphone permission denied');
+        toast.error('Microphone permission denied. (Mobile browsers require HTTPS for voice search)');
       } else if (event.error === 'network') {
-        toast.error('Network error during recognition');
+        toast.error('Network error. (If using Brave/Firefox, voice search may be blocked for privacy)');
       } else {
-        toast.error('Voice recognition failed');
+        toast.error('Voice recognition failed: ' + event.error);
       }
       console.error('Speech recognition error:', event.error);
     };
@@ -399,7 +399,7 @@ const MobileSearch = () => {
   return (
     <PageTransition>
       <MobileLayout showBottomNav={true} showCartBar={true}>
-        <div className="w-full pb-24 lg:pb-12 min-h-screen bg-gray-50/50">
+        <div className="w-full lg:pb-12 min-h-screen bg-gray-50/50">
           {/* Search Header */}
           <div className="w-full bg-white border-b border-gray-200 sticky top-0 z-30 shadow-sm">
             <div className="w-full px-4 py-4">
@@ -410,7 +410,8 @@ const MobileSearch = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => {
-                    setSearchQuery(e.target.value);
+                    const val = e.target.value.trimStart().replace(/\s{2,}/g, ' ');
+                    setSearchQuery(val);
                     setShowSuggestions(true);
                   }}
                   onFocus={() => setShowSuggestions(true)}

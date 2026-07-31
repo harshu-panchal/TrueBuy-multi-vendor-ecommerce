@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCamera, FiCheckCircle, FiShield, FiUploadCloud, FiTrash2, FiMapPin, FiPhone, FiShoppingBag, FiImage, FiArrowRight } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiCheckCircle, FiShield, FiUploadCloud, FiTrash2, FiMapPin, FiPhone, FiShoppingBag, FiImage, FiArrowRight, FiClock } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import PageTransition from '../../../shared/components/PageTransition';
 import { formatPrice } from '../../../shared/utils/helpers';
 import toast from 'react-hot-toast';
 import { useReturnStore } from '../../../shared/store/returnStore';
+import RoutePreviewMap from '../../Admin/components/Map/RoutePreviewMap';
 
 const ReturnPickup = () => {
   const { id } = useParams();
@@ -13,6 +14,7 @@ const ReturnPickup = () => {
   const { fetchReturnRequestById, markAsPickedUp, updateReturnStatus } = useReturnStore();
   const [returnReq, setReturnReq] = useState(null);
   const [step, setStep] = useState(1);
+  const [routeInfo, setRouteInfo] = useState({ distance: '', duration: '' });
   const [images, setImages] = useState([]);
   const [sellerOtp, setSellerOtp] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,6 +30,9 @@ const ReturnPickup = () => {
       const data = await fetchReturnRequestById(id);
       if (data) {
         setReturnReq(data);
+        if (data.status === 'INSPECTION_PENDING') {
+          setStep(2);
+        }
       } else {
         toast.error("Pickup task not found");
         navigate('/delivery/dashboard');
@@ -106,9 +111,12 @@ const ReturnPickup = () => {
     }
     setIsSubmitting(true);
     // Mark as delivered to seller
+    const distanceToPass = parseFloat(routeInfo?.distance) || 0;
     const success = await updateReturnStatus(id, { 
-      status: 'INSPECTION_PENDING', 
-      deliveredToSellerAt: new Date().toISOString()
+      status: 'COMPLETED', 
+      note: 'Return pickup completed. Item handed over to seller.',
+      deliveryOtp: sellerOtp,
+      distanceKm: routeInfo.distance
     });
     
     if (success) {
@@ -168,16 +176,47 @@ const ReturnPickup = () => {
                 exit={{ opacity: 0, x: 20 }}
                 className="space-y-4"
               >
+                {/* Map Section */}
+                <div className="relative w-full h-[240px] bg-gray-200 rounded-2xl overflow-hidden shadow-sm mb-4">
+                  <RoutePreviewMap
+                    origin={returnReq.pickupAddress?.lat ? { lat: returnReq.pickupAddress.lat, lng: returnReq.pickupAddress.lng } : (typeof returnReq.pickupAddress === 'object' && returnReq.pickupAddress !== null ? [returnReq.pickupAddress?.address || returnReq.pickupAddress?.street, returnReq.pickupAddress?.city, returnReq.pickupAddress?.state].filter(Boolean).join(', ') : returnReq.pickupAddress || returnReq.customerAddress)}
+                    destination={returnReq.vendor?.address?.lat ? { lat: returnReq.vendor.address.lat, lng: returnReq.vendor.address.lng } : (typeof returnReq.vendor?.address === 'object' && returnReq.vendor?.address !== null ? [returnReq.vendor.address?.street || returnReq.vendor.address?.address, returnReq.vendor.address?.city, returnReq.vendor.address?.state].filter(Boolean).join(', ') : returnReq.vendor?.address || returnReq.sellerAddress)}
+                    hideInternalUI={true}
+                    onRouteCalculated={setRouteInfo}
+                  />
+                  {routeInfo.distance && routeInfo.duration && (
+                    <div className="absolute top-4 right-4 bg-white rounded-2xl shadow-lg px-3 py-2 flex items-center gap-3 text-[11px] font-black text-gray-700 z-10">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-purple-50 flex items-center justify-center">
+                          <FiMapPin className="text-purple-600 text-xs" />
+                        </div>
+                        <span>{routeInfo.distance}</span>
+                      </div>
+                      <div className="w-px h-4 bg-gray-200"></div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 rounded-full bg-purple-50 flex items-center justify-center">
+                          <FiClock className="text-purple-600 text-xs" />
+                        </div>
+                        <span>{routeInfo.duration}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Pickup & Delivery Overview */}
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Pickup From */}
-                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                  <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 border-l-4 border-l-primary-500">
                     <h2 className="text-sm font-bold text-gray-800 mb-3 flex items-center gap-2">
                       <FiMapPin className="text-primary-600" />
                       Pickup From
                     </h2>
                     <p className="font-bold text-gray-800">{returnReq.customer?.name || returnReq.customerName}</p>
-                    <p className="text-xs text-gray-600 mt-1">{returnReq.pickupAddress?.address || returnReq.customerAddress}</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {typeof returnReq.pickupAddress === 'object' && returnReq.pickupAddress !== null
+                        ? [returnReq.pickupAddress?.address || returnReq.pickupAddress?.street, returnReq.pickupAddress?.city, returnReq.pickupAddress?.state].filter(Boolean).join(', ') 
+                        : returnReq.pickupAddress || returnReq.customerAddress}
+                    </p>
                     <button onClick={() => window.open(`tel:${returnReq.customer?.phone || returnReq.customerPhone}`)} className="mt-3 flex items-center gap-2 text-primary-600 text-xs font-bold bg-primary-50 px-3 py-2 rounded-lg">
                       <FiPhone /> Call Customer
                     </button>
@@ -191,8 +230,12 @@ const ReturnPickup = () => {
                     </h2>
                     <div className="space-y-2">
                       <div>
-                        <p className="font-bold text-gray-800 text-sm">{returnReq.vendor?.storeName || returnReq.sellerName}</p>
-                        <p className="text-[10px] text-gray-500 mt-0.5">{returnReq.vendor?.address || returnReq.sellerAddress}</p>
+                        <p className="font-bold text-gray-800 text-sm">{returnReq.vendor?.name || returnReq.vendor?.storeName || returnReq.sellerName}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          {typeof returnReq.vendor?.address === 'object' && returnReq.vendor?.address !== null
+                            ? [returnReq.vendor.address?.street || returnReq.vendor.address?.address, returnReq.vendor.address?.city, returnReq.vendor.address?.state].filter(Boolean).join(', ')
+                            : returnReq.vendor?.address || returnReq.sellerAddress}
+                        </p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button 

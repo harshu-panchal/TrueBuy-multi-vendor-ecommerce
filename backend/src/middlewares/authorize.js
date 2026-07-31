@@ -32,26 +32,45 @@ export const enforceAccountStatus = async (req, res, next) => {
         const role = String(req.user.role).toLowerCase();
 
         if (role === 'customer') {
-            const user = await User.findById(req.user.id).select('isActive isVerified').lean();
-            if (!user) return next(new ApiError(401, 'Account not found.'));
-            if (!user.isActive) return next(new ApiError(403, 'Account is deactivated. Contact support.'));
-            if (!user.isVerified) return next(new ApiError(403, 'Please verify your email first.'));
-            return next();
-        }
-
-        if (role === 'vendor') {
-            const vendor = await Vendor.findById(req.user.id).select('status isVerified').lean();
-            if (!vendor) return next(new ApiError(401, 'Account not found.'));
-            if (!vendor.isVerified) return next(new ApiError(403, 'Please verify your email first.'));
-            if (vendor.status !== 'approved') {
-                return next(new ApiError(403, `Vendor account is ${vendor.status}.`));
+            const user = await User.findById(req.user.id).select('isActive isVerified isDeleted').lean();
+            if (!user) {
+                console.error('[Auth] Customer account not found.', req.user.id);
+                return next(new ApiError(401, 'Account not found.'));
+            }
+            if (user.isDeleted) {
+                console.error('[Auth] Customer account deleted.', req.user.id);
+                return next(new ApiError(401, 'Account deleted.'));
+            }
+            if (!user.isActive) {
+                console.error('[Auth] Customer account deactivated.', req.user.id);
+                return next(new ApiError(403, 'Account is deactivated. Contact support.'));
+            }
+            if (!user.isVerified) {
+                console.error('[Auth] Customer account not verified.', req.user.id);
+                return next(new ApiError(403, 'Please verify your email first.'));
             }
             return next();
         }
 
+        if (role === 'vendor') {
+            const vendor = await Vendor.findById(req.user.id).select('status isVerified isDeleted').lean();
+            if (!vendor) return next(new ApiError(401, 'Account not found.'));
+            if (vendor.isDeleted) return next(new ApiError(401, 'Account deleted.'));
+            if (!vendor.isVerified) return next(new ApiError(403, 'Please verify your email first.'));
+            
+            const isSubscriptionOrAuthRoute = req.originalUrl.includes('/subscription') || req.originalUrl.includes('/auth');
+            
+            if (vendor.status !== 'approved' && !isSubscriptionOrAuthRoute) {
+                return next(new ApiError(403, `Vendor account is ${vendor.status}.`));
+            }
+            
+            return next();
+        }
+
         if (role === 'delivery') {
-            const deliveryBoy = await DeliveryBoy.findById(req.user.id).select('applicationStatus isActive').lean();
+            const deliveryBoy = await DeliveryBoy.findById(req.user.id).select('applicationStatus isActive isDeleted').lean();
             if (!deliveryBoy) return next(new ApiError(401, 'Account not found.'));
+            if (deliveryBoy.isDeleted) return next(new ApiError(401, 'Account deleted.'));
             if (deliveryBoy.applicationStatus !== 'approved') {
                 return next(new ApiError(403, `Delivery account is ${deliveryBoy.applicationStatus}.`));
             }

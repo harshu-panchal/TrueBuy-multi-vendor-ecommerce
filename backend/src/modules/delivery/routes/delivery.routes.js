@@ -4,6 +4,7 @@ import * as orderController from '../controllers/order.controller.js';
 import * as b2bOrderController from '../controllers/b2bOrder.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import * as financeController from '../controllers/finance.controller.js';
+import * as returnController from '../controllers/return.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -43,7 +44,7 @@ router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...deliveryAuth, authController.getProfile);
 router.put('/auth/profile', ...deliveryAuth, authController.updateProfile);
 router.patch('/auth/avatar', ...deliveryAuth, uploadDeliveryAvatar, authController.updateAvatar);
-
+router.delete('/auth/profile', ...deliveryAuth, authController.deleteAccount);
 // Orders
 router.get('/orders', ...deliveryAuth, orderController.getAssignedOrders);
 router.get('/orders/dashboard-summary', ...deliveryAuth, orderController.getDashboardSummary);
@@ -62,6 +63,10 @@ router.post('/finance/withdraw-request', ...deliveryAuth, financeController.crea
 router.get('/b2b/orders', ...deliveryAuth, b2bOrderController.getAssignedB2BOrders);
 router.get('/b2b/orders/:id', ...deliveryAuth, b2bOrderController.getB2BOrderDetail);
 router.patch('/b2b/orders/:id/status', ...deliveryAuth, b2bOrderController.updateB2BDeliveryStatus);
+
+// Returns
+router.get('/returns', ...deliveryAuth, returnController.getAssignedReturns);
+router.patch('/returns/:id/status', ...deliveryAuth, returnController.updateReturnStatus);
 
 // Notifications
 router.get('/notifications', ...deliveryAuth, notificationController.getDeliveryNotifications);

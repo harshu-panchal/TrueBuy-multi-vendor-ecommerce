@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -9,6 +10,35 @@ const MobileBottomNav = () => {
   const location = useLocation();
   const wishlistCount = useWishlistStore((state) => state.getItemCount());
   const { isAuthenticated } = useAuthStore();
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const MIN_KEYBOARD_HEIGHT = 150;
+    const initialHeight = window.innerHeight;
+
+    const handleResize = () => {
+      const currentHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      if (initialHeight - currentHeight > MIN_KEYBOARD_HEIGHT) {
+        setIsKeyboardOpen(true);
+      } else {
+        setIsKeyboardOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", handleResize);
+    }
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", handleResize);
+      }
+    };
+  }, []);
 
   const navItems = [
     { path: "/home", icon: FiHome, label: "Home" },
@@ -114,6 +144,7 @@ const MobileBottomNav = () => {
   );
 
   // Use portal to render outside of transformed containers (like PageTransition)
+  if (isKeyboardOpen) return null;
   return createPortal(navContent, document.body);
 };
 

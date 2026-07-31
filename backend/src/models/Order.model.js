@@ -11,28 +11,13 @@ const orderItemSchema = new mongoose.Schema({
     variantKey: String,
 });
 
-const vendorItemGroupSchema = new mongoose.Schema({
-    vendorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
-    vendorName: String,
-    items: [orderItemSchema],
-    subtotal: Number,
-    shipping: Number,
-    tax: Number,
-    discount: Number,
-    status: {
-        type: String,
-        enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled'],
-        default: 'pending',
-    },
-});
-
 const orderSchema = new mongoose.Schema(
     {
         orderId: { type: String, required: true, unique: true, index: true },
         userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true, default: null },
         guestInfo: { name: String, email: String, phone: String },
-        items: [orderItemSchema],
-        vendorItems: [vendorItemGroupSchema],
+        items: [orderItemSchema], // We keep items here for easy aggregate calculations/display, but vendor grouping moves to SubOrder
+        
         shippingAddress: {
             name: String,
             email: String,
@@ -42,6 +27,8 @@ const orderSchema = new mongoose.Schema(
             state: String,
             zipCode: String,
             country: String,
+            lat: Number,
+            lng: Number,
         },
         paymentMethod: { type: String, enum: ['card', 'cash', 'bank', 'wallet', 'upi', 'cod'] },
         paymentStatus: {
@@ -57,22 +44,27 @@ const orderSchema = new mongoose.Schema(
         razorpayPaymentId: { type: String, index: true, sparse: true },
         razorpaySignature: { type: String },
         paidAt: Date,
+        
+        // This status is now an aggregation of all SubOrder statuses
         status: {
             type: String,
-            enum: ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
+            enum: ['pending', 'processing', 'assigned_for_delivery', 'partially_delivered', 'shipped', 'delivered', 'cancelled', 'returned'],
             default: 'pending',
             index: true,
         },
+        
         subtotal: { type: Number, default: 0, min: 0 },
         shipping: { type: Number, default: 0, min: 0 },
         tax: { type: Number, default: 0, min: 0 },
         discount: { type: Number, default: 0, min: 0 },
         total: { type: Number, default: 0, min: 0 },
+        
         couponCode: { type: String },
         couponDiscount: { type: Number, default: 0, min: 0 },
+        
         idempotencyKey: { type: String, sparse: true },
         idempotencyScope: { type: String, sparse: true },
-        trackingNumber: { type: String, unique: true, sparse: true },
+        
         sourceType: {
             type: String,
             enum: ['standard', 'exchange_replacement'],
@@ -82,19 +74,13 @@ const orderSchema = new mongoose.Schema(
         sourceReferenceId: { type: String, default: '', index: true },
         exchangeRequestId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExchangeRequest', default: null, index: true },
         isShadowOrder: { type: Boolean, default: false, index: true },
-        deliveryBoyId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryBoy', index: true },
-        deliveryOtpHash: { type: String, select: false },
-        deliveryOtpExpiry: { type: Date, select: false },
-        deliveryOtpSentAt: { type: Date, select: false },
-        deliveryOtpDebug: { type: String, select: false },
-        deliveryOtpVerifiedAt: Date,
-        deliveryOtpAttempts: { type: Number, default: 0, select: false },
-        estimatedDelivery: Date,
-        deliveredAt: Date,
+        
         isCashSettled: { type: Boolean, default: false },
         settledAt: Date,
+        
         cancelledAt: Date,
         cancellationReason: String,
+        
         isDeleted: { type: Boolean, default: false, index: true },
         deletedAt: Date,
         deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
