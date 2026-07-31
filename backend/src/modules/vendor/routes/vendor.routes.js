@@ -59,7 +59,6 @@ router.post('/auth/refresh', validate(refreshTokenSchema), authController.refres
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...vendorAuth, authController.getProfile);
 router.put('/auth/profile', ...vendorAuth, validate(updateVendorProfileSchema), authController.updateProfile);
-router.delete('/auth/profile', ...vendorAuth, authController.deleteAccount);
 router.put('/auth/bank-details', ...vendorAuth, validate(updateBankDetailsSchema), authController.updateBankDetails);
 router.delete('/auth/account', ...vendorAuth, validate(deleteAccountSchema), authController.deleteAccount);
 

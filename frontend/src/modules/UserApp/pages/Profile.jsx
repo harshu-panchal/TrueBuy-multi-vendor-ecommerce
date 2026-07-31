@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiCopy, FiGift, FiShare2, FiFileText, FiShield, FiTrash2, FiDollarSign } from 'react-icons/fi';
-import { FiUser, FiMail, FiPhone, FiLock, FiEye, FiEyeOff, FiSave, FiCamera, FiArrowLeft, FiPackage, FiMapPin, FiLogOut, FiChevronRight, FiBell, FiCopy, FiTrash2 } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -19,8 +18,6 @@ const MobileProfile = () => {
   const { user, fetchProfile, updateProfile, uploadProfileAvatar, changePassword, logout, isLoading, deleteAccount } = useAuthStore();
   const menuAvatarInputRef = useRef(null);
   const personalAvatarInputRef = useRef(null);
-  const { user, updateProfile, uploadProfileAvatar, changePassword, logout, deleteAccount, isLoading } = useAuthStore();
-  const avatarInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'personal', 'password'
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== 'undefined' ? window.innerWidth >= 1024 : false
@@ -149,18 +146,6 @@ const MobileProfile = () => {
     logout();
     navigate('/home');
     toast.success('Logged out successfully');
-  };
-
-  const handleDeleteAccount = async () => {
-    if (window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
-      try {
-        await deleteAccount();
-        navigate('/home');
-        toast.success('Account deleted successfully');
-      } catch (error) {
-        toast.error(error.message || 'Failed to delete account');
-      }
-    }
   };
 
   const handleDeleteAccount = async () => {
@@ -442,17 +427,6 @@ const MobileProfile = () => {
                       <button
                         onClick={() => setShowDeleteModal(true)}
                         className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-red-700 font-bold text-sm shadow-sm border border-red-100 hover:bg-red-50 transition-colors bg-white"
-                      >
-                        <FiTrash2 className="text-lg" />
-                        <span>Delete Account</span>
-                      </button>
-                    </div>
-
-                    {/* Delete Account Option */}
-                    <div className="pt-2">
-                      <button
-                        onClick={handleDeleteAccount}
-                        className="w-full flex items-center justify-center gap-3 p-4 glass-card rounded-2xl text-red-600 font-bold text-sm shadow-sm border border-red-100 hover:bg-red-50 transition-colors bg-white"
                       >
                         <FiTrash2 className="text-lg" />
                         <span>Delete Account</span>

@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react';
-import { FiSave, FiUser, FiLock, FiShield, FiTrash2 } from 'react-icons/fi';
-import { motion } from 'framer-motion';
 import { FiSave, FiUser, FiLock, FiShield, FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -8,7 +6,6 @@ import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import toast from 'react-hot-toast';
 
 const ProfileSettings = () => {
-  const { vendor, updateProfile, logout, deleteAccount } = useVendorAuthStore();
   const navigate = useNavigate();
   const { vendor, updateProfile, logout, deleteAccount, isLoading } = useVendorAuthStore();
   const [formData, setFormData] = useState({
@@ -20,7 +17,6 @@ const ProfileSettings = () => {
     confirmPassword: '',
   });
   const [activeSection, setActiveSection] = useState('profile');
-
   const [isInitialized, setIsInitialized] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -90,17 +86,6 @@ const ProfileSettings = () => {
       });
     } catch (error) {
       toast.error('Failed to change password');
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    if (window.confirm("Are you sure you want to delete your vendor account? This action cannot be undone.")) {
-      try {
-        await deleteAccount();
-        toast.success('Account deleted successfully');
-      } catch (error) {
-        toast.error(error.message || 'Failed to delete account');
-      }
     }
   };
 
@@ -178,7 +163,6 @@ const ProfileSettings = () => {
         </div>
 
         <div className="p-3 sm:p-4 md:p-6">
-          {/* Profile Info Section */}
           {activeSection === 'profile' && (
             <form onSubmit={handleProfileSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -229,7 +213,7 @@ const ProfileSettings = () => {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">
                     GST Number
@@ -258,7 +242,6 @@ const ProfileSettings = () => {
             </form>
           )}
 
-          {/* Change Password Section */}
           {activeSection === 'password' && (
             <form onSubmit={handlePasswordSubmit} className="space-y-6">
               <div className="space-y-4">
@@ -320,7 +303,6 @@ const ProfileSettings = () => {
             </form>
           )}
 
-          {/* Security Section */}
           {activeSection === 'security' && (
             <div className="space-y-6">
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -351,22 +333,12 @@ const ProfileSettings = () => {
                 </ul>
               </div>
 
-              <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-4">
-              <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row gap-3">
+              <div className="pt-4 border-t border-gray-200">
                 <button
-                  onClick={logout}
-                  className="flex-1 px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold text-sm sm:text-base text-center"
                   onClick={handleLogout}
                   className="w-full sm:w-auto px-4 sm:px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-semibold text-sm sm:text-base"
                 >
                   Logout
-                </button>
-                <button
-                  onClick={handleDeleteAccount}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 sm:px-6 py-2 border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-all font-semibold text-sm sm:text-base"
-                >
-                  <FiTrash2 />
-                  Delete Account
                 </button>
               </div>
 

@@ -200,20 +200,6 @@ export const useAuthStore = create(
         localStorage.removeItem('address-storage');
       },
 
-      // Delete Account action
-      deleteAccount: async () => {
-        set({ isLoading: true });
-        try {
-          await api.delete('/user/auth/profile');
-          get().logout();
-          set({ isLoading: false });
-          return { success: true };
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
       // Fetch latest profile
       fetchProfile: async () => {
         try {

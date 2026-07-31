@@ -392,6 +392,8 @@ export const deleteAccount = asyncHandler(async (req, res) => {
     }
 
     user.isActive = false;
+    user.isDeleted = true;
+    user.deletedAt = new Date();
     await clearRefreshSession(user);
     await user.save({ validateBeforeSave: false });
 
@@ -443,20 +445,4 @@ export const uploadProfileAvatar = asyncHandler(async (req, res) => {
         }
         throw error;
     }
-});
-
-// DELETE /api/user/auth/profile
-export const deleteAccount = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user.id);
-    if (!user) throw new ApiError(404, 'User not found.');
-
-    user.isDeleted = true;
-    user.isActive = false;
-    user.deletedAt = new Date();
-    user.refreshTokenHash = undefined;
-    user.refreshTokenExpiresAt = undefined;
-    
-    await user.save();
-
-    res.status(200).json(new ApiResponse(200, null, 'Account deleted successfully.'));
 });

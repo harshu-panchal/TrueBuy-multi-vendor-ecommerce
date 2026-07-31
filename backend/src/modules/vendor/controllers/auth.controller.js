@@ -363,6 +363,8 @@ export const deleteAccount = asyncHandler(async (req, res) => {
 
     vendor.status = 'suspended';
     vendor.suspensionReason = 'Account deleted by vendor';
+    vendor.isDeleted = true;
+    vendor.deletedAt = new Date();
     await clearRefreshSession(vendor);
     await vendor.save({ validateBeforeSave: false });
 
@@ -396,21 +398,4 @@ export const updateBankDetails = asyncHandler(async (req, res) => {
     ).select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
 
     res.status(200).json(new ApiResponse(200, vendor, 'Bank details updated.'));
-});
-
-// DELETE /api/vendor/auth/profile
-export const deleteAccount = asyncHandler(async (req, res) => {
-    const vendor = await Vendor.findById(req.user.id);
-    if (!vendor) throw new ApiError(404, 'Vendor not found.');
-
-    vendor.isDeleted = true;
-    vendor.status = 'suspended';
-    vendor.suspensionReason = 'Account deleted by user.';
-    vendor.deletedAt = new Date();
-    vendor.refreshTokenHash = undefined;
-    vendor.refreshTokenExpiresAt = undefined;
-    
-    await vendor.save();
-
-    res.status(200).json(new ApiResponse(200, null, 'Vendor account deleted successfully.'));
 });
