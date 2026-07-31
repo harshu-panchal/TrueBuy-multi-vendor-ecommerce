@@ -23,6 +23,7 @@ export const registerSchema = Joi.object({
         zipCode: Joi.string().allow('').optional(),
         country: Joi.string().allow('').optional(),
     }).optional(),
+    referralCode: Joi.string().trim().allow('').optional(),
 });
 
 export const loginSchema = Joi.object({
@@ -139,4 +140,19 @@ export const verifyReferralSchema = Joi.object({
     referralCode: Joi.string().trim().required().messages({
         'string.empty': 'Referral code is required.',
     }),
+});
+
+export const sendPhoneOtpSchema = Joi.object({
+    phone: Joi.string().pattern(/^[0-9]{10}$/).required().messages({
+        'string.pattern.base': 'Phone number must be exactly 10 digits.',
+    })
+});
+
+export const verifyPhoneOtpSchema = Joi.object({
+    phone: Joi.string().pattern(/^[0-9]{10}$/).required(),
+    otp: Joi.string().pattern(/^\d{6}$/).required(),
+});
+
+export const checkReferralSchema = Joi.object({
+    referralCode: Joi.string().trim().required(),
 });

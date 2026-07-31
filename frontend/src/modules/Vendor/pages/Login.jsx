@@ -6,7 +6,7 @@ import { useVendorAuthStore } from "../store/vendorAuthStore";
 import toast from 'react-hot-toast';
 import { appLogo } from "../../../data/logos";
 import PageTransition from '../../../shared/components/PageTransition';
-import customLogo from '../../../assets/tru_buy-removebg-preview.png';
+const customLogo = "/newlogo1.png";
 
 const VendorLogin = () => {
   const navigate = useNavigate();

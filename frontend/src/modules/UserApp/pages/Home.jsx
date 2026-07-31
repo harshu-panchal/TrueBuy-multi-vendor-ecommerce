@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, matchPath, useNavigate } from "react-router-dom";
-import { FiHeart, FiSearch } from "react-icons/fi";
+import { FiHeart, FiSearch, FiMic } from "react-icons/fi";
 import MobileLayout from "../components/Layout/MobileLayout";
 import ProductCard from "../../../shared/components/ProductCard";
 import AnimatedBanner from "../components/Mobile/AnimatedBanner";
@@ -492,7 +492,7 @@ const MobileHome = () => {
       <MobileLayout>
         <div
           ref={elementRef}
-          className="w-full"
+          className="w-full min-h-screen bg-gradient-to-b from-[#e0f7fa] via-[#FDFBF7] to-[#FDFBF7]"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -501,16 +501,19 @@ const MobileHome = () => {
             transition: isPulling ? "none" : "transform 0.3s ease-out",
           }}>
           {/* Search Bar Container */}
-          <div className="px-4 pt-4 lg:hidden">
+          <div className="px-4 pt-4 lg:hidden pb-2">
             <div 
               onClick={() => navigate('/search')}
-              className="w-full relative cursor-text group"
+              className="w-full relative cursor-text group mx-auto"
             >
-              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-xl z-10 transition-colors group-hover:text-primary-500">
+              <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#1a202c] text-lg z-10">
                 <FiSearch />
               </div>
-              <div className="w-full pl-12 pr-4 py-3 bg-white rounded-xl border border-gray-200 shadow-sm text-gray-400 flex items-center justify-between text-base transition-all group-hover:shadow-md group-hover:border-primary-200">
-                <span>Search products...</span>
+              <div className="w-full pl-12 pr-12 py-3 bg-white rounded-full shadow-[0_2px_15px_-3px_rgba(0,0,0,0.05)] border border-gray-100/50 text-gray-400 text-[13px] sm:text-sm font-medium transition-all group-hover:shadow-md truncate">
+                <span>Search for products, brands & more...</span>
+              </div>
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-[#1a202c] text-lg z-10">
+                <FiMic />
               </div>
             </div>
           </div>
@@ -519,15 +522,28 @@ const MobileHome = () => {
           <div className="px-4 py-4">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div
-                className="relative w-full h-48 md:h-80 lg:h-[400px] xl:h-[450px] rounded-xl md:rounded-2xl overflow-hidden lg:col-span-2"
+                className="relative w-full h-72 md:h-96 lg:h-[450px] rounded-3xl overflow-hidden lg:col-span-3 bg-gradient-to-br from-[#e0f7fa]/50 to-[#fce4ec]/50 shadow-sm"
                 data-carousel
                 onTouchStart={onTouchStart}
                 onTouchMove={onTouchMove}
                 onTouchEnd={onTouchEnd}
                 style={{ touchAction: "pan-y", userSelect: "none" }}>
-                {/* Slider Container - All slides in a row */}
+                
+                {/* Neon Grid Background */}
+                <div className="absolute inset-0 opacity-20 pointer-events-none z-0" 
+                     style={{
+                       backgroundImage: `linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)`,
+                       backgroundSize: '20px 20px',
+                       transform: 'perspective(500px) rotateX(60deg) scale(2)',
+                       transformOrigin: 'bottom center'
+                     }} 
+                />
+                <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-3/4 h-32 rounded-[100%] border-2 border-cyan-400 shadow-[0_0_15px_#22d3ee] opacity-30 z-0 rotate-x-[60deg] transform perspective-1000"></div>
+                <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[85%] h-40 rounded-[100%] border-2 border-pink-400 shadow-[0_0_15px_#f472b6] opacity-20 z-0 rotate-x-[60deg] transform perspective-1000 mt-4"></div>
+
+                {/* Slider Container */}
                 <motion.div
-                  className="flex h-full"
+                  className="flex h-full relative z-10"
                   style={{
                     width: `${slides.length * 100}%`,
                     height: "100%",
@@ -535,81 +551,89 @@ const MobileHome = () => {
                   animate={{
                     x:
                       dragOffset !== 0
-                        ? `calc(-${currentSlide * (100 / slides.length)
-                        }% - ${dragOffset}px)`
+                        ? `calc(-${currentSlide * (100 / slides.length)}% - ${dragOffset}px)`
                         : `-${currentSlide * (100 / slides.length)}%`,
                   }}
                   transition={{
                     duration: dragOffset !== 0 ? 0 : 0.6,
-                    ease: [0.25, 0.46, 0.45, 0.94], // Smooth easing
+                    ease: [0.25, 0.46, 0.45, 0.94],
                     type: "tween",
                   }}>
                   {slides.map((slide, index) => (
                     <div
                       key={index}
-                      className="flex-shrink-0"
+                      className="flex-shrink-0 flex items-center justify-between px-6 sm:px-12 w-full h-full"
                       onClick={() => handleSlideClick(slide)}
                       style={{
                         width: `${100 / slides.length}%`,
-                        height: "100%",
                         cursor: slide?.link ? "pointer" : "default",
                       }}>
-                      <LazyImage
-                        src={slide.image}
-                        alt={`Slide ${index + 1}`}
-                        className="w-full h-full object-cover pointer-events-none select-none"
-                        draggable={false}
-                        onError={(e) => {
-                          e.target.src = `https://via.placeholder.com/400x200?text=Slide+${index + 1
-                            }`;
-                        }}
-                      />
+                      
+                      {/* Left Text */}
+                      <div className="w-1/2 md:w-3/5 pr-4 flex flex-col justify-center">
+                        <h2 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-semibold text-[#1a202c] leading-tight mb-2 sm:mb-4 tracking-tight drop-shadow-sm">
+                          {slide.title || "Premium Luxury with connectivity"}
+                        </h2>
+                        <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-4 sm:mb-6">
+                          Curated luxury items your choice
+                        </p>
+                        <div>
+                          <button className="bg-[#1a202c] text-white px-5 py-2 sm:px-6 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium hover:bg-black transition-colors shadow-lg whitespace-nowrap">
+                            Shop Now
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Right Image (Floating Phone style) */}
+                      <div className="w-1/2 md:w-2/5 flex justify-center items-center h-full relative">
+                        <motion.div 
+                          animate={{ y: [-5, 5, -5], rotateZ: [10, 10, 10] }}
+                          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+                          className="w-full h-4/5 max-h-[300px] relative rounded-3xl overflow-hidden shadow-2xl border-4 border-gray-800 bg-white"
+                          style={{
+                            transform: 'perspective(1000px) rotateY(-15deg) rotateX(10deg)',
+                            transformStyle: 'preserve-3d'
+                          }}
+                        >
+                          {/* Inner app mockup styling */}
+                          <div className="w-full h-full relative">
+                            <div className="absolute top-0 inset-x-0 h-6 bg-gray-100 rounded-t-3xl flex justify-center items-center">
+                                <div className="w-1/3 h-1.5 bg-gray-300 rounded-full"></div>
+                            </div>
+                            <LazyImage
+                              src={slide.image}
+                              alt={`Slide ${index + 1}`}
+                              className="w-full h-full object-cover pt-6"
+                              draggable={false}
+                              onError={(e) => {
+                                e.target.src = `https://via.placeholder.com/400x600?text=Slide+${index + 1}`;
+                              }}
+                            />
+                          </div>
+                        </motion.div>
+                      </div>
+
                     </div>
                   ))}
                 </motion.div>
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 z-10 pointer-events-none">
+                
+                {/* Dots indicator */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20 pointer-events-none">
                   {slides.map((_, index) => (
                     <button
                       key={index}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setCurrentSlide(index);
                         setAutoSlidePaused(true);
                         setTimeout(() => setAutoSlidePaused(false), 2000);
                       }}
                       className={`h-1.5 rounded-full transition-all pointer-events-auto ${index === currentSlide
-                        ? "bg-white w-6"
-                        : "bg-white/50 w-1.5"
+                        ? "bg-[#1a202c] w-6"
+                        : "bg-gray-300 w-1.5"
                         }`}
                     />
                   ))}
-                </div>
-              </div>
-
-              {/* Side Banner for Large Screens */}
-              <div className="hidden lg:block lg:col-span-1 h-[400px] xl:h-[450px] rounded-2xl overflow-hidden relative bg-gray-900 group">
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/90 z-10" />
-                <LazyImage
-                  src={sideBanner?.image || stylishWatchImg}
-                  alt={sideBanner?.title || "Premium Watch"}
-                  className="w-full h-full object-contain p-8 group-hover:scale-110 transition-transform duration-700"
-                  onError={(e) => {
-                    e.target.src = "https://via.placeholder.com/400x400?text=Premium+Watch";
-                  }}
-                />
-                <div className="absolute inset-x-0 bottom-0 p-8 z-20 flex flex-col items-center text-center">
-                  <span className="text-yellow-400 font-bold text-3xl mb-2 tracking-wider drop-shadow-lg">
-                    {sideBanner?.title || "PREMIUM"}
-                  </span>
-                  <p className="text-gray-300 text-sm mb-6 font-medium">
-                    {sideBanner?.subtitle || "Exclusive Collection"}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => handleBannerNavigation(sideBanner?.link || "/offers")}
-                    className="bg-white text-gray-900 font-bold py-3.5 px-10 rounded-xl w-full hover:bg-gray-100 transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-xl uppercase tracking-widest text-sm"
-                  >
-                    Shop Now
-                  </button>
                 </div>
               </div>
             </div>

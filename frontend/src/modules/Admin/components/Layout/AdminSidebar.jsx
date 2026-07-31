@@ -172,6 +172,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Products & Inventory": "/admin/settings/products-inventory",
       "Content & Features": "/admin/settings/content-features",
       "Notifications & SEO": "/admin/settings/notifications-seo",
+      "Footer Settings": "/admin/settings/footer-settings",
     },
     "/admin/policies": {
       "Privacy Policy": "/admin/legal/privacy",
@@ -197,13 +198,18 @@ const getChildRoute = (parentRoute, childName) => {
     },
     "/admin/system": {
       Rules: "/admin/system/rules",
-      Logs: "/admin/system/logs",
+      Log: "/admin/system/logs",
       "Message Queue": "/admin/system/message-queue",
       "Scheduled Tasks": "/admin/system/scheduled-tasks",
       "SEO Names": "/admin/system/seo-names",
       "Maintenance": "/admin/system/maintenance",
       "Warnings": "/admin/system/warnings",
-      "System Information": "/admin/system/system-information",
+      "System information": "/admin/system/system-information",
+    },
+    "/admin/plugins": {
+      "Clickatell SMS Provider": "/admin/plugins/clickatell-sms-provider",
+      "Google Merchant Center feed": "/admin/plugins/google-merchant-center-feed",
+      "Manage plugins": "/admin/plugins",
     },
   };
 

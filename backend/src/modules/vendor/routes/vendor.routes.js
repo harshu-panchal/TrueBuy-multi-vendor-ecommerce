@@ -31,7 +31,10 @@ import {
     resetPasswordSchema,
     updateBankDetailsSchema,
     updateVendorProfileSchema,
-    verifyReferralSchema
+    verifyReferralSchema,
+    sendPhoneOtpSchema,
+    verifyPhoneOtpSchema,
+    checkReferralSchema
 } from '../validators/auth.validator.js';
 import {
     createProductSchema,
@@ -47,6 +50,9 @@ const vendorAuth = [authenticate, authorize('vendor'), enforceAccountStatus];
 
 // Auth
 router.post('/auth/register', authLimiter, validate(registerSchema), authController.register);
+router.post('/auth/send-phone-otp', authLimiter, validate(sendPhoneOtpSchema), authController.sendPhoneOtp);
+router.post('/auth/verify-phone-otp', authLimiter, validate(verifyPhoneOtpSchema), authController.verifyPhoneOtp);
+router.get('/auth/check-referral/:referralCode', authLimiter, validate(checkReferralSchema, 'params'), authController.checkReferral);
 router.post('/auth/verify-referral', authLimiter, validate(verifyReferralSchema), authController.verifyReferral);
 router.post('/auth/verify-otp', validate(verifyOtpSchema), authController.verifyOTP);
 router.post('/auth/resend-otp', validate(resendOtpSchema), authController.resendOTP);

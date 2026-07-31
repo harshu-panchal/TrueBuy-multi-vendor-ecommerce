@@ -138,25 +138,46 @@ const VariantSelector = ({ variants, onVariantChange, currentPrice }) => {
             {axis.values.map((option) => {
               const isSelected = selectedVariant?.[axis.key] === option;
               const isAvailable = isOptionAvailable(axis.key, option);
+              
+              const isColor = axis.key === 'color' || axis.label.toLowerCase() === 'color';
+              
+              if (isColor) {
+                return (
+                  <button
+                    key={`${axis.key}-${option}`}
+                    onClick={() => handleOptionSelect(axis.key, option)}
+                    disabled={!isAvailable}
+                    className={`relative h-10 px-4 rounded-full font-semibold border flex items-center gap-2 transition-all duration-300 ${
+                      isSelected
+                        ? "border-purple-600 text-purple-700 bg-purple-50 ring-1 ring-purple-600"
+                        : isAvailable
+                        ? "border-gray-200 hover:border-purple-300 bg-white text-gray-700"
+                        : "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-50"
+                    }`}
+                  >
+                    <div 
+                      className="w-4 h-4 rounded-full border border-gray-200 shadow-inner flex-shrink-0" 
+                      style={{ backgroundColor: option.toLowerCase().replace(/\s+/g, '') }} 
+                    />
+                    <span className="text-sm">{option}</span>
+                  </button>
+                );
+              }
+
               return (
                 <button
                   key={`${axis.key}-${option}`}
                   onClick={() => handleOptionSelect(axis.key, option)}
                   disabled={!isAvailable}
-                  className={`relative px-4 py-2 rounded-xl font-semibold border-2 transition-all duration-300 ${
+                  className={`relative w-12 h-12 flex items-center justify-center rounded-xl font-semibold border transition-all duration-300 ${
                     isSelected
-                      ? "border-primary-600 bg-primary-50 text-primary-700"
+                      ? "border-purple-600 text-purple-700 bg-purple-50 ring-1 ring-purple-600"
                       : isAvailable
-                      ? "border-gray-200 hover:border-primary-400 bg-white text-gray-700"
+                      ? "border-gray-200 hover:border-purple-300 bg-white text-gray-700"
                       : "border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed opacity-50"
                   }`}
                 >
                   {option}
-                  {isSelected && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center">
-                      <FiCheck className="text-white text-xs" />
-                    </span>
-                  )}
                 </button>
               );
             })}

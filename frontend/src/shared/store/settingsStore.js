@@ -2,13 +2,13 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import toast from "react-hot-toast";
 import { updateSettings as apiUpdateSettings } from "../../modules/Admin/services/adminService";
-import logoImage from "../../assets/tru_buy-removebg-preview.png";
+const logoImage = "/newlogo1.png";
 
 const defaultSettings = {
   general: {
     storeName: "Tru Buy",
     storeLogo: logoImage,
-    favicon: logoImage,
+    favicon: "/favicon.png",
     contactEmail: "contact@example.com",
     contactPhone: "+1234567890",
     address: "",

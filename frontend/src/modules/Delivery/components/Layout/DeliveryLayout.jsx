@@ -115,7 +115,7 @@ const DeliveryLayout = () => {
                   <img
                     src={appLogo.src}
                     alt={appLogo.alt}
-                    className="h-24 sm:h-28 w-auto object-contain absolute top-1/2 -translate-y-1/2 left-0 max-w-none origin-left"
+                    className="h-10 sm:h-12 w-auto object-contain max-w-none origin-left"
                     onError={(e) => {
                       // Hide image if logo doesn't exist
                       e.target.style.display = "none";
@@ -134,7 +134,7 @@ const DeliveryLayout = () => {
                     }}
                   />
                 ) : (
-                  <span className="logo-text-fallback text-primary-600 font-bold text-sm sm:text-lg absolute top-1/2 -translate-y-1/2 left-0">
+                  <span className="logo-text-fallback text-primary-600 font-bold text-sm sm:text-lg">
                     LOGO
                   </span>
                 )}

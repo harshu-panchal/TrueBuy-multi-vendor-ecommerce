@@ -34,10 +34,10 @@ const MobileCategoryGrid = () => {
 
   return (
     <div className="px-4 py-4">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">
+      <h2 className="text-xl font-semibold text-[#1a202c] mb-6 pl-2 tracking-tight">
         Browse Categories
       </h2>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
+      <div className="flex gap-6 sm:gap-8 md:gap-10 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-6" style={{ WebkitOverflowScrolling: 'touch' }}>
         {displayCategories.map((category, index) => (
           <motion.div
             key={category.id}
@@ -47,19 +47,19 @@ const MobileCategoryGrid = () => {
             className="flex-shrink-0">
             <Link
               to={`/category/${category.id}`}
-              className="flex flex-col items-center gap-2 w-20">
-              <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 ring-2 ring-gray-200">
+              className="flex flex-col items-center gap-2 w-24">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-white shadow-md border-2 border-white group-hover:border-pink-200 transition-colors">
                 <LazyImage
                   src={category.image}
                   alt={category.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   onError={(e) => {
                     e.target.src =
-                      "https://via.placeholder.com/64x64?text=Category";
+                      "https://via.placeholder.com/150x150?text=Category";
                   }}
                 />
               </div>
-              <span className="text-xs font-semibold text-gray-700 text-center line-clamp-2">
+              <span className="text-[13px] sm:text-sm font-medium text-gray-600 text-center line-clamp-1 mt-1 group-hover:text-[#1a202c] transition-colors">
                 {category.name}
               </span>
             </Link>

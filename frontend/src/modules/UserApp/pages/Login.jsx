@@ -16,7 +16,7 @@ import toast from 'react-hot-toast';
 import MobileLayout from '../components/Layout/MobileLayout';
 import PageTransition from '../../../shared/components/PageTransition';
 import { appLogo } from '../../../data/logos';
-import customLogo from '../../../assets/tru_buy-removebg-preview.png';
+const customLogo = "/newlogo1.png";
 
 const MobileLogin = () => {
   const navigate = useNavigate();
@@ -204,11 +204,17 @@ const MobileLogin = () => {
                 {isLoading ? 'Logging in...' : 'Login'}
               </button>
 
-              <div className="text-center pt-4">
+              <div className="text-center pt-4 space-y-2">
                 <p className="text-gray-500 text-sm">
                   Don't have any account?{' '}
                   <Link to="/register" className="text-black font-bold hover:underline">
                     Sign Up
+                  </Link>
+                </p>
+                <p className="text-gray-500 text-sm">
+                  Want to sell with us?{' '}
+                  <Link to="/vendor/register" className="text-black font-bold hover:underline">
+                    Become a Vendor
                   </Link>
                 </p>
               </div>

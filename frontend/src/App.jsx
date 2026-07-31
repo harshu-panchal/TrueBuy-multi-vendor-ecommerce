@@ -202,7 +202,6 @@ import DeliveryFinance from "./modules/Delivery/pages/Finance";
 // Vendor Routes
 import VendorLogin from "./modules/Vendor/pages/Login";
 import VendorRegister from "./modules/Vendor/pages/Register";
-import VendorReferral from "./modules/Vendor/pages/Referral";
 import VendorVerification from "./modules/Vendor/pages/Verification";
 import VendorForgotPassword from "./modules/Vendor/pages/ForgotPassword";
 import VendorResetPassword from "./modules/Vendor/pages/ResetPassword";
@@ -246,9 +245,25 @@ import VendorWholesaleHome from "./modules/Vendor/pages/wholesale/WholesaleHome"
 import VendorWholesaleProducts from "./modules/Vendor/pages/wholesale/WholesaleProducts";
 import VendorWholesaleCart from "./modules/Vendor/pages/wholesale/WholesaleCart";
 import VendorWholesaleOrders from "./modules/Vendor/pages/wholesale/WholesaleOrders";
+import { useSettingsStore } from "./shared/store/settingsStore";
+import { useEffect } from "react";
 
 // Inner component that has access to useLocation
 const AppRoutes = () => {
+  const { settings } = useSettingsStore();
+
+  useEffect(() => {
+    if (settings?.general?.favicon) {
+      let link = document.querySelector("link[rel~='icon']");
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      link.href = settings.general.favicon;
+    }
+  }, [settings?.general?.favicon]);
+
   return (
     <Routes>
       <Route
@@ -659,6 +674,7 @@ const AppRoutes = () => {
         <Route path="settings/products-inventory" element={<Settings />} />
         <Route path="settings/content-features" element={<Settings />} />
         <Route path="settings/notifications-seo" element={<Settings />} />
+        <Route path="settings/footer-settings" element={<Settings />} />
         <Route path="legal" element={<PrivacyContent />} />
         <Route path="legal/privacy" element={<PrivacyContent />} />
         <Route path="legal/refund" element={<RefundTerms />} />
@@ -706,7 +722,6 @@ const AppRoutes = () => {
       {/* Vendor Routes */}
       <Route path="/vendor/login" element={<VendorLogin />} />
       <Route path="/vendor/register" element={<VendorRegister />} />
-      <Route path="/vendor/referral" element={<VendorReferral />} />
       <Route path="/vendor/verification" element={<VendorVerification />} />
       <Route path="/vendor/forgot-password" element={<VendorForgotPassword />} />
       <Route path="/vendor/reset-password" element={<VendorResetPassword />} />

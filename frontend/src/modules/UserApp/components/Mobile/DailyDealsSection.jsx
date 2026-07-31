@@ -51,34 +51,34 @@ const DailyDealsSection = ({ products = null }) => {
   }
 
   return (
-    <div className="relative my-4 rounded-2xl overflow-hidden shadow-xl border-2 border-red-200 bg-gradient-to-br from-red-500 via-orange-500 to-yellow-500">
+    <div className="relative my-6 mx-4 sm:mx-6 rounded-3xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/80 bg-white/40 backdrop-blur-xl">
       {/* Decorative Background Pattern */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full blur-2xl"></div>
+      <div className="absolute inset-0 opacity-40 pointer-events-none z-0">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-pink-100 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-100 rounded-full blur-3xl translate-y-1/4 -translate-x-1/4"></div>
       </div>
 
       {/* Content */}
-      <div className="relative px-3 py-5">
+      <div className="relative z-10 px-4 py-6">
         {/* Header with Badge */}
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="bg-white/20 backdrop-blur-sm rounded-full p-2 md:p-3">
-                <FiZap className="text-white text-lg md:text-2xl" />
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-[#1a202c] rounded-full p-2.5">
+                <FiZap className="text-white text-lg" />
               </div>
               <div>
-                <h2 className="text-xl md:text-3xl font-extrabold text-white drop-shadow-lg uppercase tracking-tight">
+                <h2 className="text-xl md:text-2xl font-bold text-[#1a202c] tracking-tight">
                   Daily Deals
                 </h2>
-                <p className="text-xs md:text-sm text-white/90 font-medium">
-                  Limited time offers - Up to 70% OFF
+                <p className="text-xs md:text-sm text-gray-500 font-medium mt-0.5">
+                  Limited time offers
                 </p>
               </div>
             </div>
             <Link
               to="/daily-deals"
-              className="bg-white/20 backdrop-blur-sm text-white text-sm font-bold px-3 py-1.5 rounded-lg hover:bg-white/30 transition-all">
+              className="bg-white/60 hover:bg-white text-[#1a202c] text-xs font-semibold px-4 py-2 rounded-full shadow-sm transition-all border border-white">
               See All
             </Link>
           </div>
@@ -87,37 +87,21 @@ const DailyDealsSection = ({ products = null }) => {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-xl p-4 shadow-2xl border-2 border-white/50">
-            <div className="mb-2">
-              <p className="text-xs font-semibold text-gray-700 mb-2 ml-11">
-                Deal ends in
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="bg-gradient-to-br from-red-500 to-orange-500 rounded-md p-1.5 shadow-md transform translate-y-[2px]">
-                  <FiClock className="text-white text-base" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="bg-gradient-to-br from-red-500 to-orange-500 text-white rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-white/20">
-                    <div className="text-base font-extrabold leading-tight">
-                      {formatTime(timeLeft.hours)}
-                    </div>
-                    <div className="text-[8px] opacity-90 font-medium uppercase">Hrs</div>
-                  </div>
-                  <span className="text-red-500 font-bold text-lg">:</span>
-                  <div className="bg-gradient-to-br from-red-500 to-orange-500 text-white rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-white/20">
-                    <div className="text-base font-extrabold leading-tight">
-                      {formatTime(timeLeft.minutes)}
-                    </div>
-                    <div className="text-[8px] opacity-90 font-medium uppercase">Min</div>
-                  </div>
-                  <span className="text-red-500 font-bold text-lg">:</span>
-                  <div className="bg-gradient-to-br from-red-500 to-orange-500 text-white rounded-lg px-2.5 py-1.5 min-w-[2.8rem] text-center shadow-lg border border-white/20 animate-pulse">
-                    <div className="text-base font-extrabold leading-tight">
-                      {formatTime(timeLeft.seconds)}
-                    </div>
-                    <div className="text-[8px] opacity-90 font-medium uppercase">Sec</div>
-                  </div>
-                </div>
+            className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-white/60 text-[#1a202c] rounded-2xl px-3 py-2 min-w-[3rem] text-center shadow-sm border border-white">
+                <div className="text-lg font-bold leading-none mb-1">{formatTime(timeLeft.hours)}</div>
+                <div className="text-[9px] text-gray-500 font-medium uppercase tracking-wider">Hrs</div>
+              </div>
+              <span className="text-gray-400 font-bold text-xl mb-3">:</span>
+              <div className="bg-white/60 text-[#1a202c] rounded-2xl px-3 py-2 min-w-[3rem] text-center shadow-sm border border-white">
+                <div className="text-lg font-bold leading-none mb-1">{formatTime(timeLeft.minutes)}</div>
+                <div className="text-[9px] text-gray-500 font-medium uppercase tracking-wider">Min</div>
+              </div>
+              <span className="text-gray-400 font-bold text-xl mb-3">:</span>
+              <div className="bg-white/60 text-[#1a202c] rounded-2xl px-3 py-2 min-w-[3rem] text-center shadow-sm border border-white animate-pulse">
+                <div className="text-lg font-bold leading-none mb-1">{formatTime(timeLeft.seconds)}</div>
+                <div className="text-[9px] text-gray-500 font-medium uppercase tracking-wider">Sec</div>
               </div>
             </div>
           </motion.div>

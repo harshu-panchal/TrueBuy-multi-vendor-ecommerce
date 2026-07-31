@@ -280,7 +280,7 @@ const SearchBar = () => {
     <div className="w-full relative" ref={searchRef}>
       <form onSubmit={handleSubmit} className="w-full">
         <div className="relative group">
-          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-primary-500 transition-colors z-10" />
+          <FiSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-600 transition-colors z-10 text-lg" />
           <input
             ref={inputRef}
             type="text"
@@ -289,8 +289,8 @@ const SearchBar = () => {
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
             onKeyDown={handleKeyDown}
-            placeholder="Search products..."
-            className="w-full pl-12 pr-12 py-3 glass-card rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:shadow-glow transition-all duration-300 text-gray-700 placeholder:text-gray-400"
+            placeholder="Search 2 million+ products..."
+            className="w-full pl-12 pr-12 py-2.5 bg-white/40 backdrop-blur-md rounded-full border border-white shadow-[inset_0_2px_10px_rgba(0,0,0,0.05),_0_2px_10px_rgba(0,0,0,0.02)] focus:outline-none focus:ring-2 focus:ring-white/80 transition-all duration-300 text-[#1a202c] placeholder:text-gray-500 font-medium"
           />
           <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-1 z-10">
             <motion.button

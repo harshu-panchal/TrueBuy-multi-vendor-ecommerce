@@ -10,93 +10,30 @@ const BrandLogosScroll = ({ brands = null }) => {
         : fallbackBrands;
 
     return (
-        <section className="bg-transparent w-full overflow-hidden">
-            {/* Desktop Layout - White card container */}
-            <div className="hidden md:block bg-white rounded-lg mb-4 p-4">
-                <div className="w-full overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
-                    <div className="flex gap-4 min-w-max pb-2">
+        <section className="bg-transparent w-full overflow-hidden px-4 mt-6 mb-8">
+            <div className="w-full max-w-4xl mx-auto">
+                <div className="bg-[#FDFBF7] rounded-full shadow-[0_10px_40px_-15px_rgba(0,0,0,0.1)] border border-white/60 py-3 px-6 overflow-hidden">
+                    <div className="w-full overflow-x-auto scrollbar-hide flex items-center gap-8 min-w-max" style={{ WebkitOverflowScrolling: 'touch' }}>
                         {displayBrands.map((brand, index) => (
                             <motion.div
                                 key={brand.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true, margin: "-50px" }}
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
                                 transition={{ delay: index * 0.05, duration: 0.3 }}
-                                className="flex-shrink-0 flex flex-col items-center"
-                                style={{ width: '64px' }}
+                                className="flex-shrink-0 flex items-center justify-center cursor-pointer group hover:scale-110 transition-transform"
+                                onClick={() => navigate(`/brand/${brand.id}`)}
                             >
-                                <div
-                                    onClick={() => navigate(`/brand/${brand.id}`)}
-                                    className="bg-gray-50 rounded-lg p-2 shadow-sm transition-all duration-300 flex items-center justify-center w-16 h-16 group cursor-pointer border border-gray-100 mb-2 hover:shadow-md hover:border-gray-200">
-                                    <img
-                                        src={brand.logo}
-                                        alt={brand.name}
-                                        className="w-full h-full object-contain"
-                                        onError={(e) => {
-                                            e.target.src = 'https://via.placeholder.com/120x80?text=Brand';
-                                        }}
-                                        loading="lazy"
-                                    />
-                                </div>
-                                <p className="text-xs font-medium text-gray-700 text-center truncate w-full">
-                                    {brand.name}
-                                </p>
-                            </motion.div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-
-            {/* Mobile Layout - Unchanged */}
-            <div className="md:hidden w-full">
-                <style>{`
-          @media (min-width: 1024px) {
-            .brand-card-desktop {
-              width: 5rem !important;
-              min-width: 5rem !important;
-              max-width: 5rem !important;
-            }
-          }
-          @media (min-width: 1280px) {
-            .brand-card-desktop {
-              width: 6rem !important;
-              min-width: 6rem !important;
-              max-width: 6rem !important;
-            }
-          }
-        `}</style>
-                <div className="w-full overflow-x-auto scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch' }}>
-                    <div className="flex gap-3 sm:gap-4 lg:gap-3 min-w-max px-4 pb-2">
-                        {displayBrands.map((brand, index) => (
-                            <motion.div
-                                key={brand.id}
-                                initial={{ opacity: 0, x: -20 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true, margin: "-50px" }}
-                                transition={{ delay: index * 0.05, duration: 0.3 }}
-                                className="flex-shrink-0 flex flex-col items-center brand-card-desktop"
-                                style={{
-                                    width: 'calc((100vw - 2rem - 0.75rem * 3) / 4)',
-                                    minWidth: 'calc((100vw - 2rem - 0.75rem * 3) / 4)',
-                                    maxWidth: 'calc((100vw - 2rem - 0.75rem * 3) / 4)',
-                                }}
-                            >
-                                <div
-                                    onClick={() => navigate(`/brand/${brand.id}`)}
-                                    className="bg-white rounded-lg sm:rounded-xl lg:rounded-lg p-1.5 sm:p-2 md:p-2 lg:p-1.5 xl:p-2 shadow-md transition-all duration-300 flex items-center justify-center w-full aspect-square group cursor-pointer border border-gray-100 mb-1.5 lg:mb-1 hover:shadow-lg">
-                                    <img
-                                        src={brand.logo}
-                                        alt={brand.name}
-                                        className="w-[85%] h-[85%] lg:w-[80%] lg:h-[80%] object-contain"
-                                        onError={(e) => {
-                                            e.target.src = 'https://via.placeholder.com/120x80?text=Brand';
-                                        }}
-                                        loading="lazy"
-                                    />
-                                </div>
-                                <p className="text-xs sm:text-sm lg:text-xs font-semibold text-black text-center transition-colors truncate w-full px-1">
-                                    {brand.name}
-                                </p>
+                                <img
+                                    src={brand.logo}
+                                    alt={brand.name}
+                                    className="h-8 md:h-10 w-auto object-contain grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-300 mix-blend-multiply"
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                    }}
+                                    loading="lazy"
+                                />
+                                {/* Fallback text if logo fails, using before pseudoelement via JS isn't easy, so we just hide it as it's a decorative brand scroll */}
                             </motion.div>
                         ))}
                     </div>

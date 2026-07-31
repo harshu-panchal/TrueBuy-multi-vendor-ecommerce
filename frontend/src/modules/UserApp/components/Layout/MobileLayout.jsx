@@ -4,6 +4,7 @@ import MobileHeader from './MobileHeader';
 import DesktopHeader from './DesktopHeader';
 import MobileBottomNav from './MobileBottomNav';
 import CartDrawer from '../../../../shared/components/Cart/CartDrawer';
+import Footer from './Footer';
 import useMobileHeaderHeight from '../../hooks/useMobileHeaderHeight';
 
 const MobileLayout = ({ children, showBottomNav = true }) => {
@@ -44,6 +45,7 @@ const MobileLayout = ({ children, showBottomNav = true }) => {
         style={{ paddingTop: shouldShowHeader ? `${headerHeight}px` : "0px" }}>
         {children}
       </main>
+      {!isAuthPage && !isCheckoutPage && <Footer />}
       {shouldShowBottomNav && <MobileBottomNav />}
       <CartDrawer />
     </>

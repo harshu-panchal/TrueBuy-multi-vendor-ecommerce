@@ -19,12 +19,15 @@ import {
     removeFcmTokenSchema,
     testFcmTokenSchema,
 } from '../validators/fcm.validator.js';
-import { getPublicLegalSettings } from '../modules/admin/controllers/system.controller.js';
+import { getPublicLegalSettings, getFooterSettings } from '../modules/admin/controllers/system.controller.js';
 
 const router = Router();
 
 // GET /api/settings/legal (public)
 router.get('/settings/legal', getPublicLegalSettings);
+
+// GET /api/settings/footer (public)
+router.get('/settings/footer', getFooterSettings);
 
 const toPublicVendor = (vendorDoc) => {
     const vendor = typeof vendorDoc?.toObject === 'function'

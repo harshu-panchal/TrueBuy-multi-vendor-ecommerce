@@ -2,10 +2,13 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import {
   FiShoppingBag,
+  FiBell,
+  FiMenu
 } from "react-icons/fi";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useCartStore, useUIStore } from "../../../../shared/store/useStore";
 import { useAuthStore } from "../../../../shared/store/authStore";
+import { useUserNotificationStore } from "../../store/userNotificationStore";
 import { appLogo } from "../../../../data/logos";
 import { motion } from "framer-motion";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
@@ -20,6 +23,15 @@ const categoryGradients = {
   4: "from-green-50 via-emerald-50 to-teal-50", // Jewelry - Greenish
   5: "from-purple-50 via-purple-100 to-indigo-50", // Accessories - Purple
   6: "from-blue-50 via-cyan-50 to-teal-50", // Athletic
+};
+
+const getInitials = (name) => {
+  if (!name) return "U";
+  const names = name.split(" ").filter(Boolean);
+  if (names.length >= 2) {
+    return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
 };
 
 const MobileHeader = () => {
@@ -49,6 +61,7 @@ const MobileHeader = () => {
     (state) => state.cartAnimationTrigger
   );
   const { user, isAuthenticated, logout } = useAuthStore();
+  const unreadCount = useUserNotificationStore((state) => state.unreadCount);
 
   // Get current category from URL (supports both /category/:id and legacy /app/category/:id)
   const getCurrentCategoryId = () => {
@@ -99,7 +112,7 @@ const MobileHeader = () => {
 
     // Page-specific gradients
     const pageGradients = {
-      home: "linear-gradient(to bottom, rgb(196, 181, 253) 0%, rgb(221, 214, 254) 25%, rgb(245, 243, 255) 50%, rgb(255, 255, 255) 100%)", // Purple gradient for home - lighter intensity
+      home: "linear-gradient(to bottom, rgba(224, 247, 250, 0.95) 0%, rgba(253, 251, 247, 0.95) 100%)", // Pastel cyan to cream for home
       product:
         "linear-gradient(to bottom, rgb(237, 233, 254) 0%, rgb(245, 243, 255) 50%, rgb(255, 255, 255) 100%)", // Light purple
       search:
@@ -328,18 +341,18 @@ const MobileHeader = () => {
             pointerEvents: isTopRowVisible ? "auto" : "none",
           }}>
           {/* Logo and Marketplace Badge */}
-          <div className="flex items-center gap-2 flex-shrink-0 overflow-visible relative z-[10001]">
+          <div className="flex items-center gap-2 flex-shrink-0 overflow-visible relative z-[10001] w-[140px] h-10">
             <Link
               to="/home"
-              className="flex items-center overflow-visible relative z-[10002]">
+              className="flex items-center h-full w-full relative overflow-visible">
               <div
                 ref={logoRef}
-                className="overflow-visible relative z-[10003]">
+                className="absolute top-1/2 -translate-y-1/2 left-0 flex items-center overflow-visible">
                 {appLogo.src ? (
                   <img
                     src={appLogo.src}
                     alt={appLogo.alt}
-                    className="h-32 w-auto object-contain absolute top-1/2 -translate-y-1/2 left-0 max-w-none"
+                    className="h-10 sm:h-12 w-auto object-contain origin-left"
                     onError={(e) => {
                       // Hide image if logo doesn't exist
                       e.target.style.display = "none";
@@ -351,14 +364,14 @@ const MobileHeader = () => {
                       ) {
                         const fallback = document.createElement("span");
                         fallback.className =
-                          "logo-text-fallback text-primary-600 font-bold text-sm sm:text-lg";
+                          "logo-text-fallback text-[#1a202c] font-bold text-sm sm:text-lg";
                         fallback.textContent = "LOGO";
                         parent.appendChild(fallback);
                       }
                     }}
                   />
                 ) : (
-                  <span className="logo-text-fallback text-primary-600 font-bold text-sm sm:text-lg">
+                  <span className="logo-text-fallback text-[#1a202c] font-bold text-xl sm:text-2xl">
                     LOGO
                   </span>
                 )}
@@ -367,13 +380,26 @@ const MobileHeader = () => {
           </div>
 
           {/* Right Side Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Notification Bell */}
+            <Link
+              to={isAuthenticated ? "/notifications" : "/login"}
+              className="relative p-1.5 sm:p-2 text-[#1a202c] hover:bg-white/50 rounded-full transition-all duration-300"
+            >
+              <FiBell className="text-[20px] sm:text-[22px] stroke-[1.5]" />
+              {isAuthenticated && unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-[16px] h-[16px] rounded-full bg-[#ef4444] flex items-center justify-center text-white text-[9px] font-bold shadow-sm border border-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
+
             {/* Cart Button */}
             <motion.button
               ref={cartRef}
               data-cart-icon
               onClick={toggleCart}
-              className="relative p-2.5 hover:bg-white/50 rounded-full transition-all duration-300"
+              className="relative p-1.5 sm:p-2 hover:bg-white/50 rounded-full transition-all duration-300"
               animate={
                 cartAnimationTrigger > 0
                   ? {
@@ -382,20 +408,34 @@ const MobileHeader = () => {
                   : {}
               }
               transition={{ duration: 0.5, ease: "easeOut" }}>
-              <FiShoppingBag className="text-xl text-gray-700" />
+              <FiShoppingBag className="text-[20px] sm:text-[22px] text-[#1a202c] stroke-[1.5]" />
               {itemCount > 0 && (
                 <motion.span
                   key={itemCount}
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                  style={{ backgroundColor: "#ffc101" }}>
+                  className="absolute top-1 right-0.5 w-[16px] h-[16px] rounded-full flex items-center justify-center text-white text-[9px] font-bold bg-[#ef4444] shadow-sm border border-white">
                   {itemCount > 9 ? "9+" : itemCount}
                 </motion.span>
               )}
             </motion.button>
 
-
+            {/* User Profile / Hamburger Menu Replacement */}
+            {isAuthenticated ? (
+              <Link to="/profile" className="p-1 sm:p-1.5 ml-1 flex items-center justify-center cursor-pointer transition-all duration-300">
+                {user?.avatar ? (
+                  <img src={user.avatar} alt="Profile" className="w-[30px] h-[30px] sm:w-[34px] sm:h-[34px] rounded-full object-cover border border-gray-200 shadow-sm" />
+                ) : (
+                  <div className="w-[30px] h-[30px] sm:w-[34px] sm:h-[34px] rounded-full bg-gradient-to-br from-[#1e293b] to-[#0f172a] flex items-center justify-center text-white font-bold text-[11px] sm:text-[13px] shadow-sm border border-[#334155]">
+                    {getInitials(user?.name)}
+                  </div>
+                )}
+              </Link>
+            ) : (
+              <button className="p-1.5 sm:p-2 text-[#1a202c] hover:bg-white/50 rounded-full transition-all duration-300 ml-1">
+                <FiMenu className="text-[22px] sm:text-2xl stroke-[2]" />
+              </button>
+            )}
           </div>
         </motion.div>
 

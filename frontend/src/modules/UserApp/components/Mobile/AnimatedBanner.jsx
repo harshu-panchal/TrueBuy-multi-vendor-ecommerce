@@ -15,7 +15,7 @@ const defaultBanners = [
     subtitle: "Limited Time Offer",
     discount: "Up to 50% OFF",
     description: "Shop now before it ends!",
-    gradient: "from-red-500 via-pink-500 to-orange-500",
+    gradient: "from-primary-600 via-primary-500 to-primary-700",
     link: "/flash-sale",
     icon: FiZap,
     heroImage: sneakersImg,
@@ -26,7 +26,7 @@ const defaultBanners = [
     subtitle: "New Deals Every Day",
     discount: "Save 30%",
     description: "Check out today's best deals",
-    gradient: "from-blue-500 via-purple-500 to-indigo-500",
+    gradient: "from-secondary-700 via-secondary-600 to-secondary-800",
     link: "/daily-deals",
     icon: FiTag,
     heroImage: sunglassImg,
@@ -37,7 +37,7 @@ const defaultBanners = [
     subtitle: "Exclusive Discounts",
     discount: "Up to 40% OFF",
     description: "Don't miss out!",
-    gradient: "from-green-500 via-teal-500 to-cyan-500",
+    gradient: "from-primary-800 via-secondary-700 to-secondary-900",
     link: "/offers",
     icon: FiTag,
     heroImage: watchImg,
@@ -45,9 +45,9 @@ const defaultBanners = [
 ];
 
 const gradientPalette = [
-  "from-red-500 via-pink-500 to-orange-500",
-  "from-blue-500 via-purple-500 to-indigo-500",
-  "from-green-500 via-teal-500 to-cyan-500",
+  "from-primary-600 via-primary-500 to-primary-700",
+  "from-secondary-700 via-secondary-600 to-secondary-800",
+  "from-primary-800 via-secondary-700 to-secondary-900",
 ];
 
 const KNOWN_USER_ROUTE_PATTERNS = [

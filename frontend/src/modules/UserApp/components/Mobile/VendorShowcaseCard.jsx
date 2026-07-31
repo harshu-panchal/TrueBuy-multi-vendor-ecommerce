@@ -19,20 +19,14 @@ const VendorShowcaseCard = ({ vendor, index = 0 }) => {
         {/* Vendor Logo/Avatar */}
         <div className="relative mb-3">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center overflow-hidden shadow-lg">
-            {vendor.storeLogo ? (
-              <LazyImage
-                src={vendor.storeLogo}
-                alt={vendor.storeName || vendor.name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(vendor.storeName || vendor.name)}&background=7C3AED&color=fff&size=128`;
-                }}
-              />
-            ) : (
-              <span className="text-2xl font-bold text-white">
-                {(vendor.storeName || vendor.name).charAt(0).toUpperCase()}
-              </span>
-            )}
+            <LazyImage
+              src={vendor.storeLogo || `https://picsum.photos/seed/${vendor.id}/200`}
+              alt={vendor.storeName || vendor.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(vendor.storeName || vendor.name)}&background=FF0000&color=fff&size=128`;
+              }}
+            />
           </div>
           {vendor.isVerified && (
             <div className="absolute -bottom-1 -right-1 bg-accent-500 rounded-full p-1 border-2 border-white">

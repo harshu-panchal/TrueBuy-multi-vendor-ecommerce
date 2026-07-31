@@ -176,19 +176,18 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
     <>
       <motion.div
         whileTap={{ scale: 0.98 }}
-        whileHover={{ y: -8, transition: { duration: 0.4, ease: "easeOut" } }}
-        className={`rounded-2xl overflow-hidden group cursor-pointer h-full flex flex-col border transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.12)] ${
+        className={`relative rounded-3xl overflow-hidden group cursor-pointer h-full flex flex-col border transition-all duration-500 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] hover:-translate-y-1.5 ${
           isFlashSale 
-            ? "bg-[#ffffff] border-amber-500 shadow-lg" 
-            : "bg-white border-gray-100/80"
+            ? "bg-gradient-to-br from-white/90 to-red-50/80 backdrop-blur-md border-red-100 shadow-[0_4px_20px_-10px_rgba(239,68,68,0.1)]" 
+            : "bg-white/70 backdrop-blur-lg border-white/80 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]"
         }`}
         {...longPressHandlers}
       >
         {/* Image Container */}
-        <div className="relative h-44 lg:h-52 w-full overflow-hidden rounded-t-2xl bg-gray-50">
+        <div className="relative h-44 lg:h-56 w-full overflow-hidden rounded-t-3xl bg-gray-50/50">
           {/* Discount Badge */}
           {product.originalPrice && (
-            <div className={`absolute top-3 left-3 z-10 px-2.5 py-1 rounded-lg text-[10px] font-bold text-white shadow-sm backdrop-blur-md ${isFlashSale ? "bg-red-600/90" : "bg-blue-600/90"}`}>
+            <div className={`absolute top-3 left-3 z-10 px-2.5 py-1 rounded-full text-[10px] font-bold text-white shadow-sm backdrop-blur-md ${isFlashSale ? "bg-red-500/95 border border-red-400" : "bg-[#1a202c]/90 border border-gray-700"}`}>
               {Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}% OFF
             </div>
           )}
@@ -196,8 +195,8 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
           {/* Flash Sale Badge */}
           {isFlashSale && (
             <div className="absolute top-3 left-20 z-10">
-              <div className="bg-amber-400 text-gray-900 text-[8px] font-black px-2 py-1 rounded-lg shadow-sm uppercase tracking-tighter flex items-center gap-1 animate-pulse">
-                <FiStar className="fill-current" />
+              <div className="bg-gradient-to-r from-amber-400 to-orange-400 text-white text-[9px] font-black px-2.5 py-1 rounded-full shadow-sm uppercase tracking-wider flex items-center gap-1 animate-pulse border border-amber-300">
+                <FiStar className="fill-white" />
                 Hot Deal
               </div>
             </div>
@@ -206,15 +205,15 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
           {/* Wishlist Button */}
           <div className="absolute top-3 right-3 z-10">
             <motion.button
-              whileHover={{ scale: 1.1, backgroundColor: "rgba(255, 255, 255, 0.9)" }}
+              whileHover={{ scale: 1.1, backgroundColor: "rgba(255, 255, 255, 1)" }}
               whileTap={{ scale: 0.9 }}
               onClick={handleFavorite}
-              className="p-2.5 bg-white/80 backdrop-blur-md rounded-2xl shadow-lg shadow-black/5 border border-white/20 transition-all group/wishlist"
+              className="p-2.5 bg-white/90 backdrop-blur-md rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.08)] border border-gray-100 transition-all group/wishlist"
             >
               <FiHeart
                 className={`text-[15px] transition-all duration-300 ${isFavorite
                   ? "text-red-500 fill-red-500"
-                  : "text-gray-600 group-hover/wishlist:text-red-500"
+                  : "text-gray-400 group-hover/wishlist:text-red-500"
                   }`}
               />
             </motion.button>
@@ -252,18 +251,18 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
           )}
         </div>
 
-        {/* Product Details - ~35% Height Area */}
-        <div className="p-3 md:p-4 flex-1 flex flex-col justify-between">
-          <div className="space-y-2">
+        {/* Product Details */}
+        <div className="p-3.5 md:p-4.5 flex-1 flex flex-col justify-between bg-gradient-to-b from-transparent to-white/60">
+          <div className="space-y-1.5">
             {/* Category / Type */}
-            <div className="flex items-center gap-1.5">
-              <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 text-[9px] font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="px-2 py-0.5 rounded-full bg-blue-50/80 text-blue-600 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider border border-blue-100">
                 {product.parentCategoryName || product.categoryName || product.category || "General"}
               </span>
               {product.categoryName && product.parentCategoryName && (
                 <>
                   <span className="text-[10px] text-gray-300 font-light translate-y-[-1px]">/</span>
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest opacity-80">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider opacity-80">
                     {product.categoryName}
                   </span>
                 </>
@@ -272,7 +271,7 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
 
             {/* Product Name */}
             <Link to={productLink} className="block group/title">
-              <h3 className="font-semibold text-gray-800 line-clamp-1 text-xs md:text-sm group-hover/title:text-blue-600 transition-colors">
+              <h3 className="font-semibold text-gray-900 tracking-tight line-clamp-1 text-[13px] md:text-[15px] group-hover/title:text-blue-600 transition-colors">
                 {product.name}
               </h3>
             </Link>
@@ -399,12 +398,12 @@ const ProductCard = ({ product, hideRating = false, isFlashSale = false }) => {
               onClick={handleAddToCart}
               disabled={isOutOfStock || isAdding}
               whileTap={{ scale: 0.95 }}
-              className={`w-full py-2.5 rounded-xl font-bold text-[14px] transition-all flex items-center justify-center gap-2 shadow-sm ${isOutOfStock
+              className={`w-full py-2.5 rounded-full font-bold text-[13px] sm:text-[14px] transition-all flex items-center justify-center gap-2 shadow-sm ${isOutOfStock
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                : "bg-[#0f172a] text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/10 active:scale-[0.98]"
+                : "bg-[#1a202c] text-white hover:bg-black hover:shadow-lg hover:shadow-[#1a202c]/20 border border-transparent hover:border-gray-800"
                 }`}
             >
-              <FiShoppingBag size={14} />
+              <FiShoppingBag size={14} className={isOutOfStock ? "opacity-50" : "opacity-90"} />
               <span>{isOutOfStock ? "Out of Stock" : hasVariants ? "View Details" : "Add to Cart"}</span>
             </motion.button>
           </div>

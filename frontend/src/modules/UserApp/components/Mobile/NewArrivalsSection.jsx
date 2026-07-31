@@ -20,7 +20,7 @@ const NewArrivalsSection = ({ products = null }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
       whileHover={{ scale: 1.01 }}
-      className="relative mx-4 my-4 rounded-2xl overflow-hidden shadow-xl border-2 border-cyan-200 bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-500">
+      className="relative mx-4 my-4 rounded-2xl overflow-hidden shadow-xl border-2 border-secondary-700 bg-gradient-to-br from-secondary-800 via-secondary-900 to-black">
       {/* Animated Gradient Overlay */}
       <motion.div
         className="absolute inset-0 opacity-20"
@@ -155,7 +155,7 @@ const NewArrivalsSection = ({ products = null }) => {
                     animate={{
                       boxShadow: [
                         "0 4px 6px rgba(0,0,0,0.1)",
-                        "0 8px 12px rgba(59, 130, 246, 0.3)",
+                        "0 8px 12px rgba(255, 0, 0, 0.3)",
                         "0 4px 6px rgba(0,0,0,0.1)",
                       ],
                     }}

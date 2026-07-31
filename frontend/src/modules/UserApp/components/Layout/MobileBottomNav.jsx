@@ -81,44 +81,54 @@ const MobileBottomNav = () => {
   };
 
   const navContent = (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-l border-r border-accent-200/30 z-[9999] safe-area-bottom shadow-[0_-2px_10px_rgba(0,0,0,0.05)] md:hidden">
-      <div className="flex items-center justify-around h-16 px-1">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl z-[9999] shadow-[0_-5px_20px_rgba(0,0,0,0.05)] border-t border-gray-100 md:hidden overflow-visible pb-safe">
+      <div className="flex items-center justify-between h-[70px] px-2 relative overflow-visible">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.path);
+          const isSearch = item.label === "Search";
 
           return (
             <Link
               key={item.path}
               to={item.path}
-              className="flex items-center justify-center flex-1 h-full relative">
+              className={`flex flex-col items-center justify-center flex-1 relative h-full ${isSearch ? "-mt-8" : ""}`}>
               <motion.div
-                className="relative flex items-center justify-center w-12 h-12"
+                className={`relative flex items-center justify-center ${
+                  isSearch 
+                    ? "w-[56px] h-[56px] rounded-full bg-[#1a202c] shadow-lg shadow-slate-900/20 text-white border-[6px] border-white z-20" 
+                    : "w-14 h-10"
+                }`}
                 whileTap={{ scale: 0.9 }}>
-                {/* Active Indicator Background */}
-                {active && (
+                
+                {/* Active Indicator Background for non-search */}
+                {active && !isSearch && (
                   <motion.div
                     layoutId="activeTab"
-                    className="absolute inset-0 bg-primary-50 rounded-full"
+                    className="absolute inset-0 bg-slate-100 rounded-[18px]"
                     initial={false}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
+                )}
+                
+                {/* Subtle blobs for inactive items */}
+                {!active && !isSearch && (
+                   <div className="absolute top-3 right-3 w-4 h-4 rounded-full mix-blend-multiply bg-slate-200/50"></div>
                 )}
 
                 {/* Icon */}
                 <motion.div
                   className="relative z-10 flex items-center justify-center"
-                  variants={iconVariants}
-                  initial="inactive"
-                  animate={active ? "active" : "inactive"}
-                  transition={{ duration: 0.2 }}>
+                  initial={false}
+                  animate={{ scale: active && !isSearch ? 1.1 : 1 }}>
                   <Icon
-                    className="text-2xl"
-                    style={{
-                      fill: "none",
-                      stroke: "currentColor",
-                      strokeWidth: 2,
-                    }}
+                    className={`text-[22px] transition-all duration-300 ${
+                      isSearch 
+                        ? "text-white stroke-[2.5]" 
+                        : active 
+                          ? "text-[#1a202c] fill-[#1a202c] stroke-[#1a202c]" 
+                          : "text-[#64748b] stroke-[1.5] fill-transparent"
+                    }`}
                   />
                 </motion.div>
 
@@ -128,14 +138,18 @@ const MobileBottomNav = () => {
                     key={item.badge}
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
-                    className="absolute -top-0.5 -right-0.5 w-5 h-5 rounded-full border-2 border-white shadow-md z-20 flex items-center justify-center"
-                    style={{ backgroundColor: "#ffc101" }}>
-                    <span className="text-[8px] font-bold text-white">
+                    className="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full border-2 border-white shadow-sm z-20 flex items-center justify-center bg-red-500">
+                    <span className="text-[9px] font-bold text-white">
                       {item.badge > 9 ? "9+" : item.badge}
                     </span>
                   </motion.span>
                 )}
               </motion.div>
+              
+              {/* Label */}
+              <span className={`text-[10px] font-medium tracking-tight mt-1 ${active ? "text-[#1a202c]" : "text-[#64748b]"}`}>
+                {item.label}
+              </span>
             </Link>
           );
         })}

@@ -11,6 +11,10 @@ import {
   FiCheckCircle,
   FiTrash2,
   FiX,
+  FiTruck,
+  FiShield,
+  FiRefreshCcw,
+  FiSearch,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useCartStore, useUIStore } from "../../../shared/store/useStore";
@@ -599,129 +603,181 @@ const MobileProductDetail = () => {
             </button>
           </div>
 
-          <div className="flex flex-col lg:grid lg:grid-cols-[0.55fr_0.45fr] lg:gap-8 lg:px-8 lg:items-start">
-            {/* Left Column: Product Image */}
-            <div className="px-4 py-4 lg:p-0 sticky top-24">
-              <ImageGallery images={productImages} productName={product.name} />
-              {product.flashSale && (
-                <div className="mt-4 flex justify-center lg:justify-start">
-                  <Badge variant="flash" size="lg">Flash Sale - Limited Time Offer</Badge>
-                </div>
-              )}
+          <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-12 lg:px-8 lg:items-start max-w-[1200px] mx-auto">
+            {/* Left Column: Product Image & Features */}
+            <div className="px-4 py-4 lg:p-0 flex flex-col gap-8">
+              <div className="sticky top-24">
+                <ImageGallery images={productImages} productName={product.name}>
+                   {/* Floating Badges for Image Gallery (Desktop only via ImageGallery relative wrapper) */}
+                   <div className="absolute top-4 left-4 z-10 hidden lg:flex items-center gap-2 pointer-events-none">
+                      <span className="bg-[#FFF4E5] text-[#D97706] font-bold px-3 py-1.5 rounded-full text-xs flex items-center gap-1 shadow-sm border border-orange-100">
+                        🔥 Best Seller
+                      </span>
+                   </div>
+                   <div className="absolute top-4 right-4 z-10 hidden lg:block pointer-events-auto">
+                      <button 
+                        onClick={handleFavorite}
+                        className="w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.1)] text-gray-400 hover:text-red-500 transition-colors border border-gray-100"
+                      >
+                        <FiHeart size={20} className={isFavorite ? "fill-red-500 text-red-500" : ""} />
+                      </button>
+                   </div>
+                   <div className="absolute bottom-4 right-4 z-10 hidden lg:flex items-center gap-2 bg-white/95 backdrop-blur-sm px-4 py-2.5 rounded-full shadow-[0_4px_12px_rgba(0,0,0,0.1)] text-sm font-semibold text-gray-700 pointer-events-none border border-gray-100">
+                     <FiSearch size={16} /> Zoom
+                   </div>
+                </ImageGallery>
+                
+                {product.flashSale && (
+                  <div className="mt-4 flex justify-center lg:justify-start">
+                    <Badge variant="flash" size="lg">Flash Sale - Limited Time Offer</Badge>
+                  </div>
+                )}
+              </div>
+
+              {/* Why you'll love it (Desktop only static marketing block) */}
+              <div className="hidden lg:block bg-purple-50/50 rounded-[24px] p-6 border border-purple-100/50">
+                 <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2 text-lg">
+                   <span className="text-purple-600 bg-purple-100 p-1.5 rounded-lg flex items-center justify-center">⭐</span> Why you'll love it
+                 </h3>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-gray-100">
+                       <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                          <span className="text-xl">💎</span>
+                       </div>
+                       <div>
+                         <p className="font-bold text-sm text-gray-900">Premium</p>
+                         <p className="text-xs text-gray-500 font-medium">Quality</p>
+                       </div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-gray-100">
+                       <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                          <span className="text-xl">👕</span>
+                       </div>
+                       <div>
+                         <p className="font-bold text-sm text-gray-900">Perfect</p>
+                         <p className="text-xs text-gray-500 font-medium">Fit</p>
+                       </div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-gray-100">
+                       <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                          <span className="text-xl">☁️</span>
+                       </div>
+                       <div>
+                         <p className="font-bold text-sm text-gray-900">All Day</p>
+                         <p className="text-xs text-gray-500 font-medium">Comfort</p>
+                       </div>
+                    </div>
+                    <div className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm border border-gray-100">
+                       <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600">
+                          <span className="text-xl">✨</span>
+                       </div>
+                       <div>
+                         <p className="font-bold text-sm text-gray-900">Trendy</p>
+                         <p className="text-xs text-gray-500 font-medium">Look</p>
+                       </div>
+                    </div>
+                 </div>
+              </div>
             </div>
 
             {/* Right Column: Product Info */}
             <div className="px-4 py-4 lg:p-0">
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-6 lg:pl-4">
                 <div>
-                  {/* Vendor Badge */}
-                  {vendor && (
-                    <div className="mb-2">
+                  {/* Vendor & Brand Badges */}
+                  <div className="flex items-center gap-3 mb-4">
+                    {vendor && (
                       <Link
                         to={`/seller/${vendor.id}`}
-                        className="inline-flex items-center gap-3 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full transition-all duration-300 border border-gray-200 group">
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-full transition-all duration-300 hover:border-gray-300 group shadow-sm">
                         {vendor.storeLogo ? (
-                          <div className="w-6 h-6 rounded-full overflow-hidden bg-white border border-gray-200 flex-shrink-0">
+                          <div className="w-5 h-5 rounded-full overflow-hidden bg-white flex-shrink-0">
                             <img
                               src={vendor.storeLogo}
                               alt={vendor.storeName || vendor.name}
                               className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = "none";
-                              }}
+                              onError={(e) => { e.target.style.display = "none"; }}
                             />
                           </div>
                         ) : (
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
-                            <FiShoppingBag className="text-white text-xs" />
+                          <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+                            <FiShoppingBag className="text-white text-[10px]" />
                           </div>
                         )}
-                        <span className="font-medium text-sm group-hover:text-primary-600 transition-colors">
+                        <span className="font-semibold text-xs text-gray-800">
                           {vendor.storeName || vendor.name}
                         </span>
-                        {vendor.isVerified && (
-                          <FiCheckCircle
-                            className="text-accent-500 text-sm"
-                            title="Verified Vendor"
-                          />
-                        )}
-                        <span className="text-gray-400 group-hover:translate-x-1 transition-transform">{"->"}</span>
+                        <span className="text-gray-400">›</span>
                       </Link>
-                    </div>
-                  )}
-                  {brand && (
-                    <div className="mb-2">
+                    )}
+                    {brand && (
                       <Link
                         to={`/brand/${brand.id}`}
-                        className="inline-flex items-center gap-3 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-full transition-all duration-300 border border-gray-200 group">
-                        <div className="w-6 h-6 rounded-full overflow-hidden bg-white border border-gray-200 flex-shrink-0">
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-full transition-all duration-300 hover:border-gray-300 group shadow-sm">
+                        <div className="w-5 h-5 rounded-full overflow-hidden bg-white flex-shrink-0">
                           <img
                             src={brand.logo}
                             alt={brand.name}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = "none";
-                            }}
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
                           />
                         </div>
-                        <span className="font-medium text-sm group-hover:text-primary-600 transition-colors">
+                        <span className="font-semibold text-xs text-gray-800">
                           {brand.name}
                         </span>
-                        <span className="text-gray-400 group-hover:translate-x-1 transition-transform">{"->"}</span>
+                        <span className="text-gray-400">›</span>
                       </Link>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
-                  <h1 className="text-2xl lg:text-3xl font-extrabold text-gray-900 mb-2 leading-tight">
+                  <h1 className="text-3xl lg:text-[40px] font-extrabold text-[#1a202c] mb-3 leading-[1.1] tracking-tight">
                     {product.name}
                   </h1>
 
-                  {/* Rating & Reviews */}
-                  {product.rating && (
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-100">
-                        <span className="font-bold text-yellow-700">{product.rating}</span>
-                        <FiStar className="text-yellow-500 fill-yellow-500" />
-                      </div>
-                      <span className="text-gray-500 text-sm font-medium hover:text-gray-700 cursor-pointer">
-                        {product.reviewCount || 0} Reviews
-                      </span>
-                      <span className="text-gray-300">|</span>
-                      <span className={`text-sm font-medium px-2 py-1 rounded-lg ${isOutOfStock ? "text-red-600 bg-red-50" : "text-green-600 bg-green-50"}`}>
-                        {isOutOfStock ? "Out of Stock" : product.stock === "low_stock" ? "Low Stock" : "In Stock"}
-                      </span>
-                    </div>
-                  )}
+                  {/* Rating & Reviews & Sold */}
+                  <div className="flex items-center gap-2 mb-6">
+                    <FiStar className="text-yellow-400 fill-yellow-400 text-lg" />
+                    <span className="font-bold text-gray-800 text-sm">{product.rating || "4.6"}</span>
+                    <span className="text-purple-600 font-semibold text-sm cursor-pointer hover:underline">
+                      ({product.reviewCount || 230} reviews)
+                    </span>
+                    <span className="text-gray-300 mx-1">|</span>
+                    <span className="text-gray-500 text-sm font-medium">
+                      2K+ <span className="font-normal text-gray-400">sold</span>
+                    </span>
+                  </div>
 
-                  {/* Price */}
-                  <div className="bg-gray-50 rounded-2xl p-5 mb-4 border border-gray-100">
-                    <div className="flex items-end gap-3 mb-2">
-                      <span className="text-4xl font-extrabold text-gray-900">
+                  {/* Price Block */}
+                  <div className="bg-white rounded-[24px] p-6 mb-2 border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                      <span className="text-[42px] font-extrabold text-[#1a202c] tracking-tight leading-none">
                         {formatPrice(currentPrice)}
                       </span>
                       {product.originalPrice && (
-                        <span className="text-xl text-gray-400 line-through font-medium mb-1.5">
-                          {formatPrice(product.originalPrice)}
-                        </span>
+                        <>
+                          <span className="text-xl text-gray-400 line-through font-medium">
+                            {formatPrice(product.originalPrice)}
+                          </span>
+                          <span className="text-red-500 font-bold bg-red-50 px-3 py-1 rounded-full text-sm">
+                            {Math.round(((product.originalPrice - currentPrice) / product.originalPrice) * 100)}% OFF
+                          </span>
+                        </>
                       )}
                     </div>
-                    {product.originalPrice && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-accent-600 font-bold bg-accent-50 px-3 py-1 rounded-full text-sm">
-                          {Math.round(
-                            ((product.originalPrice - currentPrice) /
-                              product.originalPrice) *
-                            100
-                          )}% OFF
-                        </span>
-                        <span className="text-sm text-gray-500">Best price guaranteed</span>
-                      </div>
-                    )}
+                    
+                    <div className="flex items-center gap-2 mb-5">
+                      <FiShield className="text-purple-600" />
+                      <span className="text-sm font-medium text-gray-700">Best price guaranteed</span>
+                    </div>
+
+                    <div className="bg-purple-50 rounded-xl p-3 flex items-center gap-2 border border-purple-100/50">
+                      <span className="text-lg">🎉</span>
+                      <span className="text-sm font-bold text-purple-700">Special Offer: <span className="font-medium text-purple-600">Extra 5% off on prepaid orders</span></span>
+                    </div>
                   </div>
                 </div>
-
                 {/* Variants & Quantity */}
-                <div className="space-y-4 border-b border-gray-100 pb-6">
+                <div className="space-y-6 pt-2">
                   {product.variants && (
                     <VariantSelector
                       variants={product.variants}
@@ -731,15 +787,15 @@ const MobileProductDetail = () => {
                   )}
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-3">
                       Quantity
                     </label>
                     <div className="flex items-center gap-4">
-                      <div className="flex items-center bg-gray-100 rounded-xl p-1 border border-gray-200">
+                      <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
                         <button
                           onClick={() => handleQuantityChange(-1)}
                           disabled={quantity <= 1 || isValidatingStock}
-                          className="w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-sm hover:shadow-md disabled:shadow-none disabled:bg-transparent disabled:opacity-50 transition-all text-gray-700">
+                          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white disabled:bg-transparent disabled:opacity-50 transition-all text-gray-700 font-medium">
                           <FiMinus />
                         </button>
                         <span className="w-12 text-center font-bold text-gray-900 text-lg">
@@ -748,28 +804,24 @@ const MobileProductDetail = () => {
                         <button
                           onClick={() => handleQuantityChange(1)}
                           disabled={isValidatingStock}
-                          className="w-10 h-10 flex items-center justify-center rounded-lg bg-white shadow-sm hover:shadow-md disabled:shadow-none disabled:bg-transparent disabled:opacity-50 transition-all text-gray-700">
+                          className="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-white disabled:bg-transparent disabled:opacity-50 transition-all text-gray-700 font-medium">
                           <FiPlus />
                         </button>
                       </div>
-                      {selectedAvailableStock > 0 && selectedAvailableStock <= (product.lowStockThreshold || 10) && (
-                        <span className="text-sm text-orange-600 font-medium">
-                          Only {selectedAvailableStock} {product.unit}s left!
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* DESKTOP ACTIONS */}
-                <div className="hidden lg:grid grid-cols-5 gap-3 py-2">
+                <div className="hidden lg:grid grid-cols-12 gap-4 py-4 border-b border-gray-100">
                   <button
                     onClick={handleAddToCart}
                     disabled={isOutOfStock || isValidatingStock}
-                    className={`col-span-3 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${isOutOfStock
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
-                      : "gradient-green text-white hover:shadow-glow-green hover:-translate-y-0.5"
-                      }`}>
+                    className={`col-span-8 py-4 rounded-[16px] font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${
+                      isOutOfStock
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                        : "bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:shadow-lg hover:shadow-purple-500/25 hover:-translate-y-0.5"
+                    }`}>
                     <FiShoppingBag className="text-xl" />
                     <span>
                       {isValidatingStock 
@@ -782,10 +834,11 @@ const MobileProductDetail = () => {
 
                   <button
                     onClick={handleFavorite}
-                    className={`col-span-1 py-4 rounded-xl font-semibold transition-all duration-300 border-2 flex items-center justify-center ${isFavorite
-                      ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}>
+                    className={`col-span-2 py-4 rounded-[16px] font-semibold transition-all duration-300 border-2 flex items-center justify-center ${
+                      isFavorite
+                        ? "bg-red-50 text-red-500 border-red-200 hover:bg-red-100"
+                        : "bg-white text-gray-700 border-gray-100 hover:border-gray-300 shadow-sm"
+                    }`}>
                     <FiHeart
                       className={`text-2xl ${isFavorite ? "fill-current" : ""}`}
                     />
@@ -793,28 +846,69 @@ const MobileProductDetail = () => {
 
                   <button
                     onClick={() => setShowShareModal(true)}
-                    className="col-span-1 py-4 bg-white text-gray-700 border-2 border-gray-200 rounded-xl font-semibold transition-all duration-300 hover:border-gray-300 hover:bg-gray-50 flex items-center justify-center">
+                    className="col-span-2 py-4 bg-white text-gray-700 border-2 border-gray-100 shadow-sm rounded-[16px] font-semibold transition-all duration-300 hover:border-gray-300 flex items-center justify-center">
                     <FiShare2 className="text-2xl" />
                   </button>
                 </div>
 
-                {/* Description */}
-                <div className="pt-4">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">
-                    Product Description
-                  </h3>
-                  <div className="prose prose-sm lg:prose-base text-gray-600 leading-relaxed bg-gray-50 p-6 rounded-2xl border border-gray-100 selectable-text">
-                    {product.description ? (
-                      <p>{product.description}</p>
-                    ) : (
-                      <p>
-                        High-quality {product.name.toLowerCase()} available in{" "}
-                        {product.unit.toLowerCase()}. This product is carefully selected
-                        to ensure the best quality and freshness.
-                      </p>
-                    )}
+                {/* Service Features Row */}
+                <div className="hidden lg:grid grid-cols-3 gap-2 py-2 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                      <FiTruck size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-gray-900">Free Delivery</p>
+                      <p className="text-xs text-gray-500">On all orders</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-50 text-red-500 flex items-center justify-center flex-shrink-0">
+                      <FiRefreshCcw size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-gray-900">Easy Returns</p>
+                      <p className="text-xs text-gray-500">7 days return</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
+                      <FiShield size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-gray-900">Secure Payment</p>
+                      <p className="text-xs text-gray-500">100% protected</p>
+                    </div>
                   </div>
                 </div>
+
+                {/* Description Accordion */}
+                <div className="pt-2">
+                  <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
+                    <div className="p-5 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-purple-100/50 text-purple-600 flex items-center justify-center shrink-0">
+                         <span className="font-serif italic font-bold">B</span>
+                      </div>
+                      <h3 className="text-base font-bold text-gray-900 flex-1">
+                        Product Description
+                      </h3>
+                      <FiMinus className="text-gray-400" />
+                    </div>
+                    <div className="px-5 pb-5 text-sm text-gray-600 leading-relaxed selectable-text">
+                      <h4 className="font-bold text-gray-800 mb-2">{product.name}</h4>
+                      {product.description ? (
+                        <p>{product.description}</p>
+                      ) : (
+                        <p>
+                          Premium quality fabric with perfect fit and exceptional comfort. 
+                          Style meets durability.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+
 
                 {/* FAQs */}
                 {productFaqs.length > 0 && (

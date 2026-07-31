@@ -197,36 +197,12 @@ const MobileCategoryIcons = () => {
 
   // Category color mapping - matching the gradient colors
   const categoryColorsByName = {
-    clothing: {
-      icon: "text-pink-500",
-      text: "text-pink-600",
-      indicator: "bg-pink-500",
-    }, // Clothing - Pink
-    footwear: {
-      icon: "text-amber-600",
-      text: "text-amber-700",
-      indicator: "bg-amber-600",
-    }, // Footwear - Brown/Amber
-    bags: {
-      icon: "text-orange-500",
-      text: "text-orange-600",
-      indicator: "bg-orange-500",
-    }, // Bags - Orange
-    jewelry: {
-      icon: "text-green-500",
-      text: "text-green-600",
-      indicator: "bg-green-500",
-    }, // Jewelry - Green
-    accessories: {
-      icon: "text-purple-500",
-      text: "text-purple-600",
-      indicator: "bg-purple-500",
-    }, // Accessories - Purple
-    athletic: {
-      icon: "text-blue-500",
-      text: "text-blue-600",
-      indicator: "bg-blue-500",
-    }, // Athletic - Blue
+    clothing: { icon: "text-primary-500", text: "text-primary-600", indicator: "bg-primary-500" },
+    footwear: { icon: "text-primary-500", text: "text-primary-600", indicator: "bg-primary-500" },
+    bags: { icon: "text-primary-500", text: "text-primary-600", indicator: "bg-primary-500" },
+    jewelry: { icon: "text-primary-500", text: "text-primary-600", indicator: "bg-primary-500" },
+    accessories: { icon: "text-primary-500", text: "text-primary-600", indicator: "bg-primary-500" },
+    athletic: { icon: "text-primary-500", text: "text-primary-600", indicator: "bg-primary-500" },
   };
 
   const isActiveCategory = (categoryId) => {
@@ -310,7 +286,7 @@ const MobileCategoryIcons = () => {
       {/* Blue indicator line at bottom edge of header for selected category */}
       {isLineVisible && currentCategoryId && (
         <div
-          className="absolute h-1 bg-blue-500 rounded-full"
+          className="absolute h-1 bg-primary-500 rounded-full"
           style={{
             ...activeLineStyle,
             bottom: '-12px', // Position at bottom edge of header (accounting for header py-3 padding)

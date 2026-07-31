@@ -107,16 +107,16 @@ const VendorHeader = ({ onMenuClick, sidebarOpen }) => {
             <img
               src={appLogo.src}
               alt={appLogo.alt}
-              className="h-28 w-auto object-contain absolute top-1/2 -translate-y-1/2 left-0 max-w-none z-[1001]"
+              className="h-10 w-auto object-contain"
             />
           </div>
 
           {/* Logo - Desktop Only */}
-          <div className="hidden lg:block relative w-32 h-8 overflow-visible">
+          <div className="hidden lg:block relative h-12 overflow-visible">
             <img
               src={appLogo.src}
               alt={appLogo.alt}
-              className="h-40 w-auto object-contain absolute top-1/2 -translate-y-1/2 left-0 max-w-none"
+              className="h-12 w-auto object-contain"
             />
           </div>
 

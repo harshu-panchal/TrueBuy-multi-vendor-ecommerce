@@ -16,6 +16,7 @@ import {
     persistRefreshSession,
     rotateRefreshSession,
 } from '../../../services/refreshToken.service.js';
+import { registerAffiliateOnTruLife } from '../../../utils/trulifeApi.js';
 
 const extractCloudinaryPublicId = (url = '') => {
     const raw = String(url || '').trim();
@@ -84,12 +85,23 @@ export const register = asyncHandler(async (req, res) => {
         }
     }
 
+    // Call TruLife API to register affiliate and get their external referral code
+    const truLifeCode = await registerAffiliateOnTruLife({
+        referralCode: referralCode || "", // sponsor
+        fullName: String(name || '').trim(),
+        email: normalizedEmail,
+        mobileNo: normalizedPhone,
+        password: password,
+        role: "User"
+    });
+
     const user = await User.create({
         name: String(name || '').trim(),
         email: normalizedEmail,
         password,
         ...(normalizedPhone ? { phone: normalizedPhone } : {}),
         ...(referredBy ? { referredBy } : {}),
+        ...(truLifeCode ? { referralCode: truLifeCode } : {})
     });
     await sendOTP(user, 'email_verification');
 

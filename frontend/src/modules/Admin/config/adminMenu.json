@@ -165,7 +165,8 @@
       "Orders & Customers",
       "Products & Inventory",
       "Content & Features",
-      "Notifications & SEO"
+      "Notifications & SEO",
+      "Footer Settings"
     ]
   },
   {
@@ -218,18 +219,24 @@
     "route": "/admin/system",
     "children": [
       "Rules",
-      "Logs",
+      "Log",
       "Message Queue",
       "Scheduled Tasks",
       "SEO Names",
+      "DIVIDER",
       "Maintenance",
       "Warnings",
-      "System Information"
+      "System information"
     ]
   },
   {
     "title": "Plugins",
     "route": "/admin/plugins",
-    "children": []
+    "children": [
+      "Clickatell SMS Provider",
+      "Google Merchant Center feed",
+      "DIVIDER",
+      "Manage plugins"
+    ]
   }
 ]

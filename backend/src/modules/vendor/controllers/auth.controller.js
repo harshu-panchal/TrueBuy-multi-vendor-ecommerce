@@ -3,6 +3,7 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
 import Admin from '../../../models/Admin.model.js';
+import PhoneOtpSession from '../../../models/PhoneOtpSession.model.js';
 import { generateTokens } from '../../../utils/generateToken.js';
 import { sendOTP } from '../../../services/otp.service.js';
 import { createNotification } from '../../../services/notification.service.js';
@@ -14,10 +15,11 @@ import {
     rotateRefreshSession,
 } from '../../../services/refreshToken.service.js';
 import { verifyReferralCode } from '../../../services/mlm.service.js';
+import { registerAffiliateOnTruLife } from '../../../utils/trulifeApi.js';
 
 // POST /api/vendor/auth/register
 export const register = asyncHandler(async (req, res) => {
-    const { name, email, password, phone, storeName, storeDescription, address, gstNumber } = req.body;
+    const { name, email, password, phone, storeName, storeDescription, address, gstNumber, referralCode } = req.body;
 
     if (!name || !/^[A-Za-z\s]{2,50}$/.test(name)) throw new ApiError(400, "Please enter a valid full name.");
     
@@ -49,6 +51,41 @@ export const register = asyncHandler(async (req, res) => {
     const existing = await Vendor.findOne({ email: normalizedEmail });
     if (existing) throw new ApiError(409, 'Email already registered.');
 
+    // Verify Phone OTP Session
+    const phoneSession = await PhoneOtpSession.findOne({ phone: String(phone || '').trim() });
+    if (!phoneSession || !phoneSession.isVerified) {
+        throw new ApiError(400, 'Please verify your phone number first.');
+    }
+
+    // Verify Referral Code if provided
+    let referralData = null;
+    let referralVerified = false;
+    let referredByVendor = null;
+    if (referralCode) {
+        const referringVendor = await Vendor.findOne({ myReferralCode: referralCode.toUpperCase() });
+        if (referringVendor) {
+            referralVerified = true;
+            referredByVendor = referringVendor._id;
+        } else {
+            const verificationResult = await verifyReferralCode(referralCode);
+            if (!verificationResult.valid) {
+                throw new ApiError(400, verificationResult.error || 'Invalid referral code');
+            }
+            referralData = verificationResult.data;
+            referralVerified = true;
+        }
+    }
+
+    // Call TruLife API to register affiliate and get their external referral code
+    const truLifeCode = await registerAffiliateOnTruLife({
+        referralCode: referralVerified ? referralCode : "", // sponsor
+        fullName: String(name || '').trim(),
+        email: normalizedEmail,
+        mobileNo: String(phone || '').trim(),
+        password: password,
+        role: "Vendor"
+    });
+
     const vendor = await Vendor.create({
         name: String(name || '').trim(),
         email: normalizedEmail,
@@ -58,11 +95,91 @@ export const register = asyncHandler(async (req, res) => {
         storeDescription: String(storeDescription || '').trim(),
         gstNumber: gstNumber ? String(gstNumber).trim().toUpperCase() : null,
         address,
-        status: 'pending'
+        status: 'pending',
+        referralCode: referralVerified ? referralCode : undefined,
+        referralVerified,
+        referralData,
+        referredByVendor,
+        ...(truLifeCode ? { myReferralCode: truLifeCode } : {})
     });
+    
+    // Clean up the used phone session
+    await PhoneOtpSession.deleteOne({ phone: String(phone || '').trim() });
+    
     await sendOTP(vendor, 'vendor_verification');
     res.status(201).json(new ApiResponse(201, { vendorId: vendor._id, email: vendor.email }, 'Registration submitted. Please verify your email and await admin approval.'));
 });
+
+// POST /api/vendor/auth/send-phone-otp
+export const sendPhoneOtp = asyncHandler(async (req, res) => {
+    const { phone } = req.body;
+
+    const existingVendor = await Vendor.findOne({ phone });
+    if (existingVendor) {
+        throw new ApiError(409, 'Phone number is already registered.');
+    }
+
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Upsert the session
+    await PhoneOtpSession.findOneAndUpdate(
+        { phone },
+        { otp, expiresAt, isVerified: false },
+        { upsert: true, new: true }
+    );
+
+    // Mock sending SMS
+    console.log(`\n\n[MOCK SMS] -> To: ${phone} | OTP: ${otp}\n\n`);
+
+    res.status(200).json(new ApiResponse(200, null, 'OTP sent to your phone successfully.'));
+});
+
+// POST /api/vendor/auth/verify-phone-otp
+export const verifyPhoneOtp = asyncHandler(async (req, res) => {
+    const { phone, otp } = req.body;
+
+    const session = await PhoneOtpSession.findOne({ phone });
+    if (!session) {
+        throw new ApiError(400, 'OTP session not found or expired. Please request a new OTP.');
+    }
+
+    if (session.expiresAt < new Date()) {
+        throw new ApiError(400, 'OTP has expired. Please request a new OTP.');
+    }
+
+    if (session.otp !== otp) {
+        throw new ApiError(400, 'Invalid OTP.');
+    }
+
+    session.isVerified = true;
+    await session.save();
+
+    res.status(200).json(new ApiResponse(200, { phone: session.phone }, 'Phone number verified successfully.'));
+});
+
+// GET /api/vendor/auth/check-referral/:referralCode
+export const checkReferral = asyncHandler(async (req, res) => {
+    const { referralCode } = req.params;
+
+    // First check if it belongs to a TrueBuy Vendor
+    const referringVendor = await Vendor.findOne({ myReferralCode: referralCode.toUpperCase() });
+    if (referringVendor) {
+        return res.status(200).json(new ApiResponse(200, { name: referringVendor.name || referringVendor.storeName, isInternal: true }, 'Referral code is valid.'));
+    }
+
+    // Fallback to MLM external verification
+    const verificationResult = await verifyReferralCode(referralCode);
+    
+    if (!verificationResult.valid) {
+        return res.status(400).json(new ApiResponse(400, null, verificationResult.error || 'Invalid referral code'));
+    }
+
+    res.status(200).json(new ApiResponse(200, verificationResult.data, 'Referral code is valid.'));
+});
+
+
 
 // POST /api/vendor/auth/verify-referral
 export const verifyReferral = asyncHandler(async (req, res) => {
@@ -108,7 +225,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     if (vendor.isVerified) {
         const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
         await persistRefreshSession(vendor, refreshToken);
-        return res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, status: vendor.status } }, 'Email is already verified.'));
+        return res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, status: vendor.status, myReferralCode: vendor.myReferralCode } }, 'Email is already verified.'));
     }
 
     if (vendor.otp !== otp) throw new ApiError(400, 'Invalid OTP.');
@@ -142,7 +259,7 @@ export const verifyOTP = asyncHandler(async (req, res) => {
     const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
     await persistRefreshSession(vendor, refreshToken);
 
-    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, status: vendor.status } }, 'Email verified. Please select a subscription plan.'));
+    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, status: vendor.status, myReferralCode: vendor.myReferralCode } }, 'Email verified. Please select a subscription plan.'));
 });
 
 // POST /api/vendor/auth/resend-otp
@@ -256,9 +373,14 @@ export const login = asyncHandler(async (req, res) => {
     const isMatch = await vendor.comparePassword(password);
     if (!isMatch) throw new ApiError(401, 'Invalid credentials.');
 
+    // Auto-generate myReferralCode if it doesn't exist for legacy vendors
+    if (!vendor.myReferralCode) {
+        await vendor.save({ validateBeforeSave: false });
+    }
+
     const { accessToken, refreshToken } = generateTokens({ id: vendor._id, role: 'vendor', email: vendor.email });
     await persistRefreshSession(vendor, refreshToken);
-    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, storeLogo: vendor.storeLogo, status: vendor.status } }, 'Login successful.'));
+    res.status(200).json(new ApiResponse(200, { accessToken, refreshToken, vendor: { id: vendor._id, name: vendor.name, storeName: vendor.storeName, email: vendor.email, storeLogo: vendor.storeLogo, status: vendor.status, myReferralCode: vendor.myReferralCode } }, 'Login successful.'));
 });
 
 // POST /api/vendor/auth/refresh
@@ -301,8 +423,15 @@ export const logout = asyncHandler(async (req, res) => {
 
 // GET /api/vendor/auth/profile
 export const getProfile = asyncHandler(async (req, res) => {
-    const vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
+    let vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
+    
+    // Auto-generate myReferralCode if it doesn't exist for legacy vendors
+    if (!vendor.myReferralCode) {
+        await vendor.save({ validateBeforeSave: false });
+        vendor = await Vendor.findById(req.user.id).select('-password -otp -otpExpiry +bankDetails.accountName +bankDetails.accountNumber +bankDetails.bankName +bankDetails.ifscCode');
+    }
+
     res.status(200).json(new ApiResponse(200, vendor, 'Profile fetched.'));
 });
 

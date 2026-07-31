@@ -30,7 +30,7 @@ const FeaturedVendorsSection = ({ vendors = null }) => {
         </Link>
       </div>
 
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-4 px-4">
+      <div className="flex gap-4 sm:gap-5 md:gap-6 overflow-x-auto scrollbar-hide pb-4 -mx-4 px-6" style={{ WebkitOverflowScrolling: 'touch' }}>
         {featuredVendors.map((vendor, index) => (
           <VendorShowcaseCard key={vendor.id} vendor={vendor} index={index} />
         ))}

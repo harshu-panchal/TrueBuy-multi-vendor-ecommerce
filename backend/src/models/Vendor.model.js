@@ -87,6 +87,9 @@ const vendorSchema = new mongoose.Schema(
         referralCode: { type: String, trim: true, sparse: true, index: true },
         referralVerified: { type: Boolean, default: false },
         referralData: { type: mongoose.Schema.Types.Mixed },
+        // Internal TrueBuy Vendor Referral fields
+        myReferralCode: { type: String, unique: true, sparse: true, index: true },
+        referredByVendor: { type: mongoose.Schema.Types.ObjectId, ref: 'Vendor' },
         // B2B Wholesale permissions (admin-controlled; additive)
         b2bPermissions: {
             canBuyWholesale: { type: Boolean, default: true },
@@ -99,6 +102,12 @@ const vendorSchema = new mongoose.Schema(
 );
 
 vendorSchema.pre('save', async function (next) {
+    if (!this.myReferralCode) {
+        // Generate a simple unique code based on VND + 6 random alphanumeric chars
+        const randomChars = Math.random().toString(36).substring(2, 8).toUpperCase();
+        this.myReferralCode = `VND${randomChars}`;
+    }
+
     if (!this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password, 12);
     next();

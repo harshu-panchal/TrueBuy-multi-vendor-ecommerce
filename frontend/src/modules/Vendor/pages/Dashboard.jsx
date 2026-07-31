@@ -15,6 +15,7 @@ import { formatPrice } from "../../../shared/utils/helpers";
 import { useReturnStore } from "../../../shared/store/returnStore";
 import { useVendorSubscriptionStore } from "../../../shared/store/vendorSubscriptionStore";
 import { FiAlertCircle, FiCreditCard } from "react-icons/fi";
+import toast from 'react-hot-toast';
 
 const VendorDashboard = () => {
   const navigate = useNavigate();
@@ -142,7 +143,7 @@ const VendorDashboard = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between mb-6">
         <div className="lg:hidden">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
             Dashboard
@@ -152,6 +153,33 @@ const VendorDashboard = () => {
             overview.
           </p>
         </div>
+        
+        {vendor?.myReferralCode && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm w-full md:w-auto"
+          >
+            <div className="bg-yellow-100 p-2 rounded-lg">
+              <FiDollarSign className="text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-xs text-yellow-800 font-medium uppercase tracking-wider">Your Referral Code</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-lg font-bold text-yellow-900 tracking-wider">{vendor.myReferralCode}</span>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(vendor.myReferralCode);
+                    toast.success('Referral code copied!');
+                  }}
+                  className="text-xs bg-yellow-200 text-yellow-800 px-2 py-1 rounded font-semibold hover:bg-yellow-300 transition-colors"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Pending Returns Banner */}

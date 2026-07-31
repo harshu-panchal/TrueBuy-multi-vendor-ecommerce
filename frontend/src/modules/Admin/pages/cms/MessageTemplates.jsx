@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import TruBuyLogo from '../../../../assets/tru_buy-removebg-preview.png';
+const TruBuyLogo = "/newlogo1.png";
 import {
   FiPlus,
   FiTrash2,

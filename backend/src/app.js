@@ -15,6 +15,7 @@ import deliveryRoutes from './modules/delivery/routes/delivery.routes.js';
 import returnRoutes from './modules/returns/routes/return.routes.js';
 import exchangeRoutes from './modules/exchange/routes/exchange.routes.js';
 import b2bRoutes from './modules/b2b/routes/b2b.routes.js';
+import integrationRoutes from './routes/integration.routes.js';
 
 // Middleware imports
 import { apiLimiter } from './middlewares/rateLimiter.js';
@@ -106,6 +107,7 @@ app.use('/api/admin', adminRoutes);       // Admin: auth, vendors, orders, catal
 app.use('/api/vendor', vendorRoutes);     // Vendor: auth, products, orders, earnings
 app.use('/api/delivery', deliveryRoutes); // Delivery: auth, orders
 app.use('/api/b2b', b2bRoutes);           // Vendor wholesale marketplace: products, cart, orders
+app.use('/api/integration', integrationRoutes); // Integration endpoints for other projects
 
 // ─── Error Handling ──────────────────────────────────────────────────────────
 app.use(notFound);

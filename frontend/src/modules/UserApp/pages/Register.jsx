@@ -8,7 +8,7 @@ import { isValidEmail, isValidPhone } from '../../../shared/utils/helpers';
 import toast from 'react-hot-toast';
 import MobileLayout from "../components/Layout/MobileLayout";
 import PageTransition from '../../../shared/components/PageTransition';
-import customLogo from '../../../assets/tru_buy-removebg-preview.png';
+const customLogo = "/newlogo1.png";
 
 const MobileRegister = () => {
   const navigate = useNavigate();

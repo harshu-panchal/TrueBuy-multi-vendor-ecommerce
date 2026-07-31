@@ -163,6 +163,12 @@ export const getPublicLegalSettings = asyncHandler(async (req, res) => {
     return res.status(200).json(new ApiResponse(200, data, 'Legal and contact settings fetched successfully.'));
 });
 
+// GET /api/public/settings/footer
+export const getFooterSettings = asyncHandler(async (req, res) => {
+    const footerSetting = await Settings.findOne({ key: 'footer_config' }).lean();
+    return res.status(200).json(new ApiResponse(200, footerSetting?.value || {}, 'Footer settings fetched successfully.'));
+});
+
 // PUT /api/admin/settings
 export const updateSettings = asyncHandler(async (req, res) => {
     const updates = resolveSettingOpsFromPayload(req.body);

@@ -18,14 +18,14 @@ const RecommendedSection = ({ products = null }) => {
   }
 
   return (
-    <div className="px-4 py-5 bg-gradient-to-br from-blue-50/50 via-white to-purple-50/40 rounded-2xl mx-2">
-      <div className="flex items-center justify-between mb-5">
+    <div className="px-4 py-6 my-6 mx-4 sm:mx-6 bg-white/40 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/80">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl shadow-md">
+          <div className="p-2.5 bg-[#1a202c] rounded-full shadow-sm">
             <FiThumbsUp className="text-white text-lg" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-800 leading-tight">
+            <h2 className="text-xl md:text-2xl font-bold text-[#1a202c] leading-tight">
               Recommended for You
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">Curated just for you</p>
@@ -33,7 +33,7 @@ const RecommendedSection = ({ products = null }) => {
         </div>
         <Link
           to="/search"
-          className="flex items-center gap-1 text-sm text-primary-600 font-semibold hover:text-primary-700 transition-colors active:scale-95">
+          className="flex items-center gap-1 text-xs text-[#1a202c] font-semibold hover:text-black transition-colors bg-white/60 hover:bg-white px-3 py-1.5 rounded-full border border-white shadow-sm">
           <span>See All</span>
           <FiArrowRight className="text-sm" />
         </Link>
