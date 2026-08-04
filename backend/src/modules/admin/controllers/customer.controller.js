@@ -31,13 +31,14 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
 
     const skip = (numericPage - 1) * numericLimit;
 
-    const customers = await User.find(filter)
-        .select('-password -otp -otpExpiry')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(numericLimit);
-
-    const total = await User.countDocuments(filter);
+    const [customers, total] = await Promise.all([
+        User.find(filter)
+            .select('-password -otp -otpExpiry')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(numericLimit),
+        User.countDocuments(filter),
+    ]);
 
     const customerIds = customers.map((customer) => customer._id);
 
@@ -158,11 +159,16 @@ export const updateCustomerStatus = asyncHandler(async (req, res) => {
         throw new ApiError(400, 'isActive status must be a boolean');
     }
 
+    const updatePayload = { isActive };
+    if (!isActive) {
+        updatePayload.refreshTokenHash = null;
+    }
+
     const customer = await User.findOneAndUpdate(
         { _id: req.params.id, role: 'customer' },
-        { isActive },
+        updatePayload,
         { new: true }
-    ).select('-password');
+    ).select('-password -otp -otpExpiry');
 
     if (!customer) {
         throw new ApiError(404, 'Customer not found');
