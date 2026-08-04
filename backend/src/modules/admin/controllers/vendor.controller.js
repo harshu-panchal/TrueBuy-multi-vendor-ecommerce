@@ -3,6 +3,7 @@ import ApiResponse from '../../../utils/ApiResponse.js';
 import ApiError from '../../../utils/ApiError.js';
 import Vendor from '../../../models/Vendor.model.js';
 import Commission from '../../../models/Commission.model.js';
+import Product from '../../../models/Product.model.js';
 import { sendEmail } from '../../../services/email.service.js';
 import { createNotification } from '../../../services/notification.service.js';
 
@@ -50,12 +51,14 @@ export const getAllVendors = asyncHandler(async (req, res) => {
         filter.$or = [{ name: safeRegex }, { email: safeRegex }, { storeName: safeRegex }];
     }
 
-    const vendors = await Vendor.find(filter)
-        .select('-password -otp -otpExpiry')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(numericLimit);
-    const total = await Vendor.countDocuments(filter);
+    const [vendors, total] = await Promise.all([
+        Vendor.find(filter)
+            .select('-password -otp -otpExpiry')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(numericLimit),
+        Vendor.countDocuments(filter),
+    ]);
     res.status(200).json(
         new ApiResponse(200, {
             vendors: vendors.map(toApiVendor),
@@ -79,8 +82,19 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
     const allowed = ['approved', 'suspended', 'rejected'];
     if (!allowed.includes(status)) throw new ApiError(400, `Status must be one of: ${allowed.join(', ')}`);
 
-    const vendor = await Vendor.findByIdAndUpdate(req.params.id, { status, suspensionReason: reason || '' }, { new: true });
+    const updatePayload = { status, suspensionReason: reason || '' };
+    if (['suspended', 'rejected'].includes(status)) {
+        updatePayload.refreshTokenHash = null;
+    }
+
+    const vendor = await Vendor.findByIdAndUpdate(req.params.id, updatePayload, { new: true });
     if (!vendor) throw new ApiError(404, 'Vendor not found.');
+
+    if (status === 'suspended' || status === 'rejected') {
+        await Product.updateMany({ vendorId: vendor._id }, { $set: { isActive: false } });
+    } else if (status === 'approved') {
+        await Product.updateMany({ vendorId: vendor._id }, { $set: { isActive: true } });
+    }
 
     const statusMessageMap = {
         approved: `Your vendor account for ${vendor.storeName || vendor.name} has been approved.`,
@@ -123,22 +137,18 @@ export const updateCommissionRate = asyncHandler(async (req, res) => {
 
     if (typeof commissionRate !== 'undefined') {
         const parsedRate = Number(commissionRate);
-        if (Number.isNaN(parsedRate) || parsedRate < 0) {
-            throw new ApiError(400, 'Commission rate must be a valid non-negative number.');
+        if (Number.isNaN(parsedRate) || parsedRate < 0 || parsedRate > 100) {
+            throw new ApiError(400, 'Commission rate must be a valid number between 0 and 100.');
         }
-        const dbCommissionRate = parsedRate <= 1 ? parsedRate * 100 : parsedRate;
-        if (dbCommissionRate > 100) throw new ApiError(400, 'Commission rate must be between 0 and 100.');
-        update.commissionRate = dbCommissionRate;
+        update.commissionRate = parsedRate;
     }
 
     if (typeof b2bCommissionRate !== 'undefined') {
         const parsedRate = Number(b2bCommissionRate);
-        if (Number.isNaN(parsedRate) || parsedRate < 0) {
-            throw new ApiError(400, 'B2B commission rate must be a valid non-negative number.');
+        if (Number.isNaN(parsedRate) || parsedRate < 0 || parsedRate > 100) {
+            throw new ApiError(400, 'B2B commission rate must be a valid number between 0 and 100.');
         }
-        const dbCommissionRate = parsedRate <= 1 ? parsedRate * 100 : parsedRate;
-        if (dbCommissionRate > 100) throw new ApiError(400, 'B2B commission rate must be between 0 and 100.');
-        update.b2bCommissionRate = dbCommissionRate;
+        update.b2bCommissionRate = parsedRate;
     }
 
     if (Object.keys(update).length === 0) {
