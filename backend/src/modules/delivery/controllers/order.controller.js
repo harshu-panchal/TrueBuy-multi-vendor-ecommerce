@@ -178,7 +178,7 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [statusStats, completedTodayCount, earningsStats, recentOrders, shippingSettings] = await Promise.all([
+    const [statusStats, completedTodayCount, earningsStats, recentOrders] = await Promise.all([
         SubOrder.aggregate([
             { $match: { deliveryBoyId: new mongoose.Types.ObjectId(deliveryBoyId), isDeleted: { $ne: true } } },
             {
@@ -219,10 +219,7 @@ export const getDashboardSummary = asyncHandler(async (req, res) => {
             .populate('parentOrderId', 'userId shippingAddress guestInfo')
             .sort({ createdAt: -1 })
             .limit(3),
-        Settings.findOne({ key: 'shipping' }).lean(),
     ]);
-
-    const baseFee = shippingSettings?.value?.deliveryBaseFee != null ? Number(shippingSettings.value.deliveryBaseFee) : 40;
 
     const countByStatus = statusStats.reduce((acc, row) => {
         acc[String(row?._id || '')] = Number(row?.count || 0);
@@ -252,7 +249,7 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    const [deliveredStats, completedTodayCount, shippingSettings] = await Promise.all([
+    const [deliveredStats, completedTodayCount] = await Promise.all([
         SubOrder.aggregate([
             {
                 $match: {
@@ -279,10 +276,7 @@ export const getProfileSummary = asyncHandler(async (req, res) => {
                 { deliveredAt: null, updatedAt: { $gte: todayStart } },
             ],
         }),
-        Settings.findOne({ key: 'shipping' }).lean(),
     ]);
-
-    const baseFee = shippingSettings?.value?.deliveryBaseFee != null ? Number(shippingSettings.value.deliveryBaseFee) : 40;
 
     const row = deliveredStats?.[0] || {};
     return res.status(200).json(
@@ -328,7 +322,9 @@ export const getOrderDetail = asyncHandler(async (req, res) => {
     }
 
     const orderData = { ...order.toObject(), deliveryBaseFee: baseFee, deliveryPerKmFee: perKmFee };
-    console.log("VENDOR PICKUP OTP:", orderData.vendorPickupOtp);
+    if (!IS_PRODUCTION) {
+        console.log("VENDOR PICKUP OTP:", orderData.vendorPickupOtp);
+    }
     res.status(200).json(new ApiResponse(200, orderData, 'Order detail fetched.'));
 });
 
@@ -379,8 +375,8 @@ export const updateDeliveryStatus = asyncHandler(async (req, res) => {
             order.deliveryOtpAttempts = 0;
             if (!IS_PRODUCTION) {
                 order.deliveryOtpDebug = generatedOtp;
+                console.log("CUSTOMER DELIVERY OTP:", generatedOtp);
             }
-            console.log("CUSTOMER DELIVERY OTP:", generatedOtp);
 
             try {
                 const sent = await sendDeliveryOtpEmail(order, generatedOtp);

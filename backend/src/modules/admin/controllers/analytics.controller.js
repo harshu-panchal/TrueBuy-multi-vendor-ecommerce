@@ -39,7 +39,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
             previousEnd = new Date(currentStart.getTime() - 1);
         } else if (p === 'year') {
             currentStart = new Date(now.getFullYear(), 0, 1);
-            previousStart = new Date(now.getFullYear - 1, 0, 1);
+            previousStart = new Date(now.getFullYear() - 1, 0, 1);
             previousEnd = new Date(now.getFullYear(), 0, 0, 23, 59, 59, 999);
         } else {
             // Default to month

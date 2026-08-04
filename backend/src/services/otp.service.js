@@ -45,7 +45,7 @@ export const sendOTP = async (user, type = 'verification') => {
         // Keep auth flow working in environments where SMTP is not configured.
         console.warn(`[OTP] Email send failed for ${user.email}: ${err.message}`);
         if (process.env.NODE_ENV !== 'production') {
-            console.log(`[OTP] ${type} OTP generated for ${user.email}`);
+            console.log(`[DEV OTP] ${type} OTP for ${user.email}: ${otp}`);
         }
     }
 

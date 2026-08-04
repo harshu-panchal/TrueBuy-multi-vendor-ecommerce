@@ -13,15 +13,19 @@ export const useAdminAuthStore = create(
       isLoading: false,
 
       // Admin login — calls real backend
-      login: async (email, password) => {
+      login: async (email, password, rememberMe = true) => {
         set({ isLoading: true });
         try {
           const response = await apiLogin(email, password);
           const { accessToken, refreshToken, admin } = response.data;
 
-          // Store token under 'adminToken' key (used by adminService interceptor)
-          localStorage.setItem('adminToken', accessToken);
-          localStorage.setItem('adminRefreshToken', refreshToken);
+          const targetStorage = rememberMe ? localStorage : sessionStorage;
+          const otherStorage = rememberMe ? sessionStorage : localStorage;
+
+          targetStorage.setItem('adminToken', accessToken);
+          targetStorage.setItem('adminRefreshToken', refreshToken);
+          otherStorage.removeItem('adminToken');
+          otherStorage.removeItem('adminRefreshToken');
 
           set({
             admin,
@@ -40,7 +44,9 @@ export const useAdminAuthStore = create(
 
       // Admin logout
       logout: () => {
-        const refreshToken = localStorage.getItem('adminRefreshToken');
+        const refreshToken =
+          localStorage.getItem('adminRefreshToken') ||
+          sessionStorage.getItem('adminRefreshToken');
         if (refreshToken) {
           api.post('/admin/auth/logout', { refreshToken }).catch(() => {});
         }
@@ -48,6 +54,8 @@ export const useAdminAuthStore = create(
         set({ admin: null, token: null, refreshToken: null, isAuthenticated: false });
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminRefreshToken');
+        sessionStorage.removeItem('adminToken');
+        sessionStorage.removeItem('adminRefreshToken');
       },
     }),
     {

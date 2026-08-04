@@ -121,18 +121,38 @@ const isExcludedAuthRequest = (scope, url = '') => {
   return EXCLUDED_AUTH_SUFFIXES.some((suffix) => url.startsWith(`${prefix}${suffix}`));
 };
 
+const getStorageToken = (key) => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(key) || sessionStorage.getItem(key);
+};
+
+const setStorageToken = (key, value, scope) => {
+  if (typeof window === 'undefined') return;
+  const config = AUTH_SCOPES[scope];
+  const isSessionOnly = Boolean(sessionStorage.getItem(config?.accessKey || key));
+  const targetStorage = isSessionOnly ? sessionStorage : localStorage;
+  const otherStorage = isSessionOnly ? localStorage : sessionStorage;
+
+  targetStorage.setItem(key, value);
+  otherStorage.removeItem(key);
+};
+
 const clearScopeAuth = (scope) => {
   const config = AUTH_SCOPES[scope];
+  if (typeof window === 'undefined' || !config) return;
   localStorage.removeItem(config.accessKey);
   localStorage.removeItem(config.refreshKey);
   localStorage.removeItem(config.persistKey);
+  sessionStorage.removeItem(config.accessKey);
+  sessionStorage.removeItem(config.refreshKey);
+  sessionStorage.removeItem(config.persistKey);
 };
 
 const shouldAttemptRefresh = (error, scope) => {
   if (error?.response?.status !== 401) return false;
   if (!scope || !AUTH_SCOPES[scope]) return false;
 
-  const refreshToken = localStorage.getItem(AUTH_SCOPES[scope].refreshKey);
+  const refreshToken = getStorageToken(AUTH_SCOPES[scope].refreshKey);
   if (!refreshToken) return false;
 
   const originalRequest = error.config || {};
@@ -150,7 +170,7 @@ const runRefresh = async (scope) => {
   }
 
   const config = AUTH_SCOPES[scope];
-  const currentRefreshToken = localStorage.getItem(config.refreshKey);
+  const currentRefreshToken = getStorageToken(config.refreshKey);
   if (!currentRefreshToken) {
     throw new Error('No refresh token available.');
   }
@@ -167,8 +187,8 @@ const runRefresh = async (scope) => {
         throw new Error('Invalid refresh response from server.');
       }
 
-      localStorage.setItem(config.accessKey, nextAccessToken);
-      localStorage.setItem(config.refreshKey, nextRefreshToken);
+      setStorageToken(config.accessKey, nextAccessToken, scope);
+      setStorageToken(config.refreshKey, nextRefreshToken, scope);
 
       return nextAccessToken;
     })
@@ -183,7 +203,7 @@ api.interceptors.request.use(
   (config) => {
     const pathScope = getScopeFromPath();
     const scope = getScopeFromUrl(config.url || '', pathScope);
-    const token = localStorage.getItem(AUTH_SCOPES[scope].accessKey);
+    const token = getStorageToken(AUTH_SCOPES[scope].accessKey);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

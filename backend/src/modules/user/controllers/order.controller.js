@@ -399,16 +399,17 @@ export const placeOrder = asyncHandler(async (req, res) => {
 
             // Wallet payment processing
             let finalPaymentStatus = 'pending';
+            let walletUserDoc = null;
             if (normalizedPaymentMethod === 'wallet') {
                 if (!userId) {
                     throw new ApiError(401, 'You must be logged in to use wallet payment.');
                 }
-                const user = await User.findById(userId).session(session);
-                if (!user || (user.walletBalance || 0) < total) {
+                walletUserDoc = await User.findById(userId).session(session);
+                if (!walletUserDoc || (walletUserDoc.walletBalance || 0) < total) {
                     throw new ApiError(400, 'Insufficient wallet balance.');
                 }
-                user.walletBalance -= total;
-                await user.save({ session });
+                walletUserDoc.walletBalance -= total;
+                await walletUserDoc.save({ session });
                 finalPaymentStatus = 'paid';
             }
 
@@ -432,8 +433,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
             order = createdOrder;
 
             // Record wallet transaction if paid by wallet
-            if (normalizedPaymentMethod === 'wallet') {
-                const user = await User.findById(userId).session(session);
+            if (normalizedPaymentMethod === 'wallet' && walletUserDoc) {
                 await WalletTransaction.create(
                     [{
                         user: userId,
@@ -442,7 +442,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
                         description: `Payment for order ${order.orderId}`,
                         referenceModel: 'Order',
                         referenceId: order._id,
-                        balanceAfter: user.walletBalance
+                        balanceAfter: walletUserDoc.walletBalance
                     }],
                     { session }
                 );
@@ -662,20 +662,15 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
     } catch (err) {
         // Never bubble a 401 from the payment gateway to the frontend.
         // The frontend treats 401 as session expiry and redirects to /login.
-        const statusCode = Number(err?.statusCode || err?.response?.statusCode || 0);
-        const message =
-            err?.error?.description ||
-            err?.error?.reason ||
-            err?.message ||
-            'Payment gateway error.';
+        const statusCode = Number(err?.statusCode || err?.response?.statusCode || err?.status || 0);
+        const message = String(err?.error?.description || err?.error?.reason || err?.message || 'Razorpay order creation failed.');
 
         if (statusCode === 401) {
-            // Retry once after resetting the cached client (handles "env changed without restart").
             resetRazorpayClient();
             try {
-                const retryClient = getRazorpayClient();
-                razorpayOrder = await retryClient.orders.create({
-                    amount: amountInPaise,
+                const razorpayRetry = getRazorpayClient();
+                razorpayOrder = await razorpayRetry.orders.create({
+                    amount: Math.round(Number(order.total || 0) * 100),
                     currency: 'INR',
                     receipt: `ord_${String(order.orderId).slice(-30)}`,
                     notes: {
@@ -683,17 +678,16 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
                         userId: String(req.user.id),
                     },
                 });
+                return;
             } catch {
-                const safeKey = String(process.env.RAZORPAY_KEY_ID || '').trim();
-                const safeSecretLen = String(process.env.RAZORPAY_KEY_SECRET || '').trim().length;
                 throw new ApiError(
                     500,
-                    `Razorpay authentication failed. Check RAZORPAY_KEY_ID/RAZORPAY_KEY_SECRET (key=${safeKey || 'missing'}, secretLen=${safeSecretLen}).`
+                    'Razorpay authentication failed. Please check payment gateway credentials.'
                 );
             }
+        } else {
+            throw new ApiError(502, message);
         }
-
-        throw new ApiError(502, message);
     }
 
     order.paymentGateway = 'razorpay';
@@ -836,7 +830,8 @@ export const cancelOrder = asyncHandler(async (req, res) => {
             
             await SubOrder.updateMany(
                 { parentOrderId: order._id },
-                { $set: { status: 'cancelled', cancelledAt: order.cancelledAt, cancellationReason: order.cancellationReason } }
+                { $set: { status: 'cancelled', cancelledAt: order.cancelledAt, cancellationReason: order.cancellationReason } },
+                { session }
             );
             
             await order.save({ session });

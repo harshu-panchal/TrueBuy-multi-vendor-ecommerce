@@ -24,7 +24,7 @@ import { authLimiter } from '../../../middlewares/rateLimiter.js';
 import { validate } from '../../../middlewares/validate.js';
 import { uploadSingle } from '../../../middlewares/upload.js';
 import { createSubscriptionPlanSchema, updateSubscriptionPlanSchema, subscriptionPlanIdParamSchema } from '../validators/subscription.validator.js';
-import { refreshTokenSchema, logoutSchema } from '../validators/auth.validator.js';
+import { loginSchema, refreshTokenSchema, logoutSchema } from '../validators/auth.validator.js';
 import {
     createProductSchema,
     updateProductSchema,
@@ -88,7 +88,7 @@ const router = Router();
 const adminAuth = [authenticate, authorize('admin', 'superadmin'), enforceAccountStatus];
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
-router.post('/auth/login', authLimiter, authController.login);
+router.post('/auth/login', authLimiter, validate(loginSchema), authController.login);
 router.post('/auth/refresh', validate(refreshTokenSchema), authController.refresh);
 router.post('/auth/logout', validate(logoutSchema), authController.logout);
 router.get('/auth/profile', ...adminAuth, authController.getProfile);

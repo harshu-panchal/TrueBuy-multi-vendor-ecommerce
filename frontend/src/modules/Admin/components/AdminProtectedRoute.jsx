@@ -16,28 +16,36 @@ const decodeJwtPayload = (token) => {
 const AdminProtectedRoute = ({ children }) => {
   const { isAuthenticated, token } = useAdminAuthStore();
   const location = useLocation();
-  const accessToken = token || localStorage.getItem('adminToken');
+  const accessToken =
+    token ||
+    localStorage.getItem('adminToken') ||
+    sessionStorage.getItem('adminToken');
   const payload = decodeJwtPayload(accessToken);
   const role = String(payload?.role || '').toLowerCase();
   const tokenExpiryMs =
     typeof payload?.exp === 'number' ? payload.exp * 1000 : null;
   const isExpired = tokenExpiryMs ? Date.now() >= tokenExpiryMs : false;
 
+  const clearAuth = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminRefreshToken');
+    localStorage.removeItem('admin-auth-storage');
+    sessionStorage.removeItem('adminToken');
+    sessionStorage.removeItem('adminRefreshToken');
+    sessionStorage.removeItem('admin-auth-storage');
+  };
+
   if (!isAuthenticated || !accessToken) {
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   if (isExpired) {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminRefreshToken');
-    localStorage.removeItem('admin-auth-storage');
+    clearAuth();
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 
   if (role && role !== 'admin' && role !== 'superadmin') {
-    localStorage.removeItem('adminToken');
-    localStorage.removeItem('adminRefreshToken');
-    localStorage.removeItem('admin-auth-storage');
+    clearAuth();
     return <Navigate to="/admin/login" state={{ from: location }} replace />;
   }
 

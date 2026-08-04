@@ -133,7 +133,9 @@ export const sendPhoneOtp = asyncHandler(async (req, res) => {
     );
 
     // Mock sending SMS
-    console.log(`\n\n[MOCK SMS] -> To: ${phone} | OTP: ${otp}\n\n`);
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`\n\n[MOCK SMS] -> To: ${phone} | OTP: ${otp}\n\n`);
+    }
 
     res.status(200).json(new ApiResponse(200, null, 'OTP sent to your phone successfully.'));
 });
