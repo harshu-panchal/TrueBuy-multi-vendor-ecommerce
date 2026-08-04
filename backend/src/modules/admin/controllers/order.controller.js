@@ -10,6 +10,12 @@ import Product from '../../../models/Product.model.js';
 import { createNotification } from '../../../services/notification.service.js';
 import { completeExchangeAfterDelivery } from '../../exchange/services/exchange.service.js';
 
+const parseValidDate = (dateStr, fallback = null) => {
+    if (!dateStr) return fallback;
+    const d = new Date(dateStr);
+    return Number.isNaN(d.getTime()) ? fallback : d;
+};
+
 // GET /api/admin/orders
 export const getAllOrders = asyncHandler(async (req, res) => {
     const { status, page = 1, limit = 20, search, startDate, endDate, userId } = req.query;
@@ -36,10 +42,13 @@ export const getAllOrders = asyncHandler(async (req, res) => {
             ...(matchedUserIds.length > 0 ? [{ userId: { $in: matchedUserIds } }] : []),
         ];
     }
-    if (startDate || endDate) {
+    const parsedStart = parseValidDate(startDate);
+    const parsedEnd = parseValidDate(endDate);
+
+    if (parsedStart || parsedEnd) {
         filter.createdAt = {};
-        if (startDate) filter.createdAt.$gte = new Date(startDate);
-        if (endDate) filter.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+        if (parsedStart) filter.createdAt.$gte = parsedStart;
+        if (parsedEnd) filter.createdAt.$lte = new Date(parsedEnd.setHours(23, 59, 59, 999));
     }
     if (req.query.vendorId) {
         filter['items.vendorId'] = req.query.vendorId;
@@ -159,15 +168,18 @@ export const updateOrderStatus = asyncHandler(async (req, res) => {
     }
 
     if (nextStatus === 'cancelled' && previousStatus !== 'cancelled' && ['pending', 'processing', 'shipped'].includes(previousStatus)) {
-        for (const item of order.items || []) {
+        const restorationTasks = (order.items || []).map(async (item) => {
+            if (!item?.productId) return;
             const product = await Product.findById(item.productId);
-            if (!product) continue;
+            if (!product) return;
             product.stockQuantity += Number(item.quantity || 0);
+            const threshold = Number.isFinite(product.lowStockThreshold) ? product.lowStockThreshold : 10;
             if (product.stockQuantity <= 0) product.stock = 'out_of_stock';
-            else if (product.stockQuantity <= product.lowStockThreshold) product.stock = 'low_stock';
+            else if (product.stockQuantity <= threshold) product.stock = 'low_stock';
             else product.stock = 'in_stock';
             await product.save();
-        }
+        });
+        await Promise.all(restorationTasks);
     }
 
     await order.save();

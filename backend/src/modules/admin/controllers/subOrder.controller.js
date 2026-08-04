@@ -6,6 +6,12 @@ import Order from '../../../models/Order.model.js';
 import DeliveryBoy from '../../../models/DeliveryBoy.model.js';
 import { syncOrderStatusFromSubOrders } from '../../user/services/orderStatusAggregator.service.js';
 
+const parseValidDate = (dateStr, fallback = null) => {
+    if (!dateStr) return fallback;
+    const d = new Date(dateStr);
+    return Number.isNaN(d.getTime()) ? fallback : d;
+};
+
 // GET /api/admin/suborders
 export const getAllSubOrders = asyncHandler(async (req, res) => {
     const { status, page = 1, limit = 20, search, startDate, endDate, vendorId, deliveryBoyId } = req.query;
@@ -28,10 +34,13 @@ export const getAllSubOrders = asyncHandler(async (req, res) => {
             { vendorName: regex }
         ];
     }
-    if (startDate || endDate) {
+    const parsedStart = parseValidDate(startDate);
+    const parsedEnd = parseValidDate(endDate);
+
+    if (parsedStart || parsedEnd) {
         filter.createdAt = {};
-        if (startDate) filter.createdAt.$gte = new Date(startDate);
-        if (endDate) filter.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+        if (parsedStart) filter.createdAt.$gte = parsedStart;
+        if (parsedEnd) filter.createdAt.$lte = new Date(parsedEnd.setHours(23, 59, 59, 999));
     }
 
     const [subOrders, total] = await Promise.all([
@@ -74,6 +83,12 @@ export const assignDeliveryBoy = asyncHandler(async (req, res) => {
     if (deliveryBoyId) {
         const boy = await DeliveryBoy.findById(deliveryBoyId);
         if (!boy) throw new ApiError(404, 'Delivery boy not found.');
+        if (boy.isActive === false) {
+            throw new ApiError(400, 'Selected delivery boy account is inactive.');
+        }
+        if (boy.applicationStatus && boy.applicationStatus !== 'approved') {
+            throw new ApiError(400, 'Selected delivery boy account is not approved.');
+        }
         
         subOrder.deliveryBoyId = deliveryBoyId;
         subOrder.status = 'assigned_for_delivery';

@@ -26,6 +26,13 @@ import { uploadSingle } from '../../../middlewares/upload.js';
 import { createSubscriptionPlanSchema, updateSubscriptionPlanSchema, subscriptionPlanIdParamSchema } from '../validators/subscription.validator.js';
 import { loginSchema, refreshTokenSchema, logoutSchema } from '../validators/auth.validator.js';
 import {
+    orderIdParamSchema,
+    updateOrderStatusSchema,
+    subOrderIdParamSchema,
+    updateSubOrderStatusSchema,
+    assignDeliverySchema,
+} from '../validators/order.validator.js';
+import {
     createProductSchema,
     updateProductSchema,
     taxPricingRulesSchema,
@@ -109,14 +116,14 @@ router.get('/analytics/online-customers', ...adminAuth, analyticsController.getO
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 router.get('/orders', ...adminAuth, orderController.getAllOrders);
-router.get('/orders/:id', ...adminAuth, orderController.getOrderById);
-router.patch('/orders/:id/status', ...adminAuth, orderController.updateOrderStatus);
-router.delete('/orders/:id', ...adminAuth, orderController.deleteOrder);
+router.get('/orders/:id', ...adminAuth, validate(orderIdParamSchema, 'params'), orderController.getOrderById);
+router.patch('/orders/:id/status', ...adminAuth, validate(orderIdParamSchema, 'params'), validate(updateOrderStatusSchema), orderController.updateOrderStatus);
+router.delete('/orders/:id', ...adminAuth, validate(orderIdParamSchema, 'params'), orderController.deleteOrder);
 
 // ─── SubOrders (Product Orders) ───────────────────────────────────────────────
 router.get('/suborders', ...adminAuth, subOrderController.getAllSubOrders);
-router.patch('/suborders/:id/status', ...adminAuth, subOrderController.updateSubOrderStatus);
-router.patch('/suborders/:id/assign-delivery', ...adminAuth, subOrderController.assignDeliveryBoy);
+router.patch('/suborders/:id/status', ...adminAuth, validate(subOrderIdParamSchema, 'params'), validate(updateSubOrderStatusSchema), subOrderController.updateSubOrderStatus);
+router.patch('/suborders/:id/assign-delivery', ...adminAuth, validate(subOrderIdParamSchema, 'params'), validate(assignDeliverySchema), subOrderController.assignDeliveryBoy);
 
 // ─── Products ─────────────────────────────────────────────────────────────────
 router.get('/products', ...adminAuth, catalogController.getAllProducts);
