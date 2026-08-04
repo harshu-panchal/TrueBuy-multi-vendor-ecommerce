@@ -121,12 +121,12 @@ router.patch('/suborders/:id/assign-delivery', ...adminAuth, subOrderController.
 // ─── Products ─────────────────────────────────────────────────────────────────
 router.get('/products', ...adminAuth, catalogController.getAllProducts);
 router.get('/products/tax-pricing-rules', ...adminAuth, catalogController.getTaxPricingRules);
-router.get('/products/:id', ...adminAuth, catalogController.getProductById);
+router.get('/products/:id', ...adminAuth, validate(productIdParamSchema, 'params'), catalogController.getProductById);
 router.post('/products', ...adminAuth, validate(createProductSchema), catalogController.createProduct);
 router.put('/products/tax-pricing-rules', ...adminAuth, validate(taxPricingRulesSchema), catalogController.updateTaxPricingRules);
 
-router.put('/products/:id', ...adminAuth, validate(updateProductSchema), catalogController.updateProduct);
-router.delete('/products/:id', ...adminAuth, catalogController.deleteProduct);
+router.put('/products/:id', ...adminAuth, validate(productIdParamSchema, 'params'), validate(updateProductSchema), catalogController.updateProduct);
+router.delete('/products/:id', ...adminAuth, validate(productIdParamSchema, 'params'), catalogController.deleteProduct);
 
 // ─── Categories ───────────────────────────────────────────────────────────────
 router.get('/categories', ...adminAuth, catalogController.getAllCategories);

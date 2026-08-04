@@ -99,6 +99,10 @@ export const taxPricingRulesSchema = Joi.object({
     pricingRules: Joi.array().items(pricingRuleSchema).required(),
 });
 
+export const productIdParamSchema = Joi.object({
+    id: objectId.required(),
+});
+
 export const categoryIdParamSchema = Joi.object({
     id: objectId.required(),
 });

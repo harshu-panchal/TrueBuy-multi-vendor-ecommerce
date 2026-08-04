@@ -214,21 +214,45 @@ const assertValidCategoryParent = async ({ categoryId = null, parentId }) => {
         throw new ApiError(400, 'Category cannot be parent of itself.');
     }
 
-    const parent = await Category.findById(parentId).select('_id parentId');
+    const parent = await Category.findById(parentId).select('_id parentId').lean();
     if (!parent) {
         throw new ApiError(400, 'Selected parent category does not exist.');
     }
 
     // Prevent cycles when changing parent during edit.
     if (categoryId) {
-        let cursor = parent;
-        while (cursor?.parentId) {
-            if (String(cursor.parentId) === String(categoryId)) {
+        const allCategories = await Category.find({ parentId: { $ne: null } }).select('_id parentId').lean();
+        const parentMap = new Map(allCategories.map((c) => [String(c._id), c.parentId ? String(c.parentId) : null]));
+        let current = String(parentId);
+        while (current) {
+            if (current === String(categoryId)) {
                 throw new ApiError(400, 'Invalid parent category hierarchy.');
             }
-            cursor = await Category.findById(cursor.parentId).select('_id parentId');
+            current = parentMap.get(current) || null;
         }
     }
+};
+
+const assertUniqueCategory = async (name, currentId = null) => {
+    if (!name) return;
+    const slug = slugify(name);
+    const filter = {
+        $or: [{ name: new RegExp(`^${name.trim()}$`, 'i') }, { slug }],
+    };
+    if (currentId) filter._id = { $ne: currentId };
+    const existing = await Category.findOne(filter).select('_id').lean();
+    if (existing) throw new ApiError(409, 'Category with this name already exists.');
+};
+
+const assertUniqueBrand = async (name, currentId = null) => {
+    if (!name) return;
+    const slug = slugify(name);
+    const filter = {
+        $or: [{ name: new RegExp(`^${name.trim()}$`, 'i') }, { slug }],
+    };
+    if (currentId) filter._id = { $ne: currentId };
+    const existing = await Brand.findOne(filter).select('_id').lean();
+    if (existing) throw new ApiError(409, 'Brand with this name already exists.');
 };
 
 const sanitizeBrandPayload = (payload = {}) => {
@@ -240,6 +264,21 @@ const sanitizeBrandPayload = (payload = {}) => {
         }
     }
     return sanitized;
+};
+
+const assertValidProductReferences = async ({ categoryId, brandId, vendorId }) => {
+    if (categoryId) {
+        const category = await Category.findById(categoryId).select('_id').lean();
+        if (!category) throw new ApiError(400, 'Selected category does not exist.');
+    }
+    if (brandId) {
+        const brand = await Brand.findById(brandId).select('_id').lean();
+        if (!brand) throw new ApiError(400, 'Selected brand does not exist.');
+    }
+    if (vendorId) {
+        const vendor = await Vendor.findById(vendorId).select('_id').lean();
+        if (!vendor) throw new ApiError(400, 'Selected vendor does not exist.');
+    }
 };
 
 // GET /api/admin/products
@@ -257,14 +296,17 @@ export const getAllProducts = asyncHandler(async (req, res) => {
         filter.isActive = { $ne: false };
     }
 
-    const products = await Product.find(filter)
-        .populate('vendorId', 'storeName')
-        .populate('categoryId', 'name')
-        .populate('brandId', 'name')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(numericLimit);
-    const total = await Product.countDocuments(filter);
+    const [products, total] = await Promise.all([
+        Product.find(filter)
+            .populate('vendorId', 'storeName')
+            .populate('categoryId', 'name')
+            .populate('brandId', 'name')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(numericLimit),
+        Product.countDocuments(filter),
+    ]);
+
     res.status(200).json(new ApiResponse(200, { products, total, page: numericPage, pages: Math.ceil(total / numericLimit) }, 'Products fetched.'));
 });
 
@@ -282,6 +324,12 @@ export const getProductById = asyncHandler(async (req, res) => {
 // POST /api/admin/products
 export const createProduct = asyncHandler(async (req, res) => {
     const { name, stockQuantity = 0, stock, ...rest } = req.body;
+    await assertValidProductReferences({
+        categoryId: rest.categoryId,
+        brandId: rest.brandId,
+        vendorId: rest.vendorId,
+    });
+
     const slug = slugify(name) + '-' + Date.now();
     const normalizedVariants = normalizeVariantsPayload(rest.variants, rest.price);
 
@@ -308,11 +356,15 @@ export const createProduct = asyncHandler(async (req, res) => {
     res.status(201).json(new ApiResponse(201, product, 'Product created.'));
 });
 
-
-
 // PUT /api/admin/products/:id
 export const updateProduct = asyncHandler(async (req, res) => {
     const payload = { ...req.body };
+    await assertValidProductReferences({
+        categoryId: payload.categoryId,
+        brandId: payload.brandId,
+        vendorId: payload.vendorId,
+    });
+
     if (payload.name) {
         payload.slug = slugify(payload.name) + '-' + Date.now();
     }
@@ -403,6 +455,7 @@ export const getAllCategories = asyncHandler(async (req, res) => {
 export const createCategory = asyncHandler(async (req, res) => {
     const payload = sanitizeCategoryPayload(req.body);
     const { name, ...rest } = payload;
+    await assertUniqueCategory(name);
     await assertValidCategoryParent({ parentId: rest.parentId });
     const slug = slugify(name);
     const category = await Category.create({ name, slug, ...rest });
@@ -415,14 +468,14 @@ export const updateCategory = asyncHandler(async (req, res) => {
     if (!existingCategory) throw new ApiError(404, 'Category not found.');
 
     const payload = sanitizeCategoryPayload(req.body);
+    if (payload.name) {
+        await assertUniqueCategory(payload.name, existingCategory._id);
+        payload.slug = slugify(payload.name);
+    }
     await assertValidCategoryParent({
         categoryId: existingCategory._id,
         parentId: payload.parentId,
     });
-
-    if (payload.name) {
-        payload.slug = slugify(payload.name);
-    }
 
     const category = await Category.findByIdAndUpdate(req.params.id, payload, {
         new: true,
@@ -493,6 +546,7 @@ export const getAllBrands = asyncHandler(async (req, res) => {
 export const createBrand = asyncHandler(async (req, res) => {
     const payload = sanitizeBrandPayload(req.body);
     const { name, ...rest } = payload;
+    await assertUniqueBrand(name);
     const slug = slugify(name);
     const brand = await Brand.create({ name, slug, ...rest });
     res.status(201).json(new ApiResponse(201, brand, 'Brand created.'));
@@ -500,8 +554,12 @@ export const createBrand = asyncHandler(async (req, res) => {
 
 // PUT /api/admin/brands/:id
 export const updateBrand = asyncHandler(async (req, res) => {
+    const existingBrand = await Brand.findById(req.params.id);
+    if (!existingBrand) throw new ApiError(404, 'Brand not found.');
+
     const payload = sanitizeBrandPayload(req.body);
     if (payload.name) {
+        await assertUniqueBrand(payload.name, existingBrand._id);
         payload.slug = slugify(payload.name);
     }
 

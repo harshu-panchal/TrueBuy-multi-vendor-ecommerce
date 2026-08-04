@@ -6,6 +6,12 @@ import Vendor from '../../../models/Vendor.model.js';
 import Product from '../../../models/Product.model.js';
 
 // GET /api/admin/analytics/dashboard
+const parseValidDate = (dateStr, fallback = null) => {
+    if (!dateStr) return fallback;
+    const d = new Date(dateStr);
+    return Number.isNaN(d.getTime()) ? fallback : d;
+};
+
 // GET /api/admin/analytics/dashboard
 export const getDashboardStats = asyncHandler(async (req, res) => {
     const { period, startDate, endDate } = req.query;
@@ -18,9 +24,12 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
 
     const now = new Date();
 
-    if (startDate && endDate) {
-        currentStart = new Date(startDate);
-        currentEnd = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+    const parsedStart = parseValidDate(startDate);
+    const parsedEnd = parseValidDate(endDate);
+
+    if (parsedStart && parsedEnd) {
+        currentStart = parsedStart;
+        currentEnd = new Date(parsedEnd.setHours(23, 59, 59, 999));
         const duration = currentEnd.getTime() - currentStart.getTime();
         previousStart = new Date(currentStart.getTime() - duration - 1);
         previousEnd = new Date(currentStart.getTime() - 1);
@@ -124,17 +133,21 @@ export const getRevenueData = asyncHandler(async (req, res) => {
     const { period = 'monthly', startDate, endDate } = req.query;
     const groupFormat = period === 'daily' ? '%Y-%m-%d' : period === 'weekly' ? '%Y-%U' : '%Y-%m';
     const match = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
-    if (startDate || endDate) {
+
+    const parsedStart = parseValidDate(startDate);
+    const parsedEnd = parseValidDate(endDate);
+
+    if (parsedStart || parsedEnd) {
         match.createdAt = {};
-        if (startDate) match.createdAt.$gte = new Date(startDate);
-        if (endDate) match.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+        if (parsedStart) match.createdAt.$gte = parsedStart;
+        if (parsedEnd) match.createdAt.$lte = new Date(parsedEnd.setHours(23, 59, 59, 999));
     }
 
     const pipeline = [
         { $match: match },
         { $group: { _id: { $dateToString: { format: groupFormat, date: '$createdAt' } }, revenue: { $sum: '$total' }, orders: { $sum: 1 } } },
     ];
-    if (!startDate && !endDate) {
+    if (!parsedStart && !parsedEnd) {
         pipeline.push({ $sort: { _id: -1 } }, { $limit: 12 });
     }
     pipeline.push({ $sort: { _id: 1 } });
@@ -161,7 +174,20 @@ export const getTopProducts = asyncHandler(async (req, res) => {
     const topProducts = await Order.aggregate([
         { $match: { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } } },
         { $unwind: '$items' },
-        { $group: { _id: '$items.productId', totalSold: { $sum: '$items.quantity' }, revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } } } },
+        {
+            $group: {
+                _id: '$items.productId',
+                totalSold: { $sum: { $ifNull: ['$items.quantity', 0] } },
+                revenue: {
+                    $sum: {
+                        $multiply: [
+                            { $ifNull: ['$items.price', 0] },
+                            { $ifNull: ['$items.quantity', 0] }
+                        ]
+                    }
+                }
+            }
+        },
         { $sort: { totalSold: -1 } },
         { $limit: 5 },
         { $lookup: { from: 'products', localField: '_id', foreignField: '_id', as: 'product' } },
@@ -213,17 +239,21 @@ export const getSalesData = asyncHandler(async (req, res) => {
     const { period = 'monthly', startDate, endDate } = req.query;
     const groupFormat = period === 'daily' ? '%Y-%m-%d' : period === 'weekly' ? '%Y-%U' : '%Y-%m';
     const match = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
-    if (startDate || endDate) {
+
+    const parsedStart = parseValidDate(startDate);
+    const parsedEnd = parseValidDate(endDate);
+
+    if (parsedStart || parsedEnd) {
         match.createdAt = {};
-        if (startDate) match.createdAt.$gte = new Date(startDate);
-        if (endDate) match.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+        if (parsedStart) match.createdAt.$gte = parsedStart;
+        if (parsedEnd) match.createdAt.$lte = new Date(parsedEnd.setHours(23, 59, 59, 999));
     }
 
     const pipeline = [
         { $match: match },
         { $group: { _id: { $dateToString: { format: groupFormat, date: '$createdAt' } }, sales: { $sum: '$total' }, orders: { $sum: 1 } } },
     ];
-    if (!startDate && !endDate) {
+    if (!parsedStart && !parsedEnd) {
         pipeline.push({ $sort: { _id: -1 } }, { $limit: 12 });
     }
     pipeline.push({ $sort: { _id: 1 } });
@@ -238,10 +268,14 @@ export const getFinancialSummary = asyncHandler(async (req, res) => {
     const { period = 'monthly', startDate, endDate } = req.query;
     const groupFormat = period === 'daily' ? '%Y-%m-%d' : period === 'weekly' ? '%Y-%U' : '%Y-%m';
     const match = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
-    if (startDate || endDate) {
+
+    const parsedStart = parseValidDate(startDate);
+    const parsedEnd = parseValidDate(endDate);
+
+    if (parsedStart || parsedEnd) {
         match.createdAt = {};
-        if (startDate) match.createdAt.$gte = new Date(startDate);
-        if (endDate) match.createdAt.$lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
+        if (parsedStart) match.createdAt.$gte = parsedStart;
+        if (parsedEnd) match.createdAt.$lte = new Date(parsedEnd.setHours(23, 59, 59, 999));
     }
 
     const pipeline = [
@@ -258,7 +292,7 @@ export const getFinancialSummary = asyncHandler(async (req, res) => {
             }
         },
     ];
-    if (!startDate && !endDate) {
+    if (!parsedStart && !parsedEnd) {
         pipeline.push({ $sort: { _id: -1 } }, { $limit: 12 });
     }
     pipeline.push({ $sort: { _id: 1 } });
@@ -270,17 +304,18 @@ export const getFinancialSummary = asyncHandler(async (req, res) => {
 
 // GET /api/admin/analytics/inventory-stats
 export const getInventoryStats = asyncHandler(async (req, res) => {
-    const [totalProducts, outOfStock, lowStock] = await Promise.all([
+    const [totalProducts, outOfStock, lowStock, activeProducts] = await Promise.all([
         Product.countDocuments(),
         Product.countDocuments({ stock: 'out_of_stock' }),
-        Product.countDocuments({ stock: 'low_stock' })
+        Product.countDocuments({ stock: 'low_stock' }),
+        Product.countDocuments({ isActive: true }),
     ]);
 
     res.status(200).json(new ApiResponse(200, {
         totalProducts,
         outOfStock,
         lowStock,
-        activeProducts: await Product.countDocuments({ isActive: true })
+        activeProducts,
     }, 'Inventory stats fetched.'));
 });
 
@@ -292,8 +327,8 @@ export const getTopCustomers = asyncHandler(async (req, res) => {
     const skip = (numericPage - 1) * numericLimit;
 
     const match = { isDeleted: { $ne: true }, status: { $ne: 'cancelled' } };
-    
-    const topCustomers = await Order.aggregate([
+
+    const pipeline = [
         { $match: match },
         {
             $group: {
@@ -304,8 +339,6 @@ export const getTopCustomers = asyncHandler(async (req, res) => {
             }
         },
         { $sort: { orderTotal: -1 } },
-        { $skip: skip },
-        { $limit: numericLimit },
         {
             $lookup: {
                 from: 'users',
@@ -314,7 +347,24 @@ export const getTopCustomers = asyncHandler(async (req, res) => {
                 as: 'user'
             }
         },
-        { $unwind: '$user' },
+        { $unwind: '$user' }
+    ];
+
+    if (search && String(search).trim()) {
+        const searchRegex = new RegExp(String(search).trim(), 'i');
+        pipeline.push({
+            $match: {
+                $or: [
+                    { 'user.name': searchRegex },
+                    { 'user.email': searchRegex }
+                ]
+            }
+        });
+    }
+
+    pipeline.push(
+        { $skip: skip },
+        { $limit: numericLimit },
         {
             $project: {
                 id: '$_id',
@@ -326,55 +376,68 @@ export const getTopCustomers = asyncHandler(async (req, res) => {
                 orderTotal: 1
             }
         }
-    ]);
+    );
+    
+    const topCustomers = await Order.aggregate(pipeline);
 
     res.status(200).json(new ApiResponse(200, topCustomers, 'Top customers fetched.'));
 });
 
 // GET /api/admin/analytics/registered-customers-count
 export const getRegisteredCustomersCount = asyncHandler(async (req, res) => {
-    const now = new Date();
-    const periods = [
-        { label: 'In the last 7 days', days: 7 },
-        { label: 'In the last 14 days', days: 14 },
-        { label: 'In the last month', days: 30 },
-        { label: 'In the last year', days: 365 }
-    ];
+    const now = Date.now();
+    const d7 = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const d14 = new Date(now - 14 * 24 * 60 * 60 * 1000);
+    const d30 = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    const d365 = new Date(now - 365 * 24 * 60 * 60 * 1000);
 
-    const results = await Promise.all(periods.map(async (p) => {
-        const date = new Date(now);
-        date.setDate(date.getDate() - p.days);
-        const count = await User.countDocuments({ 
-            role: 'customer', 
-            createdAt: { $gte: date } 
-        });
-        return { period: p.label, count };
-    }));
+    const [c7, c14, c30, c365] = await Promise.all([
+        User.countDocuments({ role: 'customer', createdAt: { $gte: d7 } }),
+        User.countDocuments({ role: 'customer', createdAt: { $gte: d14 } }),
+        User.countDocuments({ role: 'customer', createdAt: { $gte: d30 } }),
+        User.countDocuments({ role: 'customer', createdAt: { $gte: d365 } }),
+    ]);
+
+    const results = [
+        { period: 'In the last 7 days', count: c7 },
+        { period: 'In the last 14 days', count: c14 },
+        { period: 'In the last month', count: c30 },
+        { period: 'In the last year', count: c365 },
+    ];
 
     res.status(200).json(new ApiResponse(200, results, 'Registered customers count fetched.'));
 });
 
+const parseValidDate = (dateStr, fallback = null) => {
+    if (!dateStr) return fallback;
+    const d = new Date(dateStr);
+    return Number.isNaN(d.getTime()) ? fallback : d;
+};
+
 // GET /api/admin/analytics/online-customers
 export const getOnlineCustomers = asyncHandler(async (req, res) => {
-    // Simulating online customers by returning most recent active customers
-    // In a real app, this would use session tracking or websocket connections
     const onlineCustomers = await User.find({ role: 'customer', isActive: true })
         .sort({ updatedAt: -1 })
         .limit(20)
-        .select('name email createdAt updatedAt')
+        .select('name email address createdAt updatedAt')
         .lean();
 
-    const formatted = onlineCustomers.map(user => ({
-        id: user._id,
-        customerInfo: user.name,
-        customerNumber: user.email,
-        active: true,
-        ipAddress: '192.168.1.' + Math.floor(Math.random() * 255),
-        location: 'India',
-        lastActivity: user.updatedAt,
-        createdOn: user.createdAt,
-        lastVisitedPage: '/'
-    }));
+    const formatted = onlineCustomers.map(user => {
+        const city = user.address?.city || '';
+        const country = user.address?.country || '';
+        const locationStr = city && country ? `${city}, ${country}` : country || city || 'N/A';
+
+        return {
+            id: user._id,
+            customerInfo: user.name,
+            customerNumber: user.email,
+            active: true,
+            location: locationStr,
+            lastActivity: user.updatedAt,
+            createdOn: user.createdAt,
+            lastVisitedPage: '/'
+        };
+    });
 
     res.status(200).json(new ApiResponse(200, formatted, 'Online customers fetched.'));
 });
