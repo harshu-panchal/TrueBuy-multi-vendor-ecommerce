@@ -92,8 +92,6 @@ export const updateVendorStatus = asyncHandler(async (req, res) => {
 
     if (status === 'suspended' || status === 'rejected') {
         await Product.updateMany({ vendorId: vendor._id }, { $set: { isActive: false } });
-    } else if (status === 'approved') {
-        await Product.updateMany({ vendorId: vendor._id }, { $set: { isActive: true } });
     }
 
     const statusMessageMap = {
