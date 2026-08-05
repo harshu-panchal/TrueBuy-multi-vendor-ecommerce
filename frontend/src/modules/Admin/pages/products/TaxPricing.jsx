@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { FiPlus, FiEdit, FiTrash2, FiSave } from "react-icons/fi";
+import { FiPlus, FiEdit, FiTrash2, FiSave, FiPercent, FiCheckCircle, FiToggleLeft, FiToggleRight, FiLayers } from "react-icons/fi";
 import { motion, AnimatePresence } from "framer-motion";
 import ConfirmModal from "../../components/ConfirmModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
@@ -154,18 +154,60 @@ const TaxPricing = () => {
     setDeleteModal({ isOpen: false, id: null, type: null });
   };
 
+  const handleToggleTaxStatus = async (taxId) => {
+    const nextTaxRules = taxRules.map((t) =>
+      t.id === taxId ? { ...t, status: t.status === "active" ? "inactive" : "active" } : t
+    );
+    await persistRules(nextTaxRules, pricingRules, "Tax rule status updated");
+  };
+
+  const handleTogglePricingStatus = async (pricingId) => {
+    const nextPricingRules = pricingRules.map((p) =>
+      p.id === pricingId ? { ...p, status: p.status === "active" ? "inactive" : "active" } : p
+    );
+    await persistRules(taxRules, nextPricingRules, "Pricing rule status updated");
+  };
+
+  const activeTaxCount = taxRules.filter((t) => t.status === "active").length;
+  const activePricingCount = pricingRules.filter((p) => p.status === "active").length;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6">
-      <div className="lg:hidden">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">
-          Tax & Pricing
-        </h1>
-        <p className="text-sm sm:text-base text-gray-600">
-          Manage tax rules and pricing strategies
-        </p>
+      
+      {/* Summary Statistics Header Banner */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+            <FiPercent className="text-xl" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Tax Rules</p>
+            <p className="text-xl font-bold text-gray-900">{activeTaxCount} / {taxRules.length}</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+            <FiLayers className="text-xl" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Active Pricing Rules</p>
+            <p className="text-xl font-bold text-gray-900">{activePricingCount} / {pricingRules.length}</p>
+          </div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+            <FiCheckCircle className="text-xl" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Standard GST Rate</p>
+            <p className="text-xl font-bold text-emerald-700">18% GST</p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -186,25 +228,38 @@ const TaxPricing = () => {
             {taxRules.map((tax) => (
               <div
                 key={tax.id}
-                className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800">{tax.name}</h3>
-                    <div className="mt-2 space-y-1 text-sm text-gray-600">
-                      <p>Rate: {tax.rate}%</p>
-                      <p>Type: {tax.type}</p>
-                      <p>Applicable To: {tax.applicableTo}</p>
-                      <p
-                        className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                          tax.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}>
-                        {tax.status}
-                      </p>
+                className="p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors bg-white shadow-xs">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900">{tax.name}</h3>
+                      <span className="px-2 py-0.5 bg-blue-50 text-blue-700 font-bold text-xs rounded-md border border-blue-200">
+                        {tax.rate}% GST
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md font-medium capitalize">
+                        Scope: {tax.applicableTo || "all"}
+                      </span>
+                      <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md font-medium capitalize">
+                        Type: {tax.type}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleToggleTaxStatus(tax.id)}
+                      disabled={isSaving}
+                      title={`Click to ${tax.status === "active" ? "deactivate" : "activate"}`}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                        tax.status === "active"
+                          ? "bg-green-100 text-green-800 hover:bg-green-200"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}>
+                      {tax.status === "active" ? <FiToggleRight className="text-base text-green-600" /> : <FiToggleLeft className="text-base text-gray-400" />}
+                      <span className="capitalize">{tax.status}</span>
+                    </button>
                     <button
                       onClick={() => setEditingTax(tax)}
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
@@ -245,29 +300,42 @@ const TaxPricing = () => {
             {pricingRules.map((pricing) => (
               <div
                 key={pricing.id}
-                className="p-4 border border-gray-200 rounded-lg">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800">
-                      {pricing.name}
-                    </h3>
-                    <div className="mt-2 space-y-1 text-sm text-gray-600">
-                      <p>Type: {pricing.type}</p>
-                      <p>Value: {pricing.value}%</p>
+                className="p-4 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors bg-white shadow-xs">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900">{pricing.name}</h3>
+                      <span className="px-2 py-0.5 bg-purple-50 text-purple-700 font-bold text-xs rounded-md border border-purple-200">
+                        {pricing.value}% {pricing.type}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
                       {pricing.minQuantity && (
-                        <p>Min Quantity: {pricing.minQuantity}</p>
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md font-medium">
+                          Min Qty: {pricing.minQuantity}
+                        </span>
                       )}
-                      <p
-                        className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                          pricing.status === "active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}>
-                        {pricing.status}
-                      </p>
+                      {pricing.applicableTo && (
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded-md font-medium capitalize">
+                          Scope: {pricing.applicableTo}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleTogglePricingStatus(pricing.id)}
+                      disabled={isSaving}
+                      title={`Click to ${pricing.status === "active" ? "deactivate" : "activate"}`}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                        pricing.status === "active"
+                          ? "bg-green-100 text-green-800 hover:bg-green-200"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}>
+                      {pricing.status === "active" ? <FiToggleRight className="text-base text-green-600" /> : <FiToggleLeft className="text-base text-gray-400" />}
+                      <span className="capitalize">{pricing.status}</span>
+                    </button>
                     <button
                       onClick={() => setEditingPricing(pricing)}
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
