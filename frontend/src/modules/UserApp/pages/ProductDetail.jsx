@@ -281,7 +281,13 @@ const MobileProductDetail = () => {
         getVariantSignature(item.variant || {}) === selectedVariantSignature
     )
     : false;
-  const productReviews = product ? sortReviews(product.id, "newest") : [];
+  const [selectedStarFilter, setSelectedStarFilter] = useState("all");
+  const rawProductReviews = product ? sortReviews(product.id, "newest") : [];
+  const productReviews = useMemo(() => {
+    if (selectedStarFilter === "all") return rawProductReviews;
+    const targetRating = Number(selectedStarFilter);
+    return rawProductReviews.filter((r) => Math.round(Number(r.rating || 0)) === targetRating);
+  }, [rawProductReviews, selectedStarFilter]);
   const isOutOfStock = product.stock === "out_of_stock" || Number(product.stockQuantity || 0) <= 0;
 
   useEffect(() => {
@@ -962,40 +968,99 @@ const MobileProductDetail = () => {
                 )}
 
                 {/* Reviews List */}
-                {productReviews.length > 0 && (
+                {rawProductReviews.length > 0 && (
                   <div className="pt-4">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">
-                      Customer Reviews ({productReviews.length})
-                    </h3>
-                    <div className="space-y-4">
-                      {productReviews.slice(0, 3).map((review) => (
-                        <div key={review.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-xs font-bold text-gray-600">
-                                {review.user.charAt(0)}
-                              </div>
-                              <span className="text-sm font-bold text-gray-900">
-                                {review.user}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="font-bold text-sm text-gray-700">{review.rating}</span>
-                              <FiStar className="text-yellow-400 fill-yellow-400 text-sm" />
-                            </div>
-                          </div>
-                          <p className="text-sm text-gray-600 leading-relaxed pl-10">{review.comment}</p>
-                          {review.vendorResponse && (
-                            <div className="mt-3 ml-10 bg-primary-50 border border-primary-100 rounded-lg p-3">
-                              <p className="text-xs font-semibold text-primary-700 mb-1">
-                                Vendor Response
-                              </p>
-                              <p className="text-sm text-primary-800">{review.vendorResponse}</p>
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                      <h3 className="text-lg font-bold text-gray-900">
+                        Customer Reviews ({rawProductReviews.length})
+                      </h3>
+                      {/* Star Rating Filter Tabs */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                        {["all", 5, 4, 3, 2, 1].map((star) => (
+                          <button
+                            key={star}
+                            onClick={() => setSelectedStarFilter(star)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                              selectedStarFilter === star
+                                ? "bg-primary-600 text-white shadow-sm"
+                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                            }`}
+                          >
+                            {star === "all" ? "All" : `${star} ★`}
+                          </button>
+                        ))}
+                      </div>
                     </div>
+
+                    {productReviews.length === 0 ? (
+                      <p className="text-sm text-gray-500 py-4 text-center">
+                        No reviews found matching selected rating.
+                      </p>
+                    ) : (
+                      <div className="space-y-4">
+                        {productReviews.map((review) => (
+                          <div key={review.id || review._id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-xs font-bold text-gray-600">
+                                  {(review.user || review.customerName || "U").charAt(0)}
+                                </div>
+                                <div>
+                                  <span className="text-sm font-bold text-gray-900 block leading-none">
+                                    {review.user || review.customerName || "Customer"}
+                                  </span>
+                                  {review.isVerifiedPurchase && (
+                                    <span className="text-[10px] text-green-600 font-semibold">
+                                      ✓ Verified Purchase
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded-md border border-yellow-200">
+                                <span className="font-bold text-xs text-yellow-800">{review.rating}</span>
+                                <FiStar className="text-yellow-400 fill-yellow-400 text-xs" />
+                              </div>
+                            </div>
+
+                            <p className="text-sm text-gray-600 leading-relaxed mt-2">{review.comment}</p>
+
+                            {/* Customer Uploaded Review Photos */}
+                            {Array.isArray(review.images) && review.images.length > 0 && (
+                              <div className="flex items-center gap-2 mt-3">
+                                {review.images.map((imgUrl, imgIdx) => (
+                                  <img
+                                    key={imgIdx}
+                                    src={imgUrl}
+                                    alt={`Review attachment ${imgIdx + 1}`}
+                                    className="w-14 h-14 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => window.open(imgUrl, "_blank")}
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Official Vendor Reply Callout */}
+                            {review.vendorResponse && (
+                              <div className="mt-3 bg-blue-50/80 border border-blue-100 rounded-xl p-3.5 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-blue-900 bg-blue-100 px-2 py-0.5 rounded-md">
+                                    Official Store Reply
+                                  </span>
+                                  {review.responseDate && (
+                                    <span className="text-[10px] text-blue-600">
+                                      {new Date(review.responseDate).toLocaleDateString()}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-blue-950 font-medium pl-1">
+                                  {review.vendorResponse}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

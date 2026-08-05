@@ -3,11 +3,13 @@ import { useForm } from 'react-hook-form';
 import { FiStar, FiUpload, FiX } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import api from '../../utils/api';
 
 const ReviewForm = ({ productId, onSubmit }) => {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [images, setImages] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
@@ -36,23 +38,48 @@ const ReviewForm = ({ productId, onSubmit }) => {
       return;
     }
 
+    setIsSubmitting(true);
+    let uploadedUrls = [];
+
+    if (images.length > 0) {
+      try {
+        const formData = new FormData();
+        images.forEach((file) => formData.append('images', file));
+        const response = await api.post('/user/uploads/images', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        const payload = response?.data ?? response;
+        if (Array.isArray(payload)) {
+          uploadedUrls = payload.map((img) => typeof img === 'string' ? img : img.url || img.secure_url).filter(Boolean);
+        } else if (Array.isArray(payload?.data)) {
+          uploadedUrls = payload.data.map((img) => typeof img === 'string' ? img : img.url || img.secure_url).filter(Boolean);
+        }
+      } catch (error) {
+        toast.error('Failed to upload photos, submitting text review');
+      }
+    }
+
     const reviewData = {
       ...data,
       rating,
-      images,
+      images: uploadedUrls,
       productId,
       date: new Date().toISOString(),
     };
 
-    if (onSubmit) {
-      const result = await onSubmit(reviewData);
-      if (result === false) {
-        return;
+    try {
+      if (onSubmit) {
+        const result = await onSubmit(reviewData);
+        if (result === false) {
+          return;
+        }
+        reset();
+        setRating(0);
+        setImages([]);
+        toast.success('Review submitted successfully!');
       }
-      reset();
-      setRating(0);
-      setImages([]);
-      toast.success('Review submitted successfully!');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
