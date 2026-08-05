@@ -248,8 +248,9 @@ const assertUniqueCategory = async (name, currentId = null) => {
 const assertUniqueBrand = async (name, currentId = null) => {
     if (!name) return;
     const slug = slugify(name);
+    const escapedName = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const filter = {
-        $or: [{ name: new RegExp(`^${name.trim()}$`, 'i') }, { slug }],
+        $or: [{ name: new RegExp(`^${escapedName}$`, 'i') }, { slug }],
     };
     if (currentId) filter._id = { $ne: currentId };
     const existing = await Brand.findOne(filter).select('_id').lean();
@@ -284,14 +285,18 @@ const assertValidProductReferences = async ({ categoryId, brandId, vendorId }) =
 
 // GET /api/admin/products
 export const getAllProducts = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 20, search, vendorId, categoryId, status, includeInactive = 'false' } = req.query;
+    const { page = 1, limit = 20, search, vendorId, categoryId, brandId, status, includeInactive = 'false' } = req.query;
     const numericPage = Number(page) || 1;
     const numericLimit = Number(limit) || 20;
     const skip = (numericPage - 1) * numericLimit;
     const filter = {};
-    if (search) filter.$text = { $search: search };
+    if (search) {
+        const escaped = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        filter.name = { $regex: escaped, $options: 'i' };
+    }
     if (vendorId) filter.vendorId = vendorId;
     if (categoryId) filter.categoryId = categoryId;
+    if (brandId) filter.brandId = brandId;
     if (status) filter.stock = status;
     if (String(includeInactive) !== 'true') {
         filter.isActive = { $ne: false };

@@ -111,15 +111,20 @@ export const useBrandStore = create(
       bulkDeleteBrands: async (ids) => {
         set({ isLoading: true });
         try {
-          await Promise.all(ids.map(id => deleteBrand(id)));
-          set((state) => ({
-            brands: state.brands.filter(
-              (brand) => !ids.map(String).includes(String(brand.id))
-            ),
-            isLoading: false
-          }));
-          toast.success(`${ids.length} brands deleted successfully`);
-          return true;
+          const results = await Promise.all(ids.map(id => get().deleteBrand(id)));
+          const deletedIds = ids.filter((id, index) => results[index] === true).map(String);
+
+          if (deletedIds.length > 0) {
+            set((state) => ({
+              brands: state.brands.filter(
+                (brand) => !deletedIds.includes(String(brand.id))
+              ),
+              isLoading: false
+            }));
+          } else {
+            set({ isLoading: false });
+          }
+          return deletedIds.length > 0;
         } catch (error) {
           set({ isLoading: false });
           return false;

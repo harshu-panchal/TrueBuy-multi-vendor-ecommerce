@@ -1,8 +1,9 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { FiSearch, FiEdit, FiTrash2, FiPlus } from "react-icons/fi";
 import { motion } from "framer-motion";
 import DataTable from "../../components/DataTable";
 import ExportButton from "../../components/ExportButton";
+import Pagination from "../../components/Pagination";
 import Badge from "../../../../shared/components/Badge";
 import ConfirmModal from "../../components/ConfirmModal";
 import ProductFormModal from "../../components/ProductFormModal";
@@ -16,6 +17,11 @@ import toast from "react-hot-toast";
 
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,58 +37,49 @@ const ManageProducts = () => {
     productId: null,
   });
 
-  useEffect(() => {
-    initCategories();
-    initBrands();
-    loadProducts();
-  }, []);
-
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async (page = 1) => {
+    setIsLoading(true);
     try {
-      const response = await getAllProducts({ page: 1, limit: 200, includeInactive: "true" });
-      const pageProducts = Array.isArray(response.data)
-        ? response.data
-        : (response.data?.products || []);
+      const params = {
+        page,
+        limit: 10,
+        includeInactive: "true",
+      };
+      if (searchQuery.trim()) params.search = searchQuery.trim();
+      if (selectedStatus !== "all") params.status = selectedStatus;
+      if (selectedCategory !== "all") params.categoryId = selectedCategory;
+      if (selectedBrand !== "all") params.brandId = selectedBrand;
 
-      const normalizedProducts = pageProducts.map(p => ({
+      const response = await getAllProducts(params);
+      const data = response.data || {};
+      const pageProducts = Array.isArray(data) ? data : (data.products || []);
+
+      const normalizedProducts = pageProducts.map((p) => ({
         ...p,
-        id: p._id, // Map backend _id to frontend id
+        id: p._id,
         image: p.image || p.images?.[0] || "https://via.placeholder.com/50x50?text=Product",
         stock: p.stock || (p.stockQuantity > 5 ? "in_stock" : p.stockQuantity > 0 ? "low_stock" : "out_of_stock"),
       }));
+
       setProducts(normalizedProducts);
+      setTotalPages(Number(data.pages || 1));
+      setTotalProducts(Number(data.total || normalizedProducts.length));
+      setCurrentPage(page);
     } catch (error) {
       // Error is handled in interceptor
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [searchQuery, selectedStatus, selectedCategory, selectedBrand]);
 
-  const filteredProducts = useMemo(() => {
-    let filtered = products;
+  useEffect(() => {
+    initCategories();
+    initBrands();
+  }, [initCategories, initBrands]);
 
-    if (searchQuery) {
-      filtered = filtered.filter((product) =>
-        product.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (selectedStatus !== "all") {
-      filtered = filtered.filter((product) => product.stock === selectedStatus);
-    }
-
-    if (selectedCategory !== "all") {
-      filtered = filtered.filter(
-        (product) => String(product.categoryId?._id || product.categoryId) === String(selectedCategory)
-      );
-    }
-
-    if (selectedBrand !== "all") {
-      filtered = filtered.filter(
-        (product) => String(product.brandId?._id || product.brandId) === String(selectedBrand)
-      );
-    }
-
-    return filtered;
-  }, [products, searchQuery, selectedStatus, selectedCategory, selectedBrand]);
+  useEffect(() => {
+    loadProducts(1);
+  }, [loadProducts]);
 
   const columns = [
     {
@@ -253,7 +250,7 @@ const ManageProducts = () => {
 
             <div className="w-full sm:w-auto">
               <ExportButton
-                data={filteredProducts}
+                data={products}
                 headers={[
                   { label: "ID", accessor: (row) => row.id },
                   { label: "Name", accessor: (row) => row.name },
@@ -272,13 +269,21 @@ const ManageProducts = () => {
 
         {/* DataTable */}
         <DataTable
-          data={filteredProducts}
+          data={products}
           columns={columns}
-          pagination={true}
-          itemsPerPage={10}
+          pagination={false}
           onRowClick={(row) =>
             setProductFormModal({ isOpen: true, productId: row.id })
           }
+        />
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalProducts}
+          itemsPerPage={10}
+          onPageChange={(page) => loadProducts(page)}
+          className="mt-4"
         />
       </div>
 

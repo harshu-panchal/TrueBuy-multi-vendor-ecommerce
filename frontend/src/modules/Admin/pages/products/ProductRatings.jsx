@@ -5,6 +5,7 @@ import DataTable from "../../components/DataTable";
 import Badge from "../../../../shared/components/Badge";
 import ConfirmModal from "../../components/ConfirmModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
+import Pagination from "../../components/Pagination";
 import { formatDateTime } from '../../utils/adminHelpers';
 import {
   getAllReviews,
@@ -18,27 +19,37 @@ const ProductRatings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalReviews, setTotalReviews] = useState(0);
   const [selectedRating, setSelectedRating] = useState(null);
   const [deleteModal, setDeleteModal] = useState({
     isOpen: false,
     ratingId: null,
   });
 
-  const loadRatings = async () => {
+  const loadRatings = async (page = currentPage) => {
     setIsLoading(true);
     try {
       const params = {
+        page,
+        limit: 10,
         search: searchQuery || undefined,
         status: statusFilter === "all" ? undefined : statusFilter,
-        limit: 200,
       };
       const response = await getAllReviews(params);
-      const reviewRows = response.data?.reviews || [];
+      const data = response.data || {};
+      const reviewRows = data.reviews || [];
+      const paginationInfo = data.pagination || {};
+
       const normalizedRows = reviewRows.map((row) => ({
         ...row,
         date: row.createdAt || row.date,
       }));
       setRatings(normalizedRows);
+      setTotalPages(Number(paginationInfo.pages || 1));
+      setTotalReviews(Number(paginationInfo.total || normalizedRows.length));
+      setCurrentPage(page);
     } catch (error) {
       setRatings([]);
     } finally {
@@ -47,7 +58,7 @@ const ProductRatings = () => {
   };
 
   useEffect(() => {
-    loadRatings();
+    loadRatings(1);
   }, [searchQuery, statusFilter]);
 
   const filteredRatings = ratings;
@@ -224,12 +235,21 @@ const ProductRatings = () => {
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading ratings...</div>
         ) : (
-          <DataTable
-            data={filteredRatings}
-            columns={columns}
-            pagination={true}
-            itemsPerPage={10}
-          />
+          <>
+            <DataTable
+              data={filteredRatings}
+              columns={columns}
+              pagination={false}
+            />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalReviews}
+              itemsPerPage={10}
+              onPageChange={(page) => loadRatings(page)}
+              className="mt-4"
+            />
+          </>
         )}
       </div>
 

@@ -137,7 +137,7 @@ export const brandIdParamSchema = Joi.object({
 
 export const createBrandSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
-    logo: Joi.string().trim().uri().allow('').optional(),
+    logo: Joi.string().trim().allow('', null).optional(),
     description: Joi.string().trim().allow('').optional(),
     website: Joi.string().trim().uri().allow('').optional(),
     isActive: Joi.boolean().optional(),
@@ -145,7 +145,7 @@ export const createBrandSchema = Joi.object({
 
 export const updateBrandSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).optional(),
-    logo: Joi.string().trim().uri().allow('').optional(),
+    logo: Joi.string().trim().allow('', null).optional(),
     description: Joi.string().trim().allow('').optional(),
     website: Joi.string().trim().uri().allow('').optional(),
     isActive: Joi.boolean().optional(),

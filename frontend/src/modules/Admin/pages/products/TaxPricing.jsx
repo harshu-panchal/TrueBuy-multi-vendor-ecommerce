@@ -72,10 +72,10 @@ const TaxPricing = () => {
       try {
         const response = await getTaxPricingRules();
         const payload = response?.data || {};
-        if (Array.isArray(payload.taxRules) && payload.taxRules.length > 0) {
+        if (Array.isArray(payload.taxRules)) {
           setTaxRules(payload.taxRules);
         }
-        if (Array.isArray(payload.pricingRules) && payload.pricingRules.length > 0) {
+        if (Array.isArray(payload.pricingRules)) {
           setPricingRules(payload.pricingRules);
         }
       } catch (error) {

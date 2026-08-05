@@ -71,6 +71,11 @@ import {
     updateWithdrawStatusSchema,
 } from '../validators/finance.validator.js';
 import {
+    reviewListQuerySchema,
+    reviewIdParamSchema,
+    updateReviewStatusSchema,
+} from '../validators/review.validator.js';
+import {
     vendorListQuerySchema,
     vendorIdParamSchema,
     vendorStatusUpdateSchema,
@@ -206,9 +211,9 @@ router.put('/support/ticket-types/:id', ...adminAuth, supportController.updateTi
 router.delete('/support/ticket-types/:id', ...adminAuth, supportController.deleteTicketType);
 
 // ─── Product Reviews ──────────────────────────────────────────────────────────
-router.get('/reviews', ...adminAuth, reviewController.getAllReviews);
-router.patch('/reviews/:id/status', ...adminAuth, reviewController.updateReviewStatus);
-router.delete('/reviews/:id', ...adminAuth, reviewController.deleteReview);
+router.get('/reviews', ...adminAuth, validate(reviewListQuerySchema, 'query'), reviewController.getAllReviews);
+router.patch('/reviews/:id/status', ...adminAuth, validate(reviewIdParamSchema, 'params'), validate(updateReviewStatusSchema), reviewController.updateReviewStatus);
+router.delete('/reviews/:id', ...adminAuth, validate(reviewIdParamSchema, 'params'), reviewController.deleteReview);
 router.post('/uploads/image', ...adminAuth, uploadSingle('image'), uploadController.uploadImage);
 
 // ─── Marketing & Promotions ──────────────────────────────────────────────────

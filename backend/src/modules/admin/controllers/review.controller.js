@@ -20,7 +20,8 @@ export const getAllReviews = asyncHandler(async (req, res) => {
     if (status === 'pending') filter.isApproved = false;
 
     if (search) {
-        const regex = new RegExp(search, 'i');
+        const safeSearch = String(search).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(safeSearch, 'i');
         const isObjectId = /^[0-9a-fA-F]{24}$/.test(String(search || ''));
 
         const [matchedUsers, matchedProducts] = await Promise.all([
