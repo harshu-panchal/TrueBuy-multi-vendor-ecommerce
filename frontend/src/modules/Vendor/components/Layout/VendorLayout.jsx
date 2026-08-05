@@ -6,12 +6,17 @@ import VendorBottomNav from './VendorBottomNav';
 import useAdminHeaderHeight from '../../../Admin/hooks/useAdminHeaderHeight';
 
 const VendorLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
   const headerHeight = useAdminHeaderHeight();
 
   // Prevent background scrolling when sidebar is open on mobile
   useEffect(() => {
-    if (sidebarOpen) {
+    if (window.innerWidth < 1024 && sidebarOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -29,15 +34,15 @@ const VendorLayout = () => {
   const bottomPadding = bottomNavHeight + 8;
 
   return (
-    <div className={`h-screen overflow-hidden bg-gray-50 flex ${sidebarOpen ? 'fixed inset-0' : ''}`}>
+    <div className={`h-screen overflow-hidden bg-gray-50 flex ${window.innerWidth < 1024 && sidebarOpen ? 'fixed inset-0' : ''}`}>
       {/* Sidebar */}
       <VendorSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-64 min-w-0 max-w-full overflow-x-hidden">
+      <div className={`flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-0'}`}>
         {/* Header */}
         <VendorHeader
-          onMenuClick={() => setSidebarOpen(true)}
+          onMenuClick={() => setSidebarOpen((prev) => !prev)}
           sidebarOpen={sidebarOpen}
         />
 

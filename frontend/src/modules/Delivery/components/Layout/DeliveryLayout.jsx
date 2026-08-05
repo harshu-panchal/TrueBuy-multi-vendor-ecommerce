@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
-import { FiLogOut, FiTruck, FiPackage, FiHome, FiUser, FiMenu, FiBell, FiCreditCard } from "react-icons/fi";
+import { FiLogOut, FiTruck, FiPackage, FiHome, FiUser, FiMenu, FiBell, FiCreditCard, FiX } from "react-icons/fi";
 import { useDeliveryAuthStore } from "../../store/deliveryStore";
 import { useDeliveryNotificationStore } from "../../store/deliveryNotificationStore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -144,9 +144,9 @@ const DeliveryLayout = () => {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-gray-100"
-              aria-label="Open menu">
+              onClick={() => setSidebarOpen((prev) => !prev)}
+              className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Toggle menu">
               <FiMenu className="text-gray-700 text-xl" />
             </button>
           </div>
@@ -172,18 +172,26 @@ const DeliveryLayout = () => {
               className="fixed left-0 top-0 bottom-0 w-64 bg-white shadow-xl z-50 overflow-y-auto">
               {/* Sidebar Header */}
               <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 gradient-green rounded-full flex items-center justify-center">
-                    <FiTruck className="text-white text-xl" />
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 gradient-green rounded-full flex items-center justify-center">
+                      <FiTruck className="text-white text-xl" />
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-gray-800">
+                        {deliveryBoy?.name || "Delivery Boy"}
+                      </h2>
+                      <p className="text-xs text-gray-600">
+                        {deliveryBoy?.email}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="font-semibold text-gray-800">
-                      {deliveryBoy?.name || "Delivery Boy"}
-                    </h2>
-                    <p className="text-xs text-gray-600">
-                      {deliveryBoy?.email}
-                    </p>
-                  </div>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    aria-label="Close menu">
+                    <FiX className="text-gray-500 text-xl" />
+                  </button>
                 </div>
                 <div className="flex items-center gap-2">
                   <div

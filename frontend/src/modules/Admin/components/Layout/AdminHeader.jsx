@@ -59,7 +59,7 @@ const AdminHeader = ({ onMenuClick, sidebarOpen }) => {
 
   return (
     <header
-      className="bg-white border-b border-gray-200 fixed top-0 left-0 lg:left-64 right-0 z-30"
+      className={`bg-white border-b border-gray-200 fixed top-0 right-0 z-30 transition-all duration-300 ${sidebarOpen ? 'left-0 lg:left-64' : 'left-0'}`}
       style={{
         paddingTop: 'env(safe-area-inset-top, 0px)',
       }}
@@ -70,8 +70,9 @@ const AdminHeader = ({ onMenuClick, sidebarOpen }) => {
           <Button
             onClick={onMenuClick}
             variant="icon"
-            className="lg:hidden text-gray-700"
+            className="text-gray-700 hover:bg-gray-100 p-2 rounded-lg"
             icon={FiMenu}
+            aria-label="Toggle menu"
           />
 
           {/* Logo - Mobile Only */}

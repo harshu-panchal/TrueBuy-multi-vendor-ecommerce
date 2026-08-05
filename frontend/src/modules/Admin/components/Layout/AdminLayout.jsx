@@ -6,7 +6,12 @@ import AdminBottomNav from './AdminBottomNav';
 import useAdminHeaderHeight from '../../hooks/useAdminHeaderHeight';
 
 const AdminLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
   const headerHeight = useAdminHeaderHeight();
 
   // Bottom nav height is 64px (h-16)
@@ -22,10 +27,10 @@ const AdminLayout = () => {
       <AdminSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col lg:ml-64 min-w-0 max-w-full overflow-x-hidden">
+      <div className={`flex-1 flex flex-col min-w-0 max-w-full overflow-x-hidden transition-all duration-300 ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-0'}`}>
         {/* Header */}
         <AdminHeader
-          onMenuClick={() => setSidebarOpen(true)}
+          onMenuClick={() => setSidebarOpen((prev) => !prev)}
           sidebarOpen={sidebarOpen}
         />
 

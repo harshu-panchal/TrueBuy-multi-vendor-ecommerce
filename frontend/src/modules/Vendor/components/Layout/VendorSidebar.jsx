@@ -290,10 +290,10 @@ const VendorSidebar = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          {/* Close Button - Mobile Only */}
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 lg:hidden"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
             aria-label="Close sidebar">
             <FiX className="text-xl text-gray-300" />
           </button>
@@ -336,8 +336,11 @@ const VendorSidebar = ({ isOpen, onClose }) => {
         )}
       </AnimatePresence>
 
-      {/* Sidebar - Desktop Fixed */}
-      <div className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-20">
+      {/* Sidebar - Desktop Fixed / Collapsible */}
+      <div
+        className={`hidden lg:flex fixed left-0 top-0 bottom-0 w-64 z-20 transition-transform duration-300 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}>
         {sidebarContent}
       </div>
     </>
