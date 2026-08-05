@@ -297,6 +297,8 @@ export const placeOrder = asyncHandler(async (req, res) => {
             variantKey
                 ? String((product?.variants?.imageMap?.get?.(variantKey) ?? product?.variants?.imageMap?.[variantKey]) || '').trim()
                 : '';
+        const taxRate = Number.isFinite(product.taxRate) ? product.taxRate : 18;
+        const taxIncluded = Boolean(product.taxIncluded);
         const enriched = {
             productId: product._id,
             vendorId: product.vendorId._id,
@@ -307,6 +309,8 @@ export const placeOrder = asyncHandler(async (req, res) => {
             variant: item.variant,
             variantKey: variantKey || undefined,
             variantStockKey: variantStockKey || undefined,
+            taxRate,
+            taxIncluded,
         };
         enrichedItems.push(enriched);
 
@@ -364,9 +368,38 @@ export const placeOrder = asyncHandler(async (req, res) => {
         couponType: appliedCoupon?.type || null,
     });
 
-    // 4. Calculate tax (18%)
-    const tax = parseFloat(((subtotal - couponDiscount) * 0.18).toFixed(2));
-    const total = parseFloat((subtotal - couponDiscount + shipping + tax).toFixed(2));
+    // 4. Calculate dynamic per-product tax
+    let totalTaxAmount = 0;
+    let totalPayableBase = 0;
+    const vendorTaxMap = {};
+
+    for (const item of enrichedItems) {
+        const itemSubtotal = item.price * item.quantity;
+        const itemDiscount = subtotal > 0 ? (itemSubtotal / subtotal) * couponDiscount : 0;
+        const netItemSubtotal = Math.max(0, itemSubtotal - itemDiscount);
+
+        const rate = item.taxRate;
+        let itemTax = 0;
+
+        if (item.taxIncluded) {
+            // Tax is embedded in the item price -> Extract embedded tax portion
+            itemTax = netItemSubtotal - (netItemSubtotal / (1 + (rate / 100)));
+            totalPayableBase += netItemSubtotal;
+        } else {
+            // Tax is added on top of item price
+            itemTax = netItemSubtotal * (rate / 100);
+            totalPayableBase += netItemSubtotal + itemTax;
+        }
+
+        itemTax = parseFloat(itemTax.toFixed(2));
+        totalTaxAmount += itemTax;
+
+        const vKey = String(item.vendorId);
+        vendorTaxMap[vKey] = parseFloat(((vendorTaxMap[vKey] || 0) + itemTax).toFixed(2));
+    }
+
+    const tax = parseFloat(totalTaxAmount.toFixed(2));
+    const total = parseFloat((totalPayableBase + shipping).toFixed(2));
 
     // 5. Build vendor item groups
     const vendorItems = Object.values(vendorMap).map((v) => ({
@@ -375,7 +408,7 @@ export const placeOrder = asyncHandler(async (req, res) => {
         items: v.items,
         subtotal: v.subtotal,
         shipping: Number(shippingByVendor[String(v.vendorId)] || 0),
-        tax: parseFloat((v.subtotal * 0.18).toFixed(2)),
+        tax: Number(vendorTaxMap[String(v.vendorId)] || 0),
         discount: 0,
         status: 'pending',
     }));

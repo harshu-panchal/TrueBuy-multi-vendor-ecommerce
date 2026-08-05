@@ -48,6 +48,7 @@ const ProductForm = () => {
     warrantyPeriod: "",
     guaranteePeriod: "",
     hsnCode: "",
+    taxRate: 18,
     flashSale: false,
     isNewArrival: false,
     isFeatured: false,
@@ -188,6 +189,7 @@ const ProductForm = () => {
       warrantyPeriod: product.warrantyPeriod || "",
       guaranteePeriod: product.guaranteePeriod || "",
       hsnCode: product.hsnCode || "",
+      taxRate: product.taxRate !== undefined ? Number(product.taxRate) : 18,
       flashSale: product.flashSale || false,
       isNewArrival: product.isNewArrival || false,
       isFeatured: product.isFeatured || false,
@@ -765,6 +767,53 @@ const ProductForm = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
                 placeholder="0.00"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Tax Rate (%)
+              </label>
+              <select
+                name="taxRate"
+                value={formData.taxRate !== undefined ? formData.taxRate : 18}
+                onChange={(e) => setFormData((prev) => ({ ...prev, taxRate: Number(e.target.value) }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
+              >
+                <option value={0}>0% (Exempt)</option>
+                <option value={5}>5% (GST)</option>
+                <option value={12}>12% (GST)</option>
+                <option value={18}>18% (Standard GST)</option>
+                <option value={28}>28% (Luxury GST)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                HSN / SAC Code
+              </label>
+              <input
+                type="text"
+                name="hsnCode"
+                value={formData.hsnCode}
+                onChange={handleChange}
+                placeholder="e.g. 6203, 8517"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              />
+            </div>
+
+            <div className="md:col-span-2 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  name="taxIncluded"
+                  checked={formData.taxIncluded}
+                  onChange={handleChange}
+                  className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                />
+                <span className="text-xs font-semibold text-gray-700">
+                  Price includes Tax / GST (No extra tax added at checkout)
+                </span>
+              </label>
             </div>
           </div>
         </div>

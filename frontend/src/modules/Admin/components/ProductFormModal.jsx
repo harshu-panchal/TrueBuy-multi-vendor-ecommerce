@@ -10,6 +10,7 @@ import {
   updateProduct,
   getAllVendors,
   uploadAdminImage,
+  getTaxPricingRules,
 } from "../services/adminService";
 import CategorySelector from "./CategorySelector";
 import AnimatedSelect from "./AnimatedSelect";
@@ -35,6 +36,13 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
   const [vendors, setVendors] = useState([]);
+  const [taxRulesOptions, setTaxRulesOptions] = useState([
+    { value: 0, label: "0% (Exempt)" },
+    { value: 5, label: "5% (GST)" },
+    { value: 12, label: "12% (GST)" },
+    { value: 18, label: "18% (Standard GST)" },
+    { value: 28, label: "28% (Luxury GST)" },
+  ]);
   const [isUploadingMainImage, setIsUploadingMainImage] = useState(false);
   const [isUploadingGallery, setIsUploadingGallery] = useState(false);
   const [variantAxisInput, setVariantAxisInput] = useState({
@@ -60,6 +68,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     warrantyPeriod: "",
     guaranteePeriod: "",
     hsnCode: "",
+    taxRate: 18,
     flashSale: false,
     isNewArrival: false,
     isFeatured: false,
@@ -98,6 +107,29 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     initCategories();
     initBrands();
   }, [initCategories, initBrands]);
+
+  useEffect(() => {
+    const fetchTaxRules = async () => {
+      try {
+        const response = await getTaxPricingRules();
+        const rules = response?.data?.taxRules || [];
+        if (Array.isArray(rules) && rules.length > 0) {
+          const activeRules = rules
+            .filter((r) => r.status !== "inactive")
+            .map((r) => ({
+              value: Number(r.rate),
+              label: `${r.rate}% (${r.name})`,
+            }));
+          if (activeRules.length > 0) {
+            setTaxRulesOptions(activeRules);
+          }
+        }
+      } catch (error) {
+        // Fallback options kept
+      }
+    };
+    fetchTaxRules();
+  }, []);
 
   useEffect(() => {
     const fetchVendors = async () => {
@@ -152,6 +184,7 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
             warrantyPeriod: product.warrantyPeriod || "",
             guaranteePeriod: product.guaranteePeriod || "",
             hsnCode: product.hsnCode || "",
+            taxRate: product.taxRate !== undefined ? Number(product.taxRate) : 18,
             flashSale: product.flashSale || false,
             isNewArrival: product.isNewArrival || false,
             isFeatured: product.isFeatured || false,
@@ -838,10 +871,10 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                     </div>
                   </div>
 
-                  {/* Pricing */}
+                  {/* Pricing & Tax */}
                   <div>
                     <h3 className="text-lg font-bold text-gray-800 mb-4">
-                      Pricing
+                      Pricing & Tax
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -873,6 +906,55 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           step="0.01"
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                         />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          Tax Rate (%)
+                        </label>
+                        <AnimatedSelect
+                          name="taxRate"
+                          value={String(formData.taxRate !== undefined ? formData.taxRate : 18)}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              taxRate: Number(e.target.value),
+                            }))
+                          }
+                          options={taxRulesOptions.map((opt) => ({
+                            value: String(opt.value),
+                            label: opt.label,
+                          }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          HSN / SAC Code
+                        </label>
+                        <input
+                          type="text"
+                          name="hsnCode"
+                          value={formData.hsnCode}
+                          onChange={handleChange}
+                          placeholder="e.g. 6203, 8517"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                      </div>
+
+                      <div className="md:col-span-2 pt-1">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            name="taxIncluded"
+                            checked={formData.taxIncluded}
+                            onChange={handleChange}
+                            className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                          />
+                          <span className="text-sm font-semibold text-gray-700">
+                            Price includes Tax / GST (No extra tax added at checkout)
+                          </span>
+                        </label>
                       </div>
                     </div>
                   </div>

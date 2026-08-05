@@ -765,9 +765,20 @@ const MobileProductDetail = () => {
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-2 mb-5">
-                      <FiShield className="text-purple-600" />
-                      <span className="text-sm font-medium text-gray-700">Best price guaranteed</span>
+                    <div className="flex flex-wrap items-center gap-3 mb-5">
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 border border-gray-200 rounded-full text-xs font-semibold text-gray-700">
+                        <FiShield className="text-purple-600" />
+                        <span>Best price guaranteed</span>
+                      </div>
+                      <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                        product.taxIncluded ? "bg-green-50 text-green-700 border border-green-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}>
+                        <span>
+                          {product.taxIncluded
+                            ? `Inclusive of all taxes (GST ${product.taxRate || 18}%)`
+                            : `+ GST ${product.taxRate || 18}% extra at checkout`}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="bg-purple-50 rounded-xl p-3 flex items-center gap-2 border border-purple-100/50">

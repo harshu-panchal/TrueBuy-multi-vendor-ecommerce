@@ -404,9 +404,35 @@ const MobileCheckout = () => {
       ? estimatedShipping
       : calculateShippingFallback();
   const discount = appliedCoupon ? appliedDiscount : 0;
-  const taxableAmount = Math.max(0, total - discount);
-  const tax = taxableAmount * 0.18;
-  const finalTotal = Math.max(0, total + shipping + tax - discount);
+
+  // Dynamic per-product tax calculation
+  const { tax, finalTotal } = useMemo(() => {
+    let sumTax = 0;
+    let sumPayableBase = 0;
+
+    items.forEach((item) => {
+      const itemSubtotal = Number(item.price || 0) * Number(item.quantity || 1);
+      const itemDiscount = total > 0 ? (itemSubtotal / total) * discount : 0;
+      const netSubtotal = Math.max(0, itemSubtotal - itemDiscount);
+
+      const rate = Number.isFinite(Number(item.taxRate)) ? Number(item.taxRate) : 18;
+      const isIncluded = Boolean(item.taxIncluded);
+
+      let itemTax = 0;
+      if (isIncluded) {
+        itemTax = netSubtotal - (netSubtotal / (1 + (rate / 100)));
+        sumPayableBase += netSubtotal;
+      } else {
+        itemTax = netSubtotal * (rate / 100);
+        sumPayableBase += netSubtotal + itemTax;
+      }
+      sumTax += itemTax;
+    });
+
+    const calculatedTax = parseFloat(sumTax.toFixed(2));
+    const calculatedTotal = Math.max(0, parseFloat((sumPayableBase + shipping).toFixed(2)));
+    return { tax: calculatedTax, finalTotal: calculatedTotal };
+  }, [items, total, discount, shipping]);
 
   useEffect(() => {
     if (appliedCoupon) {
