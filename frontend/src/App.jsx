@@ -52,7 +52,6 @@ import Invoice from "./modules/Admin/pages/orders/Invoice";
 // Products child pages
 import ManageProducts from "./modules/Admin/pages/products/ManageProducts";
 import TaxPricing from "./modules/Admin/pages/products/TaxPricing";
-import ProductRatings from "./modules/Admin/pages/products/ProductRatings";
 // CMS child pages
 import Topics from "./modules/Admin/pages/cms/Topics";
 import Menus from "./modules/Admin/pages/cms/Menus";
@@ -542,7 +541,8 @@ const AppRoutes = () => {
         <Route path="products/:id" element={<Navigate to="/admin/products/manage-products" replace />} />
         <Route path="products/manage-products" element={<ManageProducts />} />
         <Route path="products/tax-pricing" element={<TaxPricing />} />
-        <Route path="products/product-ratings" element={<ProductRatings />} />
+        <Route path="catalog/tax-pricing" element={<TaxPricing />} />
+        <Route path="products/product-ratings" element={<Navigate to="/admin/reviews" replace />} />
         <Route path="more" element={<More />} />
         <Route path="categories" element={<Categories />} />
         <Route

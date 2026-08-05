@@ -12,6 +12,7 @@
       "Categories",
       "Manage Products",
       "Product Reviews",
+      "Tax & Pricing",
       "Manufacturers",
       "Product Tags",
       "Low Stock Report",
@@ -33,15 +34,6 @@
       "DIVIDER",
       "Bestsellers",
       "Products Never Purchased"
-    ]
-  },
-
-  {
-    "title": "Products",
-    "route": "/admin/products",
-    "children": [
-      "Tax & Pricing",
-      "Product Ratings"
     ]
   },
 

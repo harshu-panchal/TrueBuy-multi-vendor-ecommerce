@@ -72,6 +72,7 @@ const getChildRoute = (parentRoute, childName) => {
       Categories: "/admin/categories",
       "Manage Products": "/admin/products/manage-products",
       "Product Reviews": "/admin/reviews",
+      "Tax & Pricing": "/admin/products/tax-pricing",
       Manufacturers: "/admin/catalog/manufacturers",
       "Product Tags": "/admin/catalog/product-tags",
       "Low Stock Report": "/admin/reports/inventory-report",
@@ -87,11 +88,6 @@ const getChildRoute = (parentRoute, childName) => {
       "Current Wishlists": "/admin/sales/wishlists",
       Bestsellers: "/admin/sales/bestsellers",
       "Products Never Purchased": "/admin/sales/never-purchased",
-    },
-    "/admin/products": {
-      "Manage Products": "/admin/products/manage-products",
-      "Tax & Pricing": "/admin/products/tax-pricing",
-      "Product Ratings": "/admin/products/product-ratings",
     },
     "/admin/categories": {
       "Manage Categories": "/admin/categories",
