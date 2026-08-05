@@ -110,7 +110,7 @@ export const categoryIdParamSchema = Joi.object({
 export const createCategorySchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
     description: Joi.string().trim().allow('').optional(),
-    image: Joi.string().trim().uri().allow('').optional(),
+    image: Joi.string().trim().allow('', null).optional(),
     icon: Joi.string().trim().allow('').optional(),
     parentId: objectId.allow(null, '').optional(),
     order: Joi.number().integer().min(0).optional(),
@@ -120,7 +120,7 @@ export const createCategorySchema = Joi.object({
 export const updateCategorySchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).optional(),
     description: Joi.string().trim().allow('').optional(),
-    image: Joi.string().trim().uri().allow('').optional(),
+    image: Joi.string().trim().allow('', null).optional(),
     icon: Joi.string().trim().allow('').optional(),
     parentId: objectId.allow(null, '').optional(),
     order: Joi.number().integer().min(0).optional(),

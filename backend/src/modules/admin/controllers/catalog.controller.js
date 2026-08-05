@@ -236,8 +236,9 @@ const assertValidCategoryParent = async ({ categoryId = null, parentId }) => {
 const assertUniqueCategory = async (name, currentId = null) => {
     if (!name) return;
     const slug = slugify(name);
+    const escapedName = name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const filter = {
-        $or: [{ name: new RegExp(`^${name.trim()}$`, 'i') }, { slug }],
+        $or: [{ name: new RegExp(`^${escapedName}$`, 'i') }, { slug }],
     };
     if (currentId) filter._id = { $ne: currentId };
     const existing = await Category.findOne(filter).select('_id').lean();

@@ -119,18 +119,20 @@ export const useCategoryStore = create(
       bulkDeleteCategories: async (ids) => {
         set({ isLoading: true });
         try {
-          // Sequentially delete for now, or updating backend to support bulk delete would be better
-          // But to stick to constraints and existing service, we'll map
-          await Promise.all(ids.map(id => deleteCategory(id)));
+          const results = await Promise.all(ids.map(id => get().deleteCategory(id)));
+          const deletedIds = ids.filter((id, index) => results[index] === true).map(String);
 
-          set((state) => ({
-            categories: state.categories.filter(
-              (cat) => !ids.map(String).includes(String(cat.id))
-            ),
-            isLoading: false
-          }));
-          toast.success(`${ids.length} categories deleted successfully`);
-          return true;
+          if (deletedIds.length > 0) {
+            set((state) => ({
+              categories: state.categories.filter(
+                (cat) => !deletedIds.includes(String(cat.id))
+              ),
+              isLoading: false
+            }));
+          } else {
+            set({ isLoading: false });
+          }
+          return deletedIds.length > 0;
         } catch (error) {
           set({ isLoading: false });
           return false;

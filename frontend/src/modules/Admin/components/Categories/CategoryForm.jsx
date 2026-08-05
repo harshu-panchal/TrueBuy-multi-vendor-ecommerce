@@ -142,9 +142,15 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
       });
     }
 
+    const currentParentIdStr = category?.parentId
+      ? typeof category.parentId === "object"
+        ? (category.parentId._id ?? category.parentId.id ?? null)
+        : category.parentId
+      : null;
+
     return categories.filter(
       (cat) =>
-        cat.isActive &&
+        (cat.isActive || (currentParentIdStr && String(cat.id) === String(currentParentIdStr))) &&
         String(cat.id) !== String(category.id) &&
         !descendants.has(String(cat.id))
     );

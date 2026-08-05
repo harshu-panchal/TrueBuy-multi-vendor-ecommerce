@@ -39,22 +39,12 @@ const ManageProducts = () => {
 
   const loadProducts = async () => {
     try {
-      let currentPage = 1;
-      let totalPages = 1;
-      const products = [];
+      const response = await getAllProducts({ page: 1, limit: 200, includeInactive: "true" });
+      const pageProducts = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.products || []);
 
-      do {
-        const response = await getAllProducts({ page: currentPage, limit: 100 });
-        const pageProducts = Array.isArray(response.data)
-          ? response.data
-          : (response.data?.products || []);
-        products.push(...pageProducts);
-
-        totalPages = Number(response.data?.pages || 1);
-        currentPage += 1;
-      } while (currentPage <= totalPages);
-
-      const normalizedProducts = products.map(p => ({
+      const normalizedProducts = pageProducts.map(p => ({
         ...p,
         id: p._id, // Map backend _id to frontend id
         image: p.image || p.images?.[0] || "https://via.placeholder.com/50x50?text=Product",
