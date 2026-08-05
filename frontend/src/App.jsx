@@ -78,7 +78,6 @@ import Warnings from "./modules/Admin/pages/system/Warnings";
 import SystemInformation from "./modules/Admin/pages/system/SystemInformation";
 
 // Categories child pages
-import ManageCategories from "./modules/Admin/pages/categories/ManageCategories";
 import CategoryOrder from "./modules/Admin/pages/categories/CategoryOrder";
 // Brands child pages
 import ManageBrands from "./modules/Admin/pages/brands/ManageBrands";
@@ -549,7 +548,7 @@ const AppRoutes = () => {
         <Route path="categories" element={<Categories />} />
         <Route
           path="categories/manage-categories"
-          element={<ManageCategories />}
+          element={<Navigate to="/admin/categories" replace />}
         />
         <Route path="categories/category-order" element={<CategoryOrder />} />
         <Route path="brands" element={<Brands />} />
