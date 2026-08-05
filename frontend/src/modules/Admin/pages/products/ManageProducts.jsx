@@ -15,12 +15,15 @@ import { useBrandStore } from "../../../../shared/store/brandStore";
 import { getAllProducts, deleteProduct } from "../../services/adminService";
 import toast from "react-hot-toast";
 
+const PRODUCT_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50' viewBox='0 0 50 50'%3E%3Crect width='50' height='50' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='9' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E";
+
 const ManageProducts = () => {
   const [products, setProducts] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedProductIds, setSelectedProductIds] = useState(new Set());
 
   const { categories, initialize: initCategories } = useCategoryStore();
   const { brands, initialize: initBrands } = useBrandStore();
@@ -57,11 +60,12 @@ const ManageProducts = () => {
       const normalizedProducts = pageProducts.map((p) => ({
         ...p,
         id: p._id,
-        image: p.image || p.images?.[0] || "https://via.placeholder.com/50x50?text=Product",
+        image: p.image || p.images?.[0] || PRODUCT_PLACEHOLDER,
         stock: p.stock || (p.stockQuantity > 5 ? "in_stock" : p.stockQuantity > 0 ? "low_stock" : "out_of_stock"),
       }));
 
       setProducts(normalizedProducts);
+      setSelectedProductIds(new Set());
       setTotalPages(Number(data.pages || 1));
       setTotalProducts(Number(data.total || normalizedProducts.length));
       setCurrentPage(page);
@@ -81,7 +85,63 @@ const ManageProducts = () => {
     loadProducts(1);
   }, [loadProducts]);
 
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedProductIds(new Set(products.map((p) => p.id)));
+    } else {
+      setSelectedProductIds(new Set());
+    }
+  };
+
+  const handleSelectRow = (id) => {
+    const next = new Set(selectedProductIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedProductIds(next);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedProductIds.size === 0) return;
+    const count = selectedProductIds.size;
+    if (window.confirm(`Are you sure you want to delete ${count} selected products?`)) {
+      setIsLoading(true);
+      try {
+        await Promise.all(Array.from(selectedProductIds).map((id) => deleteProduct(id)));
+        setProducts(products.filter((p) => !selectedProductIds.has(p.id)));
+        setSelectedProductIds(new Set());
+        toast.success(`${count} products deleted successfully`);
+      } catch (error) {
+        toast.error("Failed to delete selected products");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
   const columns = [
+    {
+      key: "checkbox",
+      label: (
+        <input
+          type="checkbox"
+          checked={selectedProductIds.size === products.length && products.length > 0}
+          onChange={handleSelectAll}
+          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+        />
+      ),
+      sortable: false,
+      render: (_, row) => (
+        <input
+          type="checkbox"
+          checked={selectedProductIds.has(row.id)}
+          onChange={(e) => {
+            e.stopPropagation();
+            handleSelectRow(row.id);
+          }}
+          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
+        />
+      ),
+    },
     {
       key: "id",
       label: "ID",
@@ -98,7 +158,7 @@ const ManageProducts = () => {
             alt={value}
             className="w-10 h-10 object-cover rounded-lg"
             onError={(e) => {
-              e.target.src = "https://via.placeholder.com/50x50?text=Product";
+              e.target.src = PRODUCT_PLACEHOLDER;
             }}
           />
           <span className="font-medium">{value}</span>
@@ -186,13 +246,24 @@ const ManageProducts = () => {
             View, edit, and manage your product catalog
           </p>
         </div>
-        <button
-          onClick={() => setProductFormModal({ isOpen: true, productId: "new" })}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
-        >
-          <FiPlus />
-          Add Product
-        </button>
+        <div className="flex items-center gap-3">
+          {selectedProductIds.size > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-semibold shadow-sm"
+            >
+              <FiTrash2 />
+              Delete Selected ({selectedProductIds.size})
+            </button>
+          )}
+          <button
+            onClick={() => setProductFormModal({ isOpen: true, productId: "new" })}
+            className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-semibold"
+          >
+            <FiPlus />
+            Add Product
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">

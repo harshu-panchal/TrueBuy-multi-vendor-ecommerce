@@ -14,7 +14,6 @@ import AdminProtectedRoute from "./modules/Admin/components/AdminProtectedRoute"
 import AdminLayout from "./modules/Admin/components/Layout/AdminLayout";
 import Dashboard from "./modules/Admin/pages/Dashboard";
 import Products from "./modules/Admin/pages/Products";
-import ProductForm from "./modules/Admin/pages/ProductForm";
 import AdminOrders from "./modules/Admin/pages/Orders";
 import OrderDetail from "./modules/Admin/pages/OrderDetail";
 import ReturnRequests from "./modules/Admin/pages/ReturnRequests";
@@ -540,7 +539,7 @@ const AppRoutes = () => {
         <Route index element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="products" element={<Products />} />
-        <Route path="products/:id" element={<ProductForm />} />
+        <Route path="products/:id" element={<Navigate to="/admin/products/manage-products" replace />} />
         <Route path="products/manage-products" element={<ManageProducts />} />
         <Route path="products/tax-pricing" element={<TaxPricing />} />
         <Route path="products/product-ratings" element={<ProductRatings />} />
