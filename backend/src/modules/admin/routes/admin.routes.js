@@ -84,7 +84,15 @@ import {
 } from '../validators/vendor.validator.js';
 import {
     marketingIdParamSchema,
+    couponListQuerySchema,
+    createCouponSchema,
+    updateCouponSchema,
+    createBannerSchema,
+    updateBannerSchema,
+    reorderBannersSchema,
     campaignListQuerySchema,
+    createCampaignSchema,
+    updateCampaignSchema,
 } from '../validators/marketing.validator.js';
 import {
     settingUpdateSchema,
@@ -218,22 +226,22 @@ router.post('/uploads/image', ...adminAuth, uploadSingle('image'), uploadControl
 
 // ─── Marketing & Promotions ──────────────────────────────────────────────────
 // Coupons
-router.get('/marketing/coupons', ...adminAuth, marketingController.getAllCoupons);
-router.post('/marketing/coupons', ...adminAuth, marketingController.createCoupon);
-router.put('/marketing/coupons/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.updateCoupon);
+router.get('/marketing/coupons', ...adminAuth, validate(couponListQuerySchema, 'query'), marketingController.getAllCoupons);
+router.post('/marketing/coupons', ...adminAuth, validate(createCouponSchema), marketingController.createCoupon);
+router.put('/marketing/coupons/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), validate(updateCouponSchema), marketingController.updateCoupon);
 router.delete('/marketing/coupons/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.deleteCoupon);
 
 // Banners
 router.get('/marketing/banners', ...adminAuth, marketingController.getAllBanners);
-router.post('/marketing/banners', ...adminAuth, marketingController.createBanner);
-router.patch('/marketing/banners/reorder', ...adminAuth, marketingController.reorderBanners);
-router.put('/marketing/banners/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.updateBanner);
+router.post('/marketing/banners', ...adminAuth, validate(createBannerSchema), marketingController.createBanner);
+router.patch('/marketing/banners/reorder', ...adminAuth, validate(reorderBannersSchema), marketingController.reorderBanners);
+router.put('/marketing/banners/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), validate(updateBannerSchema), marketingController.updateBanner);
 router.delete('/marketing/banners/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.deleteBanner);
 
 // Campaigns
 router.get('/marketing/campaigns', ...adminAuth, validate(campaignListQuerySchema, 'query'), marketingController.getAllCampaigns);
-router.post('/marketing/campaigns', ...adminAuth, marketingController.createCampaign);
-router.put('/marketing/campaigns/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.updateCampaign);
+router.post('/marketing/campaigns', ...adminAuth, validate(createCampaignSchema), marketingController.createCampaign);
+router.put('/marketing/campaigns/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), validate(updateCampaignSchema), marketingController.updateCampaign);
 router.delete('/marketing/campaigns/:id', ...adminAuth, validate(marketingIdParamSchema, 'params'), marketingController.deleteCampaign);
 
 // ─── Reports ──────────────────────────────────────────────────────────────────

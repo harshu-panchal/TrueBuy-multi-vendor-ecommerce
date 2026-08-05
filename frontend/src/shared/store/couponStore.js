@@ -15,58 +15,25 @@ export const useCouponStore = create((set, get) => ({
     fetchCoupons: async (params = {}) => {
         set({ isLoading: true });
         try {
-            const { fetchAll = true, ...queryParams } = params || {};
-            const pageSize = Math.max(Number.parseInt(queryParams.limit, 10) || 100, 1);
-            let currentPage = Math.max(Number.parseInt(queryParams.page, 10) || 1, 1);
-            let totalPages = 1;
-            let latestPagination = {
-                total: 0,
-                page: currentPage,
-                limit: pageSize,
-                pages: 1,
-            };
-            const allCoupons = [];
+            const { fetchAll, ...queryParams } = params || {};
+            const response = await adminService.getAllCoupons({
+                page: queryParams.page || 1,
+                limit: queryParams.limit || 100,
+                status: queryParams.status && queryParams.status !== 'all' ? queryParams.status : undefined,
+            });
 
-            do {
-                const response = await adminService.getAllCoupons({
-                    ...queryParams,
-                    page: currentPage,
-                    limit: pageSize,
-                });
-
-                const pageCoupons = Array.isArray(response?.data?.coupons)
-                    ? response.data.coupons
-                    : [];
-                allCoupons.push(...pageCoupons);
-
-                const pagination = response?.data?.pagination || {};
-                latestPagination = {
-                    total: Number.isFinite(Number(pagination.total))
-                        ? Number(pagination.total)
-                        : allCoupons.length,
-                    page: Number.isFinite(Number(pagination.page))
-                        ? Number(pagination.page)
-                        : currentPage,
-                    limit: Number.isFinite(Number(pagination.limit))
-                        ? Number(pagination.limit)
-                        : pageSize,
-                    pages: Math.max(Number.parseInt(pagination.pages, 10) || 1, 1),
-                };
-
-                totalPages = fetchAll ? latestPagination.pages : currentPage;
-                currentPage += 1;
-            } while (fetchAll && currentPage <= totalPages);
+            const data = response?.data || {};
+            const pageCoupons = Array.isArray(data.coupons) ? data.coupons : [];
+            const paginationInfo = data.pagination || {};
 
             set({
-                coupons: allCoupons,
-                pagination: fetchAll
-                    ? {
-                        total: latestPagination.total,
-                        page: 1,
-                        limit: latestPagination.limit,
-                        pages: latestPagination.pages,
-                    }
-                    : latestPagination,
+                coupons: pageCoupons,
+                pagination: {
+                    total: Number(paginationInfo.total || pageCoupons.length),
+                    page: Number(paginationInfo.page || 1),
+                    limit: Number(paginationInfo.limit || 100),
+                    pages: Number(paginationInfo.pages || 1),
+                },
                 isLoading: false
             });
         } catch (error) {
