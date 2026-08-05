@@ -6,6 +6,7 @@ import Commission from '../../../models/Commission.model.js';
 import Order from '../../../models/Order.model.js';
 import User from '../../../models/User.model.js';
 import WalletTransaction from '../../../models/WalletTransaction.model.js';
+import { createNotification } from '../../../services/notification.service.js';
 import mongoose from 'mongoose';
 
 // GET /api/admin/finance/withdraw-requests
@@ -100,6 +101,36 @@ export const updateWithdrawRequestStatus = asyncHandler(async (req, res) => {
         await request.save({ session });
         await session.commitTransaction();
         session.endSession();
+
+        try {
+            const recipientType = request.userType === 'delivery_boy' ? 'delivery' : request.userType;
+            const notificationTitle = status === 'completed' 
+                ? 'Withdrawal Approved' 
+                : status === 'rejected' 
+                ? 'Withdrawal Rejected' 
+                : 'Withdrawal Status Updated';
+            const notificationMsg = status === 'completed'
+                ? `Your withdrawal request of ₹${request.amount} has been processed successfully.`
+                : status === 'rejected'
+                ? `Your withdrawal request of ₹${request.amount} was rejected.${request.rejectionReason ? ` Reason: ${request.rejectionReason}` : ''}`
+                : `Your withdrawal request status updated to ${status}.`;
+
+            await createNotification({
+                recipientId: request.userId,
+                recipientType,
+                title: notificationTitle,
+                message: notificationMsg,
+                type: 'finance',
+                data: {
+                    withdrawalId: String(request._id),
+                    amount: request.amount,
+                    status,
+                    rejectionReason: request.rejectionReason || '',
+                },
+            });
+        } catch (notifErr) {
+            console.warn(`[Withdrawal Notification Failed]: ${notifErr.message}`);
+        }
 
         res.status(200).json(new ApiResponse(200, request, `Withdrawal request ${status}.`));
     } catch (error) {

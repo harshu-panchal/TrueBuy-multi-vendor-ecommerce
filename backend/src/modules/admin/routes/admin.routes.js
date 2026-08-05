@@ -35,6 +35,7 @@ import {
 import {
     createProductSchema,
     updateProductSchema,
+    productIdParamSchema,
     taxPricingRulesSchema,
     categoryIdParamSchema,
     createCategorySchema,
@@ -50,6 +51,7 @@ import {
     customerUpdateSchema,
     customerStatusUpdateSchema,
     customerAddressParamsSchema,
+    customerAddressUpdateSchema,
     customerOrdersQuerySchema,
     customerTransactionsQuerySchema,
     customerAddressesQuerySchema,
@@ -63,6 +65,11 @@ import {
     updateDeliveryApplicationStatusSchema,
     settleCashSchema,
 } from '../validators/delivery.validator.js';
+import {
+    withdrawListQuerySchema,
+    withdrawRequestIdParamSchema,
+    updateWithdrawStatusSchema,
+} from '../validators/finance.validator.js';
 import {
     vendorListQuerySchema,
     vendorIdParamSchema,
@@ -178,8 +185,8 @@ router.patch('/delivery-boys/:id/application-status', ...adminAuth, validate(del
 router.post('/delivery-boys/:id/settle-cash', ...adminAuth, validate(deliveryBoyIdParamSchema, 'params'), validate(settleCashSchema), deliveryController.settleCash);
 
 // ─── Finance & Payouts ────────────────────────────────────────────────────────
-router.get('/finance/withdraw-requests', ...adminAuth, financeController.getWithdrawRequests);
-router.patch('/finance/withdraw-requests/:id', ...adminAuth, financeController.updateWithdrawRequestStatus);
+router.get('/finance/withdraw-requests', ...adminAuth, validate(withdrawListQuerySchema, 'query'), financeController.getWithdrawRequests);
+router.patch('/finance/withdraw-requests/:id', ...adminAuth, validate(withdrawRequestIdParamSchema, 'params'), validate(updateWithdrawStatusSchema), financeController.updateWithdrawRequestStatus);
 router.get('/finance/stats', ...adminAuth, financeController.getFinanceStats);
 
 // ─── Return Requests ──────────────────────────────────────────────────────────

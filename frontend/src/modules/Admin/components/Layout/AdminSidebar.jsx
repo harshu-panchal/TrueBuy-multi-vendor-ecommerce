@@ -76,10 +76,6 @@ const getChildRoute = (parentRoute, childName) => {
       "Product Tags": "/admin/catalog/product-tags",
       "Low Stock Report": "/admin/reports/inventory-report",
       "Recycle Bin": "/admin/catalog/recycle-bin",
-      Stores: "/admin/catalog/stores",
-      "Product Attributes": "/admin/catalog/product-attributes",
-      "Specification Attributes": "/admin/catalog/specification-attributes",
-      "Checkout Attributes": "/admin/catalog/checkout-attributes",
     },
     "/admin/sales": {
       Orders: "/admin/orders",

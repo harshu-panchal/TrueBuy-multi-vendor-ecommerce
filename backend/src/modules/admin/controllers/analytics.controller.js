@@ -408,12 +408,6 @@ export const getRegisteredCustomersCount = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, results, 'Registered customers count fetched.'));
 });
 
-const parseValidDate = (dateStr, fallback = null) => {
-    if (!dateStr) return fallback;
-    const d = new Date(dateStr);
-    return Number.isNaN(d.getTime()) ? fallback : d;
-};
-
 // GET /api/admin/analytics/online-customers
 export const getOnlineCustomers = asyncHandler(async (req, res) => {
     const onlineCustomers = await User.find({ role: 'customer', isActive: true })

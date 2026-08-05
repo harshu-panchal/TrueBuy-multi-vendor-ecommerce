@@ -30,10 +30,6 @@ import ExternalAuthenticationMethods from "./modules/Admin/pages/customers/Exter
 import Manufacturers from "./modules/Admin/pages/catalog/Manufacturers";
 import ProductsTags from "./modules/Admin/pages/catalog/ProductsTags";
 import RecycleBin from "./modules/Admin/pages/catalog/RecycleBin";
-import Stores from "./modules/Admin/pages/catalog/Stores";
-import ProductAttributes from "./modules/Admin/pages/catalog/ProductAttributes";
-import SpecificationAttributes from "./modules/Admin/pages/catalog/SpecificationAttributes";
-import CheckoutAttributes from "./modules/Admin/pages/catalog/CheckoutAttributes";
 import Discounts from "./modules/Admin/pages/promotions/Discounts";
 import Affiliates from "./modules/Admin/pages/promotions/Affiliates";
 import NewsletterSubscribers from "./modules/Admin/pages/promotions/NewsletterSubscribers";
@@ -566,10 +562,6 @@ const AppRoutes = () => {
         <Route path="catalog/manufacturers" element={<Manufacturers />} />
         <Route path="catalog/product-tags" element={<ProductsTags />} />
         <Route path="catalog/recycle-bin" element={<RecycleBin />} />
-        <Route path="catalog/stores" element={<Stores />} />
-        <Route path="catalog/product-attributes" element={<ProductAttributes />} />
-        <Route path="catalog/specification-attributes" element={<SpecificationAttributes />} />
-        <Route path="catalog/checkout-attributes" element={<CheckoutAttributes />} />
         <Route path="sales" element={<Navigate to="sales/shipments" replace />} />
         <Route path="sales/shipments" element={<Shipments />} />
         <Route path="sales/recurring-payments" element={<RecurringPayments />} />
