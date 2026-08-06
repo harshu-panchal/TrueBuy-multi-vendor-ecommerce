@@ -4,6 +4,17 @@ import toast from "react-hot-toast";
 import { useAuthStore } from "./authStore";
 import { setPostLoginAction, setPostLoginRedirect } from "../utils/postLoginAction";
 import { getVariantSignature } from "../utils/variant";
+import api from "../utils/api";
+
+const syncCartToBackend = async (items = []) => {
+  const authState = useAuthStore.getState();
+  if (!authState.isAuthenticated) return;
+  try {
+    await api.post('/user/cart/sync', { items });
+  } catch (err) {
+    console.error('[Cart Sync] Failed to sync cart to backend:', err);
+  }
+};
 
 const getCartLineKey = (id, variant = {}) =>
   `${String(id)}::${getVariantSignature(variant)}`;
@@ -121,9 +132,10 @@ export const useCartStore = create(
         // Trigger cart animation
         const { triggerCartAnimation } = useUIStore.getState();
         triggerCartAnimation();
+        syncCartToBackend(get().items);
         return true;
       },
-      removeItem: (id, variant = null) =>
+      removeItem: (id, variant = null) => {
         set((state) => ({
           items: state.items.filter((item) => {
             if (String(item.id) !== String(id)) return true;
@@ -132,7 +144,9 @@ export const useCartStore = create(
             return candidate !== getCartLineKey(id, variant);
           }),
           ownerUserId: state.ownerUserId,
-        })),
+        }));
+        syncCartToBackend(get().items);
+      },
       updateQuantity: (id, quantity, variant = null, newStockQuantity = null) => {
         if (quantity <= 0) {
           get().removeItem(id, variant);
@@ -170,8 +184,12 @@ export const useCartStore = create(
           ),
           ownerUserId: state.ownerUserId,
         }));
+        syncCartToBackend(get().items);
       },
-      clearCart: () => set((state) => ({ items: [], ownerUserId: state.ownerUserId })),
+      clearCart: () => {
+        set((state) => ({ items: [], ownerUserId: state.ownerUserId }));
+        syncCartToBackend([]);
+      },
       getTotal: () => {
         const currentUserId = getCurrentAuthUserId();
         const ownerUserId = String(get().ownerUserId || "").trim();
@@ -229,6 +247,8 @@ export const useCartStore = create(
     }),
     {
       name: "cart-storage",
+      version: 1,
+      migrate: (persistedState) => persistedState,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         items: state.items,

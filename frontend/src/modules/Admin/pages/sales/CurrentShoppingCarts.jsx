@@ -125,35 +125,39 @@ const CurrentShoppingCarts = () => {
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-100 border-b border-gray-200 text-[11px] font-bold text-gray-600 uppercase">
               <tr>
-                <th className="p-2.5">Product</th>
-                <th className="p-2.5">Vendor Store</th>
-                <th className="p-2.5 text-center">Qty</th>
-                <th className="p-2.5 text-right">Unit Price</th>
-                <th className="p-2.5 text-right">Line Total</th>
+                <th className="p-3">Product</th>
+                <th className="p-3 text-center">Active</th>
+                <th className="p-3 text-center">Quantity</th>
+                <th className="p-3 text-right">Unit Price</th>
+                <th className="p-3 text-right">Total</th>
+                <th className="p-3 text-left">Store</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {(row.items || []).map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50/50">
-                  <td className="p-2.5 flex items-center gap-2.5">
+                <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                  <td className="p-3 flex items-center gap-2.5">
                     {item.image ? (
-                      <img src={item.image} alt={item.name} className="w-9 h-9 object-cover rounded-lg border border-gray-200" />
+                      <img src={item.image} alt={item.name} className="w-8 h-8 object-cover rounded-lg border border-gray-200" />
                     ) : (
-                      <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400">
                         <FiPackage />
                       </div>
                     )}
-                    <span className="font-bold text-gray-800 line-clamp-1">{item.name}</span>
+                    <span className="font-bold text-gray-900 line-clamp-1">{item.name}</span>
                   </td>
-                  <td className="p-2.5 font-medium text-gray-600">
+                  <td className="p-3 text-center font-bold text-green-600">
+                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 text-green-700 text-xs">✓</span>
+                  </td>
+                  <td className="p-3 text-center font-extrabold text-gray-900">{item.quantity || 1}</td>
+                  <td className="p-3 text-right font-semibold text-gray-700">{formatCurrency(item.price || 0)}</td>
+                  <td className="p-3 text-right font-extrabold text-primary-600">{formatCurrency(item.total || (item.price * item.quantity))}</td>
+                  <td className="p-3 text-left font-semibold text-gray-800">
                     <span className="flex items-center gap-1">
-                      <FiHome className="text-gray-400" />
-                      {item.vendorName || 'Vendor Store'}
+                      <FiHome className="text-gray-400 text-xs" />
+                      {item.vendorName || 'TruBuy Store'}
                     </span>
                   </td>
-                  <td className="p-2.5 text-center font-extrabold text-gray-900">{item.quantity || 1}</td>
-                  <td className="p-2.5 text-right font-semibold text-gray-700">{formatCurrency(item.price || 0)}</td>
-                  <td className="p-2.5 text-right font-extrabold text-primary-600">{formatCurrency(item.total || (item.price * item.quantity))}</td>
                 </tr>
               ))}
             </tbody>

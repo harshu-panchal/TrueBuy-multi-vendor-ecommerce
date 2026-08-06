@@ -129,7 +129,7 @@ export const getAllCategories = () =>
     api.get('/admin/categories');
 
 export const getPublicCategories = () =>
-    api.get('/admin/categories');
+    api.get('/categories/all');
 
 export const createCategory = (data) =>
     api.post('/admin/categories', data);

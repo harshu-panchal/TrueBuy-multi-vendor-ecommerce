@@ -7,6 +7,7 @@ import * as orderController from '../controllers/order.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
 import * as walletController from '../controllers/wallet.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
+import * as cartController from '../controllers/cart.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter, otpLimiter } from '../../../middlewares/rateLimiter.js';
@@ -92,5 +93,10 @@ router.get('/notifications', ...customerAuth, notificationController.getUserNoti
 router.put('/notifications/:id/read', ...customerAuth, notificationController.markUserNotificationAsRead);
 router.put('/notifications/read-all', ...customerAuth, notificationController.markAllUserNotificationsAsRead);
 router.delete('/notifications/:id', ...customerAuth, notificationController.deleteUserNotification);
+
+// Customer Cart routes (protected)
+router.get('/cart', ...customerAuth, cartController.getCart);
+router.post('/cart/sync', ...customerAuth, cartController.syncCart);
+router.delete('/cart', ...customerAuth, cartController.clearCart);
 
 export default router;

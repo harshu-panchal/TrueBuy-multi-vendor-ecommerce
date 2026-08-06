@@ -16,6 +16,8 @@ const DataTable = ({
   hover = true,
   className = '',
   renderMobileCard, // <--- New prop
+  expandedRows,
+  renderExpandedRow,
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -183,47 +185,61 @@ const DataTable = ({
                 </td>
               </tr>
             ) : (
-              paginatedData.map((row, index) => (
-                <tr
-                  key={row.id || index}
-                  onClick={() => onRowClick && onRowClick(row)}
-                  className={`
-                    ${onRowClick ? 'cursor-pointer' : ''} 
-                    ${hover ? 'hover:bg-gray-50' : ''} 
-                    ${striped && index % 2 !== 0 ? 'bg-gray-50/50' : ''}
-                    transition-colors
-                  `}
-                >
-                  {columns.map((column, colIdx) => {
-                    const rawValue = row[column.key];
-                    let displayValue = column.render
-                      ? column.render(rawValue, row)
-                      : rawValue;
+              paginatedData.map((row, index) => {
+                const rowId = row.id || row._id || index;
+                const isExpanded = Boolean(expandedRows && (expandedRows.has(row.id) || expandedRows.has(row._id) || expandedRows.has(rowId)));
 
-                    // Ensure value is renderable (not an object/array)
-                    if (typeof displayValue === 'object' && displayValue !== null && !React.isValidElement(displayValue)) {
-                      if (Array.isArray(displayValue)) {
-                        displayValue = `${displayValue.length} items`;
-                      } else {
-                        displayValue = JSON.stringify(displayValue);
-                      }
-                    }
+                return (
+                  <React.Fragment key={rowId}>
+                    <tr
+                      onClick={() => onRowClick && onRowClick(row)}
+                      className={`
+                        ${onRowClick ? 'cursor-pointer' : ''} 
+                        ${hover ? 'hover:bg-gray-50' : ''} 
+                        ${striped && index % 2 !== 0 ? 'bg-gray-50/50' : ''}
+                        ${isExpanded ? 'bg-primary-50/30 font-semibold' : ''}
+                        transition-colors
+                      `}
+                    >
+                      {columns.map((column, colIdx) => {
+                        const rawValue = row[column.key];
+                        let displayValue = column.render
+                          ? column.render(rawValue, row)
+                          : rawValue;
 
-                    return (
-                      <td
-                        key={column.key}
-                        className={`
-                          px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-700
-                          ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'}
-                          ${columnLines && colIdx < columns.length - 1 ? 'border-r border-gray-100' : ''}
-                        `}
-                      >
-                        {displayValue}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))
+                        // Ensure value is renderable (not an object/array)
+                        if (typeof displayValue === 'object' && displayValue !== null && !React.isValidElement(displayValue)) {
+                          if (Array.isArray(displayValue)) {
+                            displayValue = `${displayValue.length} items`;
+                          } else {
+                            displayValue = JSON.stringify(displayValue);
+                          }
+                        }
+
+                        return (
+                          <td
+                            key={column.key}
+                            className={`
+                              px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-gray-700
+                              ${column.align === 'center' ? 'text-center' : column.align === 'right' ? 'text-right' : 'text-left'}
+                              ${columnLines && colIdx < columns.length - 1 ? 'border-r border-gray-100' : ''}
+                            `}
+                          >
+                            {displayValue}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {isExpanded && renderExpandedRow && (
+                      <tr key={`expanded-${rowId}`}>
+                        <td colSpan={columns.length} className="p-0 border-b border-gray-200">
+                          {renderExpandedRow(row)}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })
             )}
           </tbody>
         </table>

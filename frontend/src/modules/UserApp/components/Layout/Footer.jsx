@@ -48,11 +48,11 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 justify-items-start lg:justify-items-center">
           {columns.map((col, colIdx) => (
-            <div key={col.id || col.title || colIdx} className="flex flex-col">
+            <div key={col.id || `${col.title}-${colIdx}`} className="flex flex-col">
               <h3 className="font-bold text-base mb-3 text-white">{col.title}</h3>
               <ul className="space-y-2">
                 {col.links.map((link, linkIdx) => (
-                  <li key={link.id || link.label || linkIdx}>
+                  <li key={link.id || `${link.label}-${linkIdx}`}>
                     <Link 
                       to={link.url} 
                       className="text-sm text-gray-300 hover:underline"
