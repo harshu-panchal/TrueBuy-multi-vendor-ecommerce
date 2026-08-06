@@ -19,6 +19,7 @@ import * as b2bController from '../controllers/b2b.controller.js';
 import * as financeController from '../controllers/finance.controller.js';
 import * as subscriptionController from '../controllers/subscription.controller.js';
 import * as giftCardController from '../controllers/giftCard.controller.js';
+import * as cartAdminController from '../controllers/cart.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -304,5 +305,8 @@ router.get('/gift-cards', ...adminAuth, giftCardController.getAllGiftCards);
 router.post('/gift-cards', ...adminAuth, giftCardController.createGiftCard);
 router.patch('/gift-cards/:id/status', ...adminAuth, giftCardController.updateGiftCardStatus);
 router.delete('/gift-cards/:id', ...adminAuth, giftCardController.deleteGiftCard);
+
+// ——— Shopping Carts —————————————————————————————————————————————————─────
+router.get('/shopping-carts', ...adminAuth, cartAdminController.getAllActiveShoppingCarts);
 
 export default router;

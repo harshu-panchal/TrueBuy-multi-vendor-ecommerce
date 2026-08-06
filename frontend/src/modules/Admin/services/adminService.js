@@ -95,6 +95,10 @@ export const updateGiftCardStatus = (id, isActivated) =>
 export const deleteGiftCard = (id) =>
     api.delete(`/admin/gift-cards/${id}`);
 
+// ─── Shopping Carts ───────────────────────────────────────────────────────────
+export const getAllShoppingCarts = (params = {}) =>
+    api.get('/admin/shopping-carts', { params });
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });

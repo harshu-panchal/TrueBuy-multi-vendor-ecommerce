@@ -23,7 +23,8 @@ export const useCategoryStore = create(
         try {
           const isAdminArea =
             typeof window !== 'undefined' &&
-            window.location.pathname.startsWith('/admin');
+            window.location.pathname.startsWith('/admin') &&
+            !window.location.pathname.startsWith('/admin/login');
           const response = isAdminArea
             ? await getAllCategories()
             : await getPublicCategories();
