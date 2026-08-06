@@ -57,6 +57,14 @@ const productBaseSchema = {
     guaranteePeriod: Joi.string().allow('').optional(),
     hsnCode: Joi.string().allow('').optional(),
     tags: Joi.array().items(Joi.string().trim()).optional(),
+    sku: Joi.string().trim().allow('').optional(),
+    gtin: Joi.string().trim().allow('').optional(),
+    mpn: Joi.string().trim().allow('').optional(),
+    countryOfOrigin: Joi.string().trim().allow('').optional(),
+    productCondition: Joi.string().valid('new', 'refurbished', 'used').optional(),
+    availableStartDate: Joi.date().allow(null, '').optional(),
+    availableEndDate: Joi.date().allow(null, '').optional(),
+    adminComment: Joi.string().allow('').optional(),
     seoTitle: Joi.string().allow('').optional(),
     seoDescription: Joi.string().allow('').optional(),
     relatedProducts: Joi.array().items(objectId).optional(),
@@ -115,6 +123,10 @@ export const createCategorySchema = Joi.object({
     parentId: objectId.allow(null, '').optional(),
     order: Joi.number().integer().min(0).optional(),
     isActive: Joi.boolean().optional(),
+    showOnHomePage: Joi.boolean().optional(),
+    badgeText: Joi.string().trim().allow('').optional(),
+    badgeStyle: Joi.string().valid('primary', 'secondary', 'success', 'danger', 'warning').optional(),
+    externalLink: Joi.string().trim().allow('').optional(),
 });
 
 export const updateCategorySchema = Joi.object({
@@ -125,6 +137,10 @@ export const updateCategorySchema = Joi.object({
     parentId: objectId.allow(null, '').optional(),
     order: Joi.number().integer().min(0).optional(),
     isActive: Joi.boolean().optional(),
+    showOnHomePage: Joi.boolean().optional(),
+    badgeText: Joi.string().trim().allow('').optional(),
+    badgeStyle: Joi.string().valid('primary', 'secondary', 'success', 'danger', 'warning').optional(),
+    externalLink: Joi.string().trim().allow('').optional(),
 }).min(1);
 
 export const reorderCategoriesSchema = Joi.object({

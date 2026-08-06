@@ -10,6 +10,10 @@ const categorySchema = new mongoose.Schema(
         parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', default: null, index: true },
         order: { type: Number, default: 0 },
         isActive: { type: Boolean, default: true },
+        showOnHomePage: { type: Boolean, default: false },
+        badgeText: { type: String, trim: true, default: '' },
+        badgeStyle: { type: String, enum: ['primary', 'secondary', 'success', 'danger', 'warning'], default: 'primary' },
+        externalLink: { type: String, trim: true, default: '' },
     },
     { timestamps: true }
 );

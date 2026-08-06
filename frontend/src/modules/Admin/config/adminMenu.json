@@ -38,13 +38,6 @@
   },
 
   {
-    "title": "Brands",
-    "route": "/admin/brands",
-    "children": [
-      "Manage Brands"
-    ]
-  },
-  {
     "title": "Customers",
     "route": "/admin/customers",
     "children": [

@@ -75,7 +75,7 @@ const getChildRoute = (parentRoute, childName) => {
       "Tax & Pricing": "/admin/products/tax-pricing",
       Manufacturers: "/admin/catalog/manufacturers",
       "Product Tags": "/admin/catalog/product-tags",
-      "Low Stock Report": "/admin/reports/inventory-report",
+      "Low Stock Report": "/admin/catalog/low-stock-report",
       "Recycle Bin": "/admin/catalog/recycle-bin",
     },
     "/admin/sales": {
@@ -253,6 +253,16 @@ const AdminSidebar = ({ isOpen, onClose }) => {
       if (item.route === "/admin/dashboard") {
         return location.pathname === "/admin/dashboard";
       }
+      if (item.children && item.children.length > 0) {
+        const isChildMatch = item.children.some((childName) => {
+          const childRoute = getChildRoute(item.route, childName);
+          return (
+            location.pathname === childRoute ||
+            (childRoute !== item.route && location.pathname.startsWith(childRoute))
+          );
+        });
+        if (isChildMatch) return true;
+      }
       // Check if current path is a child of this item (not just the parent route itself)
       const isChildRoute =
         location.pathname.startsWith(item.route) &&
@@ -278,6 +288,16 @@ const AdminSidebar = ({ isOpen, onClose }) => {
       const currentParent = adminMenu.find((item) => {
         if (item.route === "/admin/dashboard") {
           return location.pathname === "/admin/dashboard";
+        }
+        if (item.children && item.children.length > 0) {
+          const isChildMatch = item.children.some((childName) => {
+            const childRoute = getChildRoute(item.route, childName);
+            return (
+              location.pathname === childRoute ||
+              (childRoute !== item.route && location.pathname.startsWith(childRoute))
+            );
+          });
+          if (isChildMatch) return true;
         }
         return location.pathname.startsWith(item.route);
       });

@@ -550,8 +550,8 @@ const AppRoutes = () => {
           element={<Navigate to="/admin/categories" replace />}
         />
         <Route path="categories/category-order" element={<CategoryOrder />} />
-        <Route path="brands" element={<Brands />} />
-        <Route path="brands/manage-brands" element={<ManageBrands />} />
+        <Route path="brands" element={<Navigate to="/admin/catalog/manufacturers" replace />} />
+        <Route path="brands/manage-brands" element={<Navigate to="/admin/catalog/manufacturers" replace />} />
         <Route path="orders" element={<AdminOrders />} />
         <Route path="orders/:id" element={<OrderDetail />} />
         <Route path="orders/:id/invoice" element={<Invoice />} />
@@ -559,6 +559,7 @@ const AppRoutes = () => {
         <Route path="orders/order-tracking" element={<OrderTracking />} />
         <Route path="catalog/manufacturers" element={<Manufacturers />} />
         <Route path="catalog/product-tags" element={<ProductsTags />} />
+        <Route path="catalog/low-stock-report" element={<InventoryReport />} />
         <Route path="catalog/recycle-bin" element={<RecycleBin />} />
         <Route path="sales" element={<Navigate to="sales/shipments" replace />} />
         <Route path="sales/shipments" element={<Shipments />} />

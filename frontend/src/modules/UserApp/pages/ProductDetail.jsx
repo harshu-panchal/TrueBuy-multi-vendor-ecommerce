@@ -734,6 +734,21 @@ const MobileProductDetail = () => {
                         <span className="text-gray-400">›</span>
                       </Link>
                     )}
+                    {product.countryOfOrigin && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 border border-gray-200 text-gray-700 rounded-full text-xs font-semibold">
+                        🌐 {product.countryOfOrigin}
+                      </span>
+                    )}
+                    {product.productCondition && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-full text-xs font-bold uppercase">
+                        {product.productCondition}
+                      </span>
+                    )}
+                    {product.sku && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-50 border border-gray-200 text-gray-500 rounded-full text-[11px] font-mono font-bold">
+                        SKU: {product.sku}
+                      </span>
+                    )}
                   </div>
 
                   <h1 className="text-3xl lg:text-[40px] font-extrabold text-[#1a202c] mb-3 leading-[1.1] tracking-tight">

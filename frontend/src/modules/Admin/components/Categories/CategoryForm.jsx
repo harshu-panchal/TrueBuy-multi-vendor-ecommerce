@@ -29,6 +29,10 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
     image: "",
     parentId: null,
     isActive: true,
+    showOnHomePage: false,
+    badgeText: "",
+    badgeStyle: "primary",
+    externalLink: "",
     order: 0,
   });
 
@@ -40,6 +44,10 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
         image: category.image || "",
         parentId: category.parentId || null,
         isActive: category.isActive !== undefined ? category.isActive : true,
+        showOnHomePage: category.showOnHomePage || false,
+        badgeText: category.badgeText || "",
+        badgeStyle: category.badgeStyle || "primary",
+        externalLink: category.externalLink || "",
         order: category.order || 0,
       });
     } else if (parentId !== null) {
@@ -49,6 +57,10 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
         image: "",
         parentId: parentId,
         isActive: true,
+        showOnHomePage: false,
+        badgeText: "",
+        badgeStyle: "primary",
+        externalLink: "",
         order: 0,
       });
     }
@@ -369,6 +381,53 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      External Link (Optional Redirect)
+                    </label>
+                    <input
+                      type="url"
+                      name="externalLink"
+                      value={formData.externalLink}
+                      onChange={handleChange}
+                      placeholder="e.g. https://promos.example.com"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Badge Text (e.g. HOT, NEW)
+                      </label>
+                      <input
+                        type="text"
+                        name="badgeText"
+                        value={formData.badgeText}
+                        onChange={handleChange}
+                        placeholder="e.g. HOT, 50% OFF"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        Badge Style
+                      </label>
+                      <select
+                        name="badgeStyle"
+                        value={formData.badgeStyle}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white text-sm"
+                      >
+                        <option value="primary">Primary (Blue)</option>
+                        <option value="secondary">Secondary (Purple)</option>
+                        <option value="success">Success (Green)</option>
+                        <option value="danger">Danger (Red)</option>
+                        <option value="warning">Warning (Yellow)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Display Order
                     </label>
                     <input
@@ -384,18 +443,33 @@ const CategoryForm = ({ category, parentId, onClose, onSave }) => {
                     />
                   </div>
 
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="isActive"
-                      checked={formData.isActive}
-                      onChange={handleChange}
-                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
-                    />
-                    <span className="text-sm font-semibold text-gray-700">
-                      Active
-                    </span>
-                  </label>
+                  <div className="flex flex-wrap items-center gap-6 pt-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="isActive"
+                        checked={formData.isActive}
+                        onChange={handleChange}
+                        className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                      />
+                      <span className="text-sm font-semibold text-gray-700">
+                        Active (Published)
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        name="showOnHomePage"
+                        checked={formData.showOnHomePage}
+                        onChange={handleChange}
+                        className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                      />
+                      <span className="text-sm font-semibold text-gray-700">
+                        Show on Home Page Grid
+                      </span>
+                    </label>
+                  </div>
                 </div>
               </div>
 

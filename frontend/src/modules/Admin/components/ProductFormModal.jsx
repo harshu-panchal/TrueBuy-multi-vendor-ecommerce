@@ -81,6 +81,14 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
     taxIncluded: false,
     description: "",
     tags: [],
+    sku: "",
+    gtin: "",
+    mpn: "",
+    countryOfOrigin: "India",
+    productCondition: "new",
+    availableStartDate: "",
+    availableEndDate: "",
+    adminComment: "",
     variants: {
       sizes: [],
       colors: [],
@@ -214,6 +222,14 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
               product.taxIncluded !== undefined ? product.taxIncluded : false,
             description: product.description || "",
             tags: product.tags || [],
+            sku: product.sku || "",
+            gtin: product.gtin || "",
+            mpn: product.mpn || "",
+            countryOfOrigin: product.countryOfOrigin || "India",
+            productCondition: product.productCondition || "new",
+            availableStartDate: product.availableStartDate ? new Date(product.availableStartDate).toISOString().substring(0, 10) : "",
+            availableEndDate: product.availableEndDate ? new Date(product.availableEndDate).toISOString().substring(0, 10) : "",
+            adminComment: product.adminComment || "",
             variants: {
               sizes: product.variants?.sizes || [],
               colors: product.variants?.colors || [],
@@ -870,6 +886,106 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                         />
                       </div>
 
+                      <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            SKU (Stock Keeping Unit)
+                          </label>
+                          <input
+                            type="text"
+                            name="sku"
+                            value={formData.sku}
+                            onChange={handleChange}
+                            placeholder="e.g. ELEC-S23-BLK"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            GTIN (Barcode / EAN)
+                          </label>
+                          <input
+                            type="text"
+                            name="gtin"
+                            value={formData.gtin}
+                            onChange={handleChange}
+                            placeholder="e.g. 8901234567890"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            MPN (Manufacturer Part #)
+                          </label>
+                          <input
+                            type="text"
+                            name="mpn"
+                            value={formData.mpn}
+                            onChange={handleChange}
+                            placeholder="e.g. MPN-88402"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Country of Origin
+                          </label>
+                          <input
+                            type="text"
+                            name="countryOfOrigin"
+                            value={formData.countryOfOrigin}
+                            onChange={handleChange}
+                            placeholder="e.g. India, Vietnam, Germany"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Product Condition
+                          </label>
+                          <select
+                            name="productCondition"
+                            value={formData.productCondition}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+                          >
+                            <option value="new">New</option>
+                            <option value="refurbished">Refurbished</option>
+                            <option value="used">Used</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Available Start Date
+                          </label>
+                          <input
+                            type="date"
+                            name="availableStartDate"
+                            value={formData.availableStartDate}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Available End Date
+                          </label>
+                          <input
+                            type="date"
+                            name="availableEndDate"
+                            value={formData.availableEndDate}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          />
+                        </div>
+                      </div>
+
                       <div className="md:col-span-2">
                         <label className="block text-sm font-semibold text-gray-700 mb-2">
                           Description
@@ -881,6 +997,20 @@ const ProductFormModal = ({ isOpen, onClose, productId, onSuccess }) => {
                           rows={3}
                           className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                           placeholder="Product description..."
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Admin Comment (Internal Only)
+                        </label>
+                        <textarea
+                          name="adminComment"
+                          value={formData.adminComment}
+                          onChange={handleChange}
+                          rows={2}
+                          className="w-full px-3 py-2 text-xs border border-gray-200 bg-gray-50 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                          placeholder="Internal admin notes (e.g. Vendor verification notes)..."
                         />
                       </div>
                     </div>
