@@ -1,273 +1,282 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiFilter, 
-  FiX, 
-  FiSettings, 
-  FiCalendar,
-  FiSlash,
-  FiBox,
-  FiCheck,
-  FiClock
+  FiSearch, 
+  FiSlash, 
+  FiBox, 
+  FiRefreshCw, 
+  FiDownload,
+  FiPackage,
+  FiHome,
+  FiCheckCircle,
+  FiXCircle
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import Badge from '../../../../shared/components/Badge';
+import { formatCurrency, formatDateTime } from '../../utils/adminHelpers';
+import { getNeverPurchased } from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const ProductsNeverPurchased = () => {
-  // UI State
-  const [showFilter, setShowFilter] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Filter State
+  const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     startDate: '',
     endDate: '',
   });
 
-  const [tableSettings, setTableSettings] = useState({
-    rowLines: true,
-    columnLines: false,
-    striped: false,
-    hover: true,
-  });
+  // Fetch Data from Backend API
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await getNeverPurchased({
+        search: searchQuery,
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        limit: 200,
+      });
 
-  const [visibleColumns, setVisibleColumns] = useState({
-    image: true,
-    id: true,
-    name: true,
-    sku: true,
-    gtin: true,
-    mpn: true,
-    price: true,
-    stock: true,
-    created: true,
-    updated: true,
-    published: true,
-    totalQty: true,
-    totalAmt: true,
-  });
+      const fetchedProducts = response.data?.products || [];
+      setProducts(fetchedProducts);
+    } catch (error) {
+      console.error("Failed to fetch never purchased products:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery, filters]);
 
-  // Mock Data (Empty for now)
-  const initialData = [];
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const [products] = useState(initialData);
+  // Export CSV
+  const handleExportCSV = () => {
+    const exportData = products.map(p => ({
+      'Product Name': p.name,
+      'SKU': p.sku,
+      'Price': p.price,
+      'Stock Quantity': p.stock,
+      'Total Sold': '0 Items',
+      'Created Date': formatDateTime(p.created),
+      'Vendor Store': p.vendorName,
+    }));
 
-  // Filtering Logic
-  const filteredData = useMemo(() => {
-    return products.filter(item => {
-      const itemDate = new Date(item.created).getTime();
-      const start = filters.startDate ? new Date(filters.startDate).getTime() : 0;
-      const end = filters.endDate ? new Date(filters.endDate).getTime() : Infinity;
-      return itemDate >= start && itemDate <= end;
-    });
-  }, [products, filters]);
+    if (exportData.length === 0) {
+      toast.error('No products never purchased records to export');
+      return;
+    }
 
-  const handleResetFilters = () => {
-    setFilters({ startDate: '', endDate: '' });
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Products_Never_Purchased_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Table Columns
+  // Desktop Table Columns
   const columns = [
     { 
       key: 'image', 
       label: 'Image', 
-      hidden: !visibleColumns.image,
-      render: (v) => (
-        <div className="w-12 h-12 rounded-lg border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center p-1 grayscale group-hover:grayscale-0 transition-all duration-500">
-          <img src={v} alt="product" className="max-w-full max-h-full object-cover rounded opacity-40 group-hover:opacity-100" />
+      sortable: false,
+      render: (v, row) => (
+        <div className="w-10 h-10 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-0.5 grayscale hover:grayscale-0 transition-all">
+          {v ? (
+            <img src={v} alt={row.name} className="w-full h-full object-cover rounded" />
+          ) : (
+            <FiPackage className="text-gray-400" />
+          )}
         </div>
       )
     },
-    { key: 'id', label: 'ID', hidden: !visibleColumns.id, render: (v) => <span className="font-mono text-[10px] font-black tracking-tight text-gray-300">{v}</span> },
-    { key: 'name', label: 'Product Name', hidden: !visibleColumns.name, render: (v) => <span className="font-bold text-gray-800 whitespace-nowrap tracking-tight">{v}</span> },
-    { key: 'sku', label: 'SKU', hidden: !visibleColumns.sku, render: (v) => <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{v}</span> },
-    { key: 'gtin', label: 'GTIN', hidden: !visibleColumns.gtin, render: (v) => <span className="text-[9px] text-gray-300 font-mono italic whitespace-nowrap">{v}</span> },
-    { key: 'mpn', label: 'MPN', hidden: !visibleColumns.mpn, render: (v) => <span className="text-[9px] text-gray-300 font-mono italic whitespace-nowrap">{v}</span> },
-    { key: 'price', label: 'Price', hidden: !visibleColumns.price, render: (v) => <span className="font-bold text-gray-700">{v}</span> },
-    { key: 'stock', label: 'Stock Qty', hidden: !visibleColumns.stock, render: (v) => <span className="font-black text-gray-400 text-xs">{v}</span> },
-    { key: 'created', label: 'Created On', hidden: !visibleColumns.created, render: (v) => <span className="text-[10px] text-gray-400 whitespace-nowrap font-medium italic">{v}</span> },
-    { key: 'updated', label: 'Updated On', hidden: !visibleColumns.updated, render: (v) => <span className="text-[10px] text-gray-400 whitespace-nowrap font-medium italic">{v}</span> },
     { 
-      key: 'published', 
-      label: 'Status', 
-      hidden: !visibleColumns.published,
+      key: 'name', 
+      label: 'Product Name', 
+      sortable: true,
+      render: (v, row) => (
+        <div className="flex flex-col max-w-[220px]">
+          <span className="font-bold text-xs text-gray-900 truncate">{v}</span>
+          <span className="text-[11px] text-gray-500 font-mono">SKU: {row.sku || 'N/A'}</span>
+        </div>
+      )
+    },
+    { 
+      key: 'price', 
+      label: 'Price', 
+      sortable: true,
+      render: (v) => <span className="font-semibold text-xs text-gray-800 whitespace-nowrap">{formatCurrency(v || 0)}</span> 
+    },
+    { 
+      key: 'stock', 
+      label: 'Stock Qty', 
+      sortable: true,
       render: (v) => (
-        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${v ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-          {v ? 'Active' : 'Closed'}
+        <span className={`text-xs font-bold ${v <= 5 ? 'text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-200' : 'text-gray-700'}`}>
+          {v} in stock
         </span>
       )
     },
-    { key: 'totalQty', label: 'Total Sold', hidden: !visibleColumns.totalQty, render: () => <span className="font-black text-gray-300 bg-gray-50 p-1 px-2.5 rounded-lg text-[9px] uppercase tracking-tighter italic border border-gray-100">0 Items</span> },
-    { key: 'totalAmt', label: 'Total Amt', hidden: !visibleColumns.totalAmt, render: () => <span className="font-black text-gray-300 italic text-[10px]">₹0.00</span> },
+    { 
+      key: 'totalQty', 
+      label: 'Total Sold', 
+      sortable: false,
+      render: () => (
+        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">
+          <FiSlash size={12} className="text-gray-400" /> 0 Items Sold
+        </span>
+      )
+    },
+    { 
+      key: 'created', 
+      label: 'Created On', 
+      sortable: true,
+      render: (v) => <span className="text-xs text-gray-600 whitespace-nowrap">{formatDateTime(v)}</span> 
+    },
+    { 
+      key: 'published', 
+      label: 'Status', 
+      sortable: true,
+      render: (v) => v ? (
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
+          <FiCheckCircle size={12} /> Active
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1 text-xs font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full border border-gray-200">
+          <FiXCircle size={12} /> Draft
+        </span>
+      )
+    },
   ];
 
-  const filteredColumns = columns.filter(col => !col.hidden);
+  // Mobile Responsive Card Renderer
+  const renderMobileCard = (row) => {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        {/* Header */}
+        <div className="flex justify-between items-start border-b border-gray-100 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-12 h-12 rounded-lg border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center p-0.5 flex-shrink-0 grayscale">
+              {row.image ? (
+                <img src={row.image} alt={row.name} className="w-full h-full object-cover rounded" />
+              ) : (
+                <FiPackage className="text-gray-400" />
+              )}
+            </div>
+            <div>
+              <p className="font-bold text-xs text-gray-900 line-clamp-1">{row.name}</p>
+              <p className="text-[11px] text-gray-500 font-mono">SKU: {row.sku || 'N/A'}</p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+            0 Sold
+          </span>
+        </div>
+
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Unit Price</p>
+            <p className="font-extrabold text-gray-900 text-sm">{formatCurrency(row.price || 0)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Stock Available</p>
+            <p className={`font-bold ${row.stock <= 5 ? 'text-red-600' : 'text-gray-700'}`}>{row.stock} in stock</p>
+          </div>
+          <div className="col-span-2 pt-1 border-t border-gray-200/60 flex justify-between items-center">
+            <span className="text-[10px] font-bold text-gray-400 uppercase">Listing Date</span>
+            <span className="font-semibold text-gray-700">{formatDateTime(row.created)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6 pb-20"
+      className="space-y-6"
     >
-      {/* Mobile Header */}
-      <div className="lg:hidden">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 font-black tracking-tight">Never Purchased</h1>
-        <p className="text-sm sm:text-base text-gray-600">Identifying stagnant inventory and aging products</p>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1.5 flex items-center gap-2">
+            <span>Products Never Purchased</span>
+            <FiSlash className="text-gray-400 text-xl" />
+          </h1>
+          <p className="text-sm text-gray-500">
+            Audit dead stock and stagnant catalog items that have generated zero completed sales
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchData}
+            className="p-2.5 text-gray-600 hover:text-gray-900 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-colors"
+            title="Refresh Unsold Products"
+          >
+            <FiRefreshCw className={isLoading ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <FiDownload />
+            <span>Export CSV</span>
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-visible relative">
-        
-        {/* Action Bar */}
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-primary-600">
-            <div className="p-2 bg-primary-50 rounded-lg"><FiSlash /></div>
-            <span className="text-sm font-bold text-gray-600">Stagnant Inventory</span>
+      {/* Filter Toolbar */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Search */}
+          <div className="relative">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search product name or SKU..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
+            />
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilter(!showFilter)}
-              className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium flex items-center gap-2 shadow-sm ${
-                showFilter || Object.values(filters).some(v => v !== '')
-                  ? 'bg-primary-600 text-white border-primary-600 shadow-lg shadow-primary-100'
-                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <FiFilter className="text-xs" />
-              <span>Filter</span>
-            </button>
-          </div>
-        </div>
+          {/* Start Date */}
+          <input
+            type="date"
+            value={filters.startDate}
+            onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
+          />
 
-        {/* Filter Form Overlay */}
-        <AnimatePresence>
-          {showFilter && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden bg-gray-50/50 border-b border-gray-100"
-            >
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <FiCalendar /> Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={filters.startDate}
-                    onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-primary-500 outline-none transition-all shadow-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <FiCalendar /> End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={filters.endDate}
-                    onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-primary-500 outline-none transition-all shadow-sm"
-                  />
-                </div>
-
-                <div className="lg:col-span-2 flex items-center justify-between pb-1 border-b border-gray-100 lg:border-none">
-                  <div className="flex flex-col gap-0.5">
-                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Inventory Aging</span>
-                     <span className="text-[9px] text-gray-300 italic">Filter products by creation window</span>
-                  </div>
-                  <button onClick={handleResetFilters} className="text-xs font-bold text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors">
-                    <FiX size={14} /> Clear Window
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Table Section */}
-        <div className="p-0 overflow-x-auto min-h-[400px]">
-          <DataTable
-            data={filteredData}
-            columns={filteredColumns}
-            pagination={false}
-            rowLines={tableSettings.rowLines}
-            columnLines={tableSettings.columnLines}
-            className={`${tableSettings.striped ? '[&_tbody_tr:nth-child(even)]:bg-gray-50/50' : ''} ${!tableSettings.hover ? '[&_tbody_tr]:hover:bg-transparent' : ''}`}
+          {/* End Date */}
+          <input
+            type="date"
+            value={filters.endDate}
+            onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500"
           />
         </div>
+      </div>
 
-        {/* Footer info/pagination with Settings */}
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-             <FiClock className="text-gray-300" /> TOTAL_ZERO_SALE_ITEMS: {filteredData.length}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Settings Button */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 rounded border transition-all ${showSettings ? 'bg-primary-50 border-primary-300 text-primary-600 shadow-sm' : 'bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300'}`}
-              >
-                <FiSettings className={`${showSettings ? 'animate-spin-slow' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showSettings && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full right-0 mb-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 z-50 pointer-events-auto"
-                  >
-                    <div className="space-y-4 text-left">
-                      <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-50 pb-2 mb-3">View Matrix</h4>
-                      
-                      {/* Toggles */}
-                      <div className="space-y-3">
-                        {['Row lines', 'Column lines', 'Striped', 'Hover'].map(label => {
-                          const key = label === 'Row lines' ? 'rowLines' : label === 'Column lines' ? 'columnLines' : label.toLowerCase();
-                          return (
-                            <div key={label} className="flex items-center justify-between group">
-                              <span className="text-xs font-bold text-gray-600">{label}</span>
-                              <button
-                                onClick={() => setTableSettings(s => ({ ...s, [key]: !s[key] }))}
-                                className={`w-10 h-5 rounded-full relative transition-colors duration-200 shadow-inner ${tableSettings[key] ? 'bg-primary-600' : 'bg-gray-300'}`}
-                              >
-                                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${tableSettings[key] ? 'translate-x-5' : 'translate-x-1'}`} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Column Visibility */}
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-3 border-t border-gray-50">
-                        {Object.entries(visibleColumns).map(([key, isVisible]) => (
-                          <label key={key} className="flex items-center gap-2 cursor-pointer group">
-                            <div
-                              onClick={() => setVisibleColumns(v => ({ ...v, [key]: !v[key] }))}
-                              className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${isVisible ? 'bg-primary-600 border-primary-600' : 'bg-white border-gray-300'}`}
-                            >
-                              {isVisible && <FiCheck className="text-white text-[10px]" />}
-                            </div>
-                            <span className={`text-[10px] font-bold uppercase transition-colors ${isVisible ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                              {key}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
+      {/* Main DataTable */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <DataTable
+          data={products}
+          columns={columns}
+          pagination={true}
+          itemsPerPage={15}
+          isLoading={isLoading}
+          renderMobileCard={renderMobileCard}
+        />
       </div>
     </motion.div>
   );

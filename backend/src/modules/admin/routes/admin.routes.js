@@ -22,6 +22,7 @@ import * as giftCardController from '../controllers/giftCard.controller.js';
 import * as cartAdminController from '../controllers/cart.controller.js';
 import * as wishlistAdminController from '../controllers/wishlist.controller.js';
 import * as bestsellerController from '../controllers/bestseller.controller.js';
+import * as neverPurchasedController from '../controllers/neverPurchased.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -316,5 +317,8 @@ router.get('/wishlists', ...adminAuth, wishlistAdminController.getAllActiveWishl
 
 // ——— Bestsellers —————————————————————————————————————————————————─────────
 router.get('/bestsellers', ...adminAuth, bestsellerController.getBestsellersReport);
+
+// ——— Never Purchased Products ————————————————————————————————————————————
+router.get('/never-purchased', ...adminAuth, neverPurchasedController.getNeverPurchasedReport);
 
 export default router;

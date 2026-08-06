@@ -107,6 +107,10 @@ export const getAllWishlists = (params = {}) =>
 export const getBestsellers = (params = {}) =>
     api.get('/admin/bestsellers', { params });
 
+// ─── Never Purchased ──────────────────────────────────────────────────────────
+export const getNeverPurchased = (params = {}) =>
+    api.get('/admin/never-purchased', { params });
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });
