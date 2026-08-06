@@ -13,12 +13,13 @@ export const useBrandStore = create(
       initialize: async () => {
         set({ isLoading: true });
         try {
-          const isVendorArea =
+          const isAdminArea =
             typeof window !== 'undefined' &&
-            window.location.pathname.startsWith('/vendor');
-          const response = isVendorArea
-            ? await getPublicBrands()
-            : await getAllBrands();
+            window.location.pathname.startsWith('/admin') &&
+            !window.location.pathname.startsWith('/admin/login');
+          const response = isAdminArea
+            ? await getAllBrands()
+            : await getPublicBrands();
           const normalizedBrands = response.data.map(brand => ({
             ...brand,
             id: brand._id // Ensure UI compatibility by aliasing _id to id
