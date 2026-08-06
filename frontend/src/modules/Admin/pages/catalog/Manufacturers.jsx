@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiFilter,
@@ -23,15 +23,28 @@ import {
   FiChevronLeft,
   FiLayers,
   FiUpload,
-  FiTrash2
+  FiTrash2,
+  FiEdit,
+  FiEye,
+  FiEyeOff
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import ConfirmModal from '../../components/ConfirmModal';
 import { uploadAdminImage } from '../../services/adminService';
+import { useBrandStore } from '../../../../shared/store/brandStore';
 import toast from 'react-hot-toast';
 
 const Manufacturers = () => {
+  const { brands, isLoading, initialize, createBrand, updateBrand, deleteBrand, bulkDeleteBrands, toggleBrandStatus } = useBrandStore();
+
+  useEffect(() => {
+    initialize();
+  }, []);
+
   // Navigation State
   const [view, setView] = useState('list'); // 'list' or 'add'
+  const [editingId, setEditingId] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
   const [activeTab, setActiveTab] = useState('General');
 
   // UI State
@@ -47,6 +60,7 @@ const Manufacturers = () => {
     name: '',
     description: '',
     picture: null,
+    website: '',
     allowSelectPageSize: 'No',
     pageSizeOptions: '10, 20, 50',
     template: 'Default Desktop',
@@ -81,12 +95,21 @@ const Manufacturers = () => {
     displayOrder: true,
     stores: true,
     created: true,
-    updated: true,
+    actions: true,
   });
 
-  // Mock Data
-  const initialData = [];
-  const [manufacturers] = useState(initialData);
+  const manufacturers = useMemo(() => {
+    return brands.map((b, idx) => ({
+      ...b,
+      id: String(b.id || b._id),
+      name: b.name || '',
+      published: b.isActive !== undefined ? b.isActive : true,
+      displayOrder: b.displayOrder || idx + 1,
+      picture: b.logo || b.picture || null,
+      created: b.createdAt ? new Date(b.createdAt).toLocaleDateString() : 'N/A',
+      updated: b.updatedAt ? new Date(b.updatedAt).toLocaleDateString() : 'N/A',
+    }));
+  }, [brands]);
 
   const filteredData = useMemo(() => {
     return manufacturers.filter(item => {
@@ -143,6 +166,107 @@ const Manufacturers = () => {
     setFormData(prev => ({ ...prev, picture: null }));
   };
 
+  const resetForm = () => {
+    setFormData({
+      displayOrder: 0,
+      published: true,
+      name: '',
+      description: '',
+      picture: null,
+      website: '',
+      allowSelectPageSize: 'No',
+      pageSizeOptions: '10, 20, 50',
+      template: 'Default Desktop',
+      discounts: [],
+      stores: [],
+      roles: [],
+      seo: {
+        titleTag: '',
+        metaDescription: '',
+        metaKeywords: '',
+        urlAlias: ''
+      }
+    });
+    setEditingId(null);
+  };
+
+  const handleOpenAdd = () => {
+    resetForm();
+    setView('add');
+  };
+
+  const handleOpenEdit = (row) => {
+    setEditingId(row.id);
+    setFormData({
+      displayOrder: row.displayOrder || 0,
+      published: row.published !== undefined ? row.published : true,
+      name: row.name || '',
+      description: row.description || '',
+      picture: row.picture || row.logo || null,
+      website: row.website || '',
+      allowSelectPageSize: 'No',
+      pageSizeOptions: '10, 20, 50',
+      template: 'Default Desktop',
+      discounts: [],
+      stores: [],
+      roles: [],
+      seo: {
+        titleTag: '',
+        metaDescription: '',
+        metaKeywords: '',
+        urlAlias: ''
+      }
+    });
+    setView('add');
+  };
+
+  const handleSave = async (stayInForm = false) => {
+    if (!formData.name.trim()) {
+      toast.error('Manufacturer name is required');
+      return;
+    }
+
+    const payload = {
+      name: formData.name.trim(),
+      description: formData.description || '',
+      logo: formData.picture || '',
+      website: formData.website || '',
+      isActive: Boolean(formData.published),
+    };
+
+    try {
+      if (editingId) {
+        await updateBrand(editingId, payload);
+      } else {
+        await createBrand(payload);
+      }
+      if (!stayInForm) {
+        resetForm();
+        setView('list');
+      } else {
+        toast.success('Form saved cleanly.');
+      }
+    } catch {
+      // Interceptor handles toasts
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleteModal.id) {
+      await deleteBrand(deleteModal.id);
+    }
+    setDeleteModal({ isOpen: false, id: null });
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const success = await bulkDeleteBrands(ids);
+    if (success) {
+      setSelectedIds(new Set());
+    }
+  };
+
   // Table Columns
   const columns = [
     {
@@ -165,22 +289,70 @@ const Manufacturers = () => {
         />
       )
     },
-    { key: 'id', label: 'ID', hidden: !visibleColumns.id, render: (v) => <span className="font-mono text-[10px] font-black tracking-tight text-gray-400">{v}</span> },
-    { key: 'name', label: 'Name', hidden: !visibleColumns.name, render: (v) => <span className="font-bold text-gray-800 tracking-tight">{v}</span> },
+    {
+      key: 'name',
+      label: 'Manufacturer',
+      hidden: !visibleColumns.name,
+      render: (_, row) => (
+        <div className="flex items-center gap-3">
+          {row.picture ? (
+            <img src={row.picture} alt={row.name} className="w-9 h-9 object-contain rounded-lg border border-gray-200 bg-white p-1" />
+          ) : (
+            <div className="w-9 h-9 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
+              {row.name.charAt(0)}
+            </div>
+          )}
+          <div>
+            <span className="font-bold text-gray-800 tracking-tight block text-sm">{row.name}</span>
+            {row.website && (
+              <a href={row.website} target="_blank" rel="noreferrer" className="text-[11px] text-blue-600 hover:underline">
+                {row.website}
+              </a>
+            )}
+          </div>
+        </div>
+      )
+    },
     {
       key: 'published',
-      label: 'Published',
+      label: 'Status',
       hidden: !visibleColumns.published,
-      render: (v) => (
-        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${v ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+      render: (v, row) => (
+        <button
+          onClick={() => toggleBrandStatus(row.id)}
+          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight transition-colors ${
+            v ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-600 hover:bg-red-200'
+          }`}
+        >
           {v ? 'Published' : 'Draft'}
-        </span>
+        </button>
       )
     },
     { key: 'displayOrder', label: 'Order', hidden: !visibleColumns.displayOrder, render: (v) => <span className="font-mono text-[10px] bg-gray-50 px-2 py-1 rounded border border-gray-100 text-gray-500">{v}</span> },
-    { key: 'stores', label: 'Limited to Stores', hidden: !visibleColumns.stores, render: (v) => <span className="text-[10px] font-medium text-gray-400 italic">{v || 'No restriction'}</span> },
     { key: 'created', label: 'Created On', hidden: !visibleColumns.created, render: (v) => <span className="text-[10px] font-medium text-gray-400 whitespace-nowrap">{v}</span> },
-    { key: 'updated', label: 'Updated On', hidden: !visibleColumns.updated, render: (v) => <span className="text-[10px] font-medium text-gray-400 whitespace-nowrap">{v}</span> },
+    {
+      key: 'actions',
+      label: 'Actions',
+      hidden: !visibleColumns.actions,
+      render: (_, row) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleOpenEdit(row)}
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Edit Manufacturer"
+          >
+            <FiEdit size={16} />
+          </button>
+          <button
+            onClick={() => setDeleteModal({ isOpen: true, id: row.id })}
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            title="Delete Manufacturer"
+          >
+            <FiTrash2 size={16} />
+          </button>
+        </div>
+      )
+    }
   ];
 
   const filteredColumns = columns.filter(col => !col.hidden);
@@ -202,17 +374,27 @@ const Manufacturers = () => {
               <FiChevronLeft size={20} />
             </button>
             <div>
-              <h1 className="text-2xl font-black text-gray-800 tracking-tight">Add a New Manufacturer</h1>
-              <p className="text-xs text-gray-500 font-medium">Create a new supply source for your catalog</p>
+              <h1 className="text-2xl font-black text-gray-800 tracking-tight">
+                {editingId ? 'Edit Manufacturer' : 'Add a New Manufacturer'}
+              </h1>
+              <p className="text-xs text-gray-500 font-medium">Create or update a supply source for your catalog</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center gap-2">
+            <button
+              onClick={() => handleSave(false)}
+              disabled={isLoading}
+              className="px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-gray-50 transition-all flex items-center gap-2"
+            >
               <FiSave className="text-gray-400" /> Save
             </button>
-            <button className="px-5 py-2.5 bg-primary-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 flex items-center gap-2">
-              <FiCheck /> Save & Continue
+            <button
+              onClick={() => handleSave(true)}
+              disabled={isLoading}
+              className="px-5 py-2.5 bg-primary-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-primary-700 transition-all shadow-lg shadow-primary-100 flex items-center gap-2"
+            >
+              <FiCheck /> Save & Continue Edit
             </button>
           </div>
         </div>
@@ -556,8 +738,19 @@ const Manufacturers = () => {
               <span className="text-sm font-bold text-gray-600">Manufacturer Directory</span>
             </div>
 
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                disabled={isLoading}
+                className="px-4 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all text-xs font-bold flex items-center gap-2 shadow-sm"
+              >
+                <FiTrash2 className="text-sm" />
+                <span>Delete Selected ({selectedIds.size})</span>
+              </button>
+            )}
+
             <button
-              onClick={() => setView('add')}
+              onClick={handleOpenAdd}
               className="px-6 py-2.5 bg-[#7e3af2] text-white rounded-xl hover:bg-[#6c2bd9] transition-all text-sm font-bold flex items-center gap-2 shadow-lg shadow-purple-100 active:scale-95"
             >
               <FiPlus className="text-lg" />
@@ -710,6 +903,16 @@ const Manufacturers = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, id: null })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Manufacturer"
+        message="Are you sure you want to delete this manufacturer? This action cannot be undone if products depend on it."
+        confirmText="Delete"
+        type="danger"
+      />
     </motion.div>
   );
 };
