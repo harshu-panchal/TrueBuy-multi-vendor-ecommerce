@@ -294,11 +294,8 @@ router.put('/settings', ...adminAuth, validate(settingUpdateSchema), systemContr
 router.get('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'params'), systemController.getPolicy);
 router.put('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'params'), validate(policyUpdateSchema), systemController.updatePolicy);
 
-// ——— Subscriptions ——————————————————————————————————————————————————————
-// router.post('/subscription-plans', ...adminAuth, validate(createSubscriptionPlanSchema), subscriptionController.createPlan);
-// router.get('/subscription-plans', ...adminAuth, subscriptionController.getAllPlans);
-// router.get('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.getPlanById);
-// router.put('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), validate(updateSubscriptionPlanSchema), subscriptionController.updatePlan);
-// router.delete('/subscription-plans/:id', ...adminAuth, validate(subscriptionPlanIdParamSchema, 'params'), subscriptionController.deletePlan);
+// ——— Subscriptions & Recurring Payments ——————————————————————————————————
+router.get('/recurring-payments', ...adminAuth, subscriptionController.getAllRecurringPayments);
+router.patch('/recurring-payments/:id/status', ...adminAuth, subscriptionController.updateRecurringPaymentStatus);
 
 export default router;

@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   FiSearch,
@@ -27,7 +28,7 @@ import ConfirmModal from "../../components/ConfirmModal";
 import AnimatedSelect from "../../components/AnimatedSelect";
 import { formatPrice } from "../../../../shared/utils/helpers";
 import { formatCurrency, formatDateTime } from "../../utils/adminHelpers";
-import { getAllOrders, deleteOrder } from "../../services/adminService";
+import { getAllOrders, deleteOrder, updateOrderStatus } from "../../services/adminService";
 import toast from "react-hot-toast";
 
 // OrderItemsDropdown component
@@ -212,7 +213,7 @@ const OrderItemsDropdown = ({ items, orderTotal }) => {
   );
 };
 
-// OrderActionsDropdown component
+// OrderActionsDropdown component with Viewport Overlay Portal
 const OrderActionsDropdown = ({
   order,
   onOrderDetails,
@@ -223,23 +224,55 @@ const OrderActionsDropdown = ({
   onToggle,
   onClose,
 }) => {
-  const [openUpward, setOpenUpward] = useState(false);
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0, ready: false });
 
-  // Check available space and determine dropdown direction
-  useEffect(() => {
-    if (isOpen && buttonRef.current) {
-      const buttonRect = buttonRef.current.getBoundingClientRect();
+  const updateCoords = useCallback(() => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      // Ignore hidden button instances (e.g., hidden mobile/desktop viewports in DataTable)
+      if (rect.width === 0 && rect.height === 0) {
+        setCoords({ top: 0, left: 0, ready: false });
+        return;
+      }
+
+      const dropdownWidth = 190;
+      const dropdownHeight = 180;
+      const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
-      const spaceBelow = windowHeight - buttonRect.bottom;
-      const spaceAbove = buttonRect.top;
-      const dropdownHeight = 200; // Estimated dropdown height
 
-      // Open upward if not enough space below but enough space above
-      setOpenUpward(spaceBelow < dropdownHeight && spaceAbove > spaceBelow);
+      const spaceBelow = windowHeight - rect.bottom;
+      const openUpward = spaceBelow < dropdownHeight && rect.top > spaceBelow;
+
+      let top = openUpward ? rect.top - dropdownHeight - 4 : rect.bottom + 4;
+      let left = rect.right - dropdownWidth;
+
+      if (left < 10) left = 10;
+      if (left + dropdownWidth > windowWidth - 10) left = windowWidth - dropdownWidth - 10;
+
+      setCoords({ top, left, ready: true });
     }
-  }, [isOpen]);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (isOpen) {
+      updateCoords();
+    } else {
+      setCoords({ top: 0, left: 0, ready: false });
+    }
+  }, [isOpen, updateCoords]);
+
+  useEffect(() => {
+    if (isOpen) {
+      window.addEventListener("resize", updateCoords);
+      window.addEventListener("scroll", updateCoords, true);
+    }
+    return () => {
+      window.removeEventListener("resize", updateCoords);
+      window.removeEventListener("scroll", updateCoords, true);
+    };
+  }, [isOpen, updateCoords]);
 
   // Click outside detection
   useEffect(() => {
@@ -310,64 +343,59 @@ const OrderActionsDropdown = ({
   ];
 
   return (
-    <div className="relative">
+    <>
       <button
         ref={buttonRef}
         onClick={(e) => {
           e.stopPropagation();
           onToggle();
         }}
-        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-        title="View Details">
-        <FiMoreVertical />
+        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors border border-transparent hover:border-primary-200"
+        title="Order Options"
+      >
+        <FiMoreVertical size={18} />
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            ref={dropdownRef}
-            initial={{
-              opacity: 0,
-              y: openUpward ? 10 : -10,
-              scale: 0.95,
-            }}
-            animate={{
-              opacity: 1,
-              y: 0,
-              scale: 1,
-            }}
-            exit={{
-              opacity: 0,
-              y: openUpward ? 10 : -10,
-              scale: 0.95,
-            }}
-            transition={{ duration: 0.2 }}
-            className={`absolute right-0 z-50 bg-white rounded-lg shadow-xl border border-gray-200 min-w-[180px] overflow-hidden ${openUpward ? "bottom-full mb-2" : "top-full mt-2"
-              }`}
-            style={{
-              transformOrigin: openUpward ? "bottom right" : "top right",
-            }}>
-            <div className="py-1">
-              {menuItems.map((item, index) => {
-                const Icon = item.icon;
-                return (
-                  <button
-                    key={index}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      item.onClick();
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${item.color} ${item.hoverBg}`}>
-                    <Icon className="text-base" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </motion.div>
+      {isOpen &&
+        coords.ready &&
+        createPortal(
+          <div className="fixed inset-0 z-[999999] pointer-events-none">
+            <motion.div
+              ref={dropdownRef}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.15 }}
+              style={{
+                position: "fixed",
+                top: `${coords.top}px`,
+                left: `${coords.left}px`,
+              }}
+              className="pointer-events-auto bg-white rounded-xl shadow-2xl border border-gray-200 min-w-[190px] overflow-hidden"
+            >
+              <div className="py-1">
+                {menuItems.map((item, index) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        item.onClick();
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-xs font-bold transition-colors ${item.color} ${item.hoverBg}`}
+                    >
+                      <Icon className="text-sm" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </div>,
+          document.body
         )}
-      </AnimatePresence>
-    </div>
+    </>
   );
 };
 
@@ -567,6 +595,16 @@ const AllOrders = () => {
     }
   };
 
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      await updateOrderStatus(orderId, newStatus);
+      toast.success(`Order status updated to ${newStatus}`);
+      fetchOrders();
+    } catch (error) {
+      console.error("Status update error:", error);
+    }
+  };
+
   const handleDropdownToggle = (orderId) => {
     setOpenDropdownId(openDropdownId === orderId ? null : orderId);
   };
@@ -580,7 +618,16 @@ const AllOrders = () => {
       key: "id",
       label: "Order ID",
       sortable: true,
-      render: (value) => <span className="font-semibold">{value}</span>,
+      render: (value, row) => (
+        <button
+          onClick={() => handleOrderDetails(row.id)}
+          className="font-bold text-primary-600 hover:text-primary-800 hover:underline cursor-pointer flex items-center gap-1 text-sm"
+          title="View Complete Order Details"
+        >
+          <FiEye className="text-primary-500" size={14} />
+          <span>{value}</span>
+        </button>
+      ),
     },
     {
       key: "customer",
@@ -631,6 +678,43 @@ const AllOrders = () => {
           {formatPaymentMethod(value)}
         </span>
       ),
+    },
+    {
+      key: "status",
+      label: "Status",
+      sortable: true,
+      render: (value, row) => {
+        const statusMap = {
+          pending: { label: "Pending", variant: "warning" },
+          processing: { label: "Processing", variant: "info" },
+          shipped: { label: "Shipped", variant: "primary" },
+          delivered: { label: "Delivered", variant: "success" },
+          cancelled: { label: "Cancelled", variant: "danger" },
+          returned: { label: "Returned", variant: "danger" },
+        };
+        const currentStatus = String(value || "pending").toLowerCase();
+        const config = statusMap[currentStatus] || { label: currentStatus, variant: "default" };
+
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant={config.variant} size="sm">
+              {config.label}
+            </Badge>
+            <select
+              value={currentStatus}
+              onChange={(e) => handleStatusChange(row.id, e.target.value)}
+              className="text-xs bg-white border border-gray-200 rounded px-1.5 py-0.5 text-gray-700 font-semibold focus:outline-none focus:ring-1 focus:ring-primary-500 cursor-pointer shadow-sm"
+            >
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="shipped">Shipped</option>
+              <option value="delivered">Delivered</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="returned">Returned</option>
+            </select>
+          </div>
+        );
+      },
     },
     {
       key: "date",

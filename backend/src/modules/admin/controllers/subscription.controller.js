@@ -50,3 +50,58 @@ export const deletePlan = asyncHandler(async (req, res) => {
     if (!plan) throw new ApiError(404, 'Subscription plan not found.');
     res.status(200).json(new ApiResponse(200, null, 'Subscription plan deleted successfully.'));
 });
+
+// GET /api/admin/recurring-payments
+export const getAllRecurringPayments = asyncHandler(async (req, res) => {
+    const { status, page = 1, limit = 20, search } = req.query;
+    const numericPage = Number(page) || 1;
+    const numericLimit = Number(limit) || 20;
+    const skip = (numericPage - 1) * numericLimit;
+    const filter = {};
+
+    if (status && status !== 'all') {
+        if (status === 'active') filter.status = 'active';
+        else if (status === 'paused') filter.status = 'paused';
+        else if (status === 'cancelled') filter.status = 'cancelled';
+        else if (status === 'expired') filter.status = 'expired';
+    }
+
+    const [subscriptions, total] = await Promise.all([
+        VendorSubscription.find(filter)
+            .populate('vendor', 'name storeName email phone')
+            .populate('subscriptionPlan', 'name price billingCycle productLimit')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(numericLimit)
+            .lean(),
+        VendorSubscription.countDocuments(filter),
+    ]);
+
+    res.status(200).json(new ApiResponse(200, {
+        subscriptions,
+        total,
+        page: numericPage,
+        pages: Math.ceil(total / numericLimit),
+    }, 'Recurring payments fetched successfully.'));
+});
+
+// PATCH /api/admin/recurring-payments/:id/status
+export const updateRecurringPaymentStatus = asyncHandler(async (req, res) => {
+    const { status } = req.body;
+    const allowed = ['active', 'paused', 'cancelled', 'expired'];
+    if (!allowed.includes(status)) throw new ApiError(400, `Status must be one of: ${allowed.join(', ')}`);
+
+    const subscription = await VendorSubscription.findById(req.params.id);
+    if (!subscription) throw new ApiError(404, 'Recurring payment profile not found.');
+
+    subscription.status = status;
+    if (status === 'cancelled' || status === 'expired' || status === 'paused') {
+        subscription.isActive = false;
+    } else if (status === 'active') {
+        subscription.isActive = true;
+    }
+
+    await subscription.save();
+
+    res.status(200).json(new ApiResponse(200, subscription, `Recurring payment profile status updated to ${status}.`));
+});

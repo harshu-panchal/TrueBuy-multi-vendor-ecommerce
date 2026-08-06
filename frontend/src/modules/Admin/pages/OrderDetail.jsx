@@ -264,7 +264,12 @@ const OrderDetail = () => {
                           <span className="text-xs font-semibold text-gray-600 mr-2">Product Order ID:</span>
                           <span className="text-xs font-bold text-primary-600">{subOrder.subOrderId}</span>
                         </div>
-                        <Badge variant={subOrder.status === 'delivered' ? 'delivered' : 'pending'} className="text-[10px] px-1.5 py-0.5">
+                        <Badge variant={
+                          subOrder.status === 'delivered' ? 'success' :
+                          subOrder.status === 'shipped' ? 'primary' :
+                          subOrder.status === 'processing' ? 'info' :
+                          subOrder.status === 'cancelled' ? 'danger' : 'warning'
+                        } className="text-[10px] px-2 py-0.5 uppercase tracking-wider font-bold">
                           {subOrder.status}
                         </Badge>
                       </div>

@@ -552,11 +552,12 @@ const AppRoutes = () => {
         <Route path="categories/category-order" element={<CategoryOrder />} />
         <Route path="brands" element={<Navigate to="/admin/catalog/manufacturers" replace />} />
         <Route path="brands/manage-brands" element={<Navigate to="/admin/catalog/manufacturers" replace />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="orders/:id" element={<OrderDetail />} />
-        <Route path="orders/:id/invoice" element={<Invoice />} />
+        <Route path="orders" element={<AllOrders />} />
         <Route path="orders/all-orders" element={<AllOrders />} />
+        <Route path="orders/overview" element={<AdminOrders />} />
         <Route path="orders/order-tracking" element={<OrderTracking />} />
+        <Route path="orders/:id/invoice" element={<Invoice />} />
+        <Route path="orders/:id" element={<OrderDetail />} />
         <Route path="catalog/manufacturers" element={<Manufacturers />} />
         <Route path="catalog/product-tags" element={<ProductsTags />} />
         <Route path="catalog/low-stock-report" element={<InventoryReport />} />

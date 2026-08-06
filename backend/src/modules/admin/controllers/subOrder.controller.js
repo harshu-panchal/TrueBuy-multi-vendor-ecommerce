@@ -45,9 +45,9 @@ export const getAllSubOrders = asyncHandler(async (req, res) => {
 
     const [subOrders, total] = await Promise.all([
         SubOrder.find(filter)
-            .populate('parentOrderId', 'orderId shippingAddress paymentMethod paymentStatus')
-            .populate('vendorId', 'name storeName address')
-            .populate('deliveryBoyId', 'name phone')
+            .populate('parentOrderId', 'orderId shippingAddress paymentMethod paymentStatus total')
+            .populate('vendorId', 'name storeName address phone')
+            .populate('deliveryBoyId', 'name phone vehicleNumber vehicleType status')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(numericLimit)
@@ -135,10 +135,32 @@ export const updateSubOrderStatus = asyncHandler(async (req, res) => {
     const subOrder = await SubOrder.findOne(query);
     if (!subOrder) throw new ApiError(404, 'SubOrder not found.');
 
-    subOrder.status = status;
+    const previousStatus = String(subOrder.status || '').toLowerCase();
+    const nextStatus = String(status || '').toLowerCase();
+
+    const allowedTransitions = {
+        pending: ['processing', 'assigned_for_delivery', 'shipped', 'cancelled'],
+        processing: ['assigned_for_delivery', 'ready', 'shipped', 'cancelled'],
+        assigned_for_delivery: ['shipped', 'out_for_delivery', 'delivered', 'cancelled'],
+        ready: ['assigned_for_delivery', 'shipped', 'cancelled'],
+        shipped: ['out_for_delivery', 'delivered', 'cancelled'],
+        out_for_delivery: ['delivered', 'cancelled'],
+        delivered: [],
+        cancelled: [],
+        returned: [],
+    };
+
+    if (previousStatus !== nextStatus) {
+        const nextAllowed = allowedTransitions[previousStatus] || [];
+        if (!nextAllowed.includes(nextStatus)) {
+            throw new ApiError(409, `Cannot transition shipment from ${previousStatus} to ${nextStatus}.`);
+        }
+    }
+
+    subOrder.status = nextStatus;
     
-    if (status === 'delivered') subOrder.deliveredAt = new Date();
-    if (status === 'cancelled') subOrder.cancelledAt = new Date();
+    if (nextStatus === 'delivered') subOrder.deliveredAt = new Date();
+    if (nextStatus === 'cancelled') subOrder.cancelledAt = new Date();
 
     subOrder.statusTimeline.push({
         status,

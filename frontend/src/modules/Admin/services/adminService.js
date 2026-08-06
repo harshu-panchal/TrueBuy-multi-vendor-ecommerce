@@ -75,6 +75,13 @@ export const getAllSubOrders = (params = {}) =>
 export const updateSubOrderStatus = (id, status) =>
     api.patch(`/admin/suborders/${id}/status`, { status });
 
+// ─── Recurring Payments ───────────────────────────────────────────────────────
+export const getAllRecurringPayments = (params = {}) =>
+    api.get('/admin/recurring-payments', { params });
+
+export const updateRecurringPaymentStatus = (id, status) =>
+    api.patch(`/admin/recurring-payments/${id}/status`, { status });
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });
