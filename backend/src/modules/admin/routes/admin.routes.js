@@ -20,6 +20,7 @@ import * as financeController from '../controllers/finance.controller.js';
 import * as subscriptionController from '../controllers/subscription.controller.js';
 import * as giftCardController from '../controllers/giftCard.controller.js';
 import * as cartAdminController from '../controllers/cart.controller.js';
+import * as wishlistAdminController from '../controllers/wishlist.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -308,5 +309,8 @@ router.delete('/gift-cards/:id', ...adminAuth, giftCardController.deleteGiftCard
 
 // ——— Shopping Carts —————————————————————————————————————————————————─────
 router.get('/shopping-carts', ...adminAuth, cartAdminController.getAllActiveShoppingCarts);
+
+// ——— Wishlists —————————————————————————————————————————————————──────────
+router.get('/wishlists', ...adminAuth, wishlistAdminController.getAllActiveWishlists);
 
 export default router;

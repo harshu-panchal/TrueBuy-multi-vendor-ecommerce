@@ -99,6 +99,10 @@ export const deleteGiftCard = (id) =>
 export const getAllShoppingCarts = (params = {}) =>
     api.get('/admin/shopping-carts', { params });
 
+// ─── Wishlists ────────────────────────────────────────────────────────────────
+export const getAllWishlists = (params = {}) =>
+    api.get('/admin/wishlists', { params });
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });
