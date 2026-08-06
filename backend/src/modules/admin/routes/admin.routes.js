@@ -21,6 +21,7 @@ import * as subscriptionController from '../controllers/subscription.controller.
 import * as giftCardController from '../controllers/giftCard.controller.js';
 import * as cartAdminController from '../controllers/cart.controller.js';
 import * as wishlistAdminController from '../controllers/wishlist.controller.js';
+import * as bestsellerController from '../controllers/bestseller.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -312,5 +313,8 @@ router.get('/shopping-carts', ...adminAuth, cartAdminController.getAllActiveShop
 
 // ——— Wishlists —————————————————————————————————————————————————──────────
 router.get('/wishlists', ...adminAuth, wishlistAdminController.getAllActiveWishlists);
+
+// ——— Bestsellers —————————————————————————————————————————————————─────────
+router.get('/bestsellers', ...adminAuth, bestsellerController.getBestsellersReport);
 
 export default router;

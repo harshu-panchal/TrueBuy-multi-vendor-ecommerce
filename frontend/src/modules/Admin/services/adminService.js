@@ -103,6 +103,10 @@ export const getAllShoppingCarts = (params = {}) =>
 export const getAllWishlists = (params = {}) =>
     api.get('/admin/wishlists', { params });
 
+// ─── Bestsellers ──────────────────────────────────────────────────────────────
+export const getBestsellers = (params = {}) =>
+    api.get('/admin/bestsellers', { params });
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });
