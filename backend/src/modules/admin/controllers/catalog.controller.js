@@ -624,3 +624,89 @@ export const deleteProductTag = asyncHandler(async (req, res) => {
         new ApiResponse(200, null, `Tag '${tag}' deleted.`)
     );
 });
+
+// PATCH /api/admin/products/:id/stock
+export const updateProductStock = asyncHandler(async (req, res) => {
+    const { stockQuantity } = req.body;
+    const qty = Number.parseInt(stockQuantity, 10);
+    if (!Number.isFinite(qty) || qty < 0) {
+        throw new ApiError(400, 'Invalid stock quantity');
+    }
+
+    const product = await Product.findById(req.params.id);
+    if (!product) throw new ApiError(404, 'Product not found');
+
+    const threshold = Number(product.lowStockThreshold || 10);
+    let stockStatus = 'in_stock';
+    if (qty === 0) stockStatus = 'out_of_stock';
+    else if (qty <= threshold) stockStatus = 'low_stock';
+
+    product.stockQuantity = qty;
+    product.stock = stockStatus;
+    await product.save();
+
+    res.status(200).json(
+        new ApiResponse(200, product, 'Product stock updated successfully')
+    );
+});
+
+// ─── Recycle Bin Controllers (Soft-Delete Architecture) ───────────────────────
+
+// GET /api/admin/recycle-bin
+export const getRecycleBin = asyncHandler(async (req, res) => {
+    const products = await Product.find({
+        $or: [{ isActive: false }, { isDeleted: true }],
+        isArchived: { $ne: true }
+    })
+    .populate('categoryId', 'name')
+    .populate('brandId', 'name')
+    .sort({ updatedAt: -1 })
+    .lean();
+
+    res.status(200).json(
+        new ApiResponse(200, products, 'Recycle bin products fetched.')
+    );
+});
+
+// PUT /api/admin/recycle-bin/:id/restore
+export const restoreRecycleBinItem = asyncHandler(async (req, res) => {
+    const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        { isActive: true, isDeleted: false, isArchived: false },
+        { new: true, runValidators: true }
+    );
+
+    if (!product) throw new ApiError(404, 'Product not found in recycle bin.');
+
+    res.status(200).json(
+        new ApiResponse(200, product, 'Product restored successfully.')
+    );
+});
+
+// DELETE /api/admin/recycle-bin/:id
+export const permanentDeleteRecycleBinItem = asyncHandler(async (req, res) => {
+    // Soft-delete archiving: keeps data intact for historical orders while removing from recycle bin
+    const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        { isActive: false, isDeleted: true, isArchived: true },
+        { new: true }
+    );
+
+    if (!product) throw new ApiError(404, 'Product not found in recycle bin.');
+
+    res.status(200).json(
+        new ApiResponse(200, null, 'Product archived and removed from recycle bin.')
+    );
+});
+
+// DELETE /api/admin/recycle-bin/empty
+export const emptyRecycleBin = asyncHandler(async (req, res) => {
+    await Product.updateMany(
+        { $or: [{ isActive: false }, { isDeleted: true }], isArchived: { $ne: true } },
+        { $set: { isActive: false, isDeleted: true, isArchived: true } }
+    );
+
+    res.status(200).json(
+        new ApiResponse(200, null, 'Recycle bin emptied safely.')
+    );
+});

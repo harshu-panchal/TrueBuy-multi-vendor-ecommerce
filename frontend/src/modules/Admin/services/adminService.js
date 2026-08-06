@@ -91,6 +91,9 @@ export const updateProduct = (id, data) =>
 export const deleteProduct = (id) =>
     api.delete(`/admin/products/${id}`);
 
+export const updateProductStock = (id, stockQuantity) =>
+    api.patch(`/admin/products/${id}/stock`, { stockQuantity });
+
 export const getTaxPricingRules = () =>
     api.get('/admin/products/tax-pricing-rules');
 
@@ -138,6 +141,19 @@ export const getProductTags = () =>
 
 export const deleteProductTag = (tag) =>
     api.delete(`/admin/product-tags/${encodeURIComponent(tag)}`);
+
+// ─── Recycle Bin ──────────────────────────────────────────────────────────────
+export const getRecycleBin = () =>
+    api.get('/admin/recycle-bin');
+
+export const restoreRecycleBinItem = (id) =>
+    api.put(`/admin/recycle-bin/${id}/restore`);
+
+export const permanentDeleteRecycleBinItem = (id) =>
+    api.delete(`/admin/recycle-bin/${id}`);
+
+export const emptyRecycleBin = () =>
+    api.delete('/admin/recycle-bin/empty');
 
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 export const getAllVendors = (params = {}) =>

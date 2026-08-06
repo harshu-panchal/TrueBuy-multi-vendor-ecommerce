@@ -112,12 +112,35 @@ export const getInventoryReport = asyncHandler(async (req, res) => {
                     },
                     lowStock: {
                         $sum: {
-                            $cond: [{ $eq: ['$stock', 'low_stock'] }, 1, 0]
+                            $cond: [
+                                {
+                                    $or: [
+                                        { $eq: ['$stock', 'low_stock'] },
+                                        {
+                                            $and: [
+                                                { $gt: [{ $ifNull: ['$stockQuantity', 0] }, 0] },
+                                                { $lte: [{ $ifNull: ['$stockQuantity', 0] }, { $ifNull: ['$lowStockThreshold', 10] }] }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
                         }
                     },
                     outOfStock: {
                         $sum: {
-                            $cond: [{ $eq: ['$stock', 'out_of_stock'] }, 1, 0]
+                            $cond: [
+                                {
+                                    $or: [
+                                        { $eq: ['$stock', 'out_of_stock'] },
+                                        { $lte: [{ $ifNull: ['$stockQuantity', 0] }, 0] }
+                                    ]
+                                },
+                                1,
+                                0
+                            ]
                         }
                     },
                     totalValue: {

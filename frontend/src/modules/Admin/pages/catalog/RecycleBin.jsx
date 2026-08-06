@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiFilter, 
@@ -20,13 +20,30 @@ import {
   FiLayers
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import ConfirmModal from '../../components/ConfirmModal';
+import {
+  getRecycleBin,
+  restoreRecycleBinItem,
+  permanentDeleteRecycleBinItem,
+  emptyRecycleBin,
+} from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const RecycleBin = () => {
   // UI State
+  const [deletedProducts, setDeletedProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showFilter, setShowFilter] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showWarning, setShowWarning] = useState(true);
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    type: 'danger',
+    action: null,
+  });
 
   // Table Settings State
   const [tableSettings, setTableSettings] = useState({
@@ -39,23 +56,12 @@ const RecycleBin = () => {
   // Column Visibility State
   const [visibleColumns, setVisibleColumns] = useState({
     picture: true,
-    id: true,
-    sku: true,
     name: true,
-    gtin: false,
-    mpn: false,
-    orders: true,
+    category: true,
     price: true,
-    comparePrice: false,
-    specialPrice: false,
     stock: true,
-    stores: false,
-    customerOrders: false,
     created: true,
-    updated: true,
-    published: true,
-    startDate: false,
-    endDate: false,
+    actions: true,
   });
 
   // Filter State
@@ -63,25 +69,41 @@ const RecycleBin = () => {
     name: '',
     type: 'All',
     published: 'Unspecified',
-    showHome: 'Unspecified',
-    noCategory: 'Unspecified',
     category: 'All Categories',
-    noManufacturer: 'Unspecified',
-    deliveryTime: '',
-    store: ''
   });
 
-  // Mock Data
-  const [deletedProducts, setDeletedProducts] = useState([]);
+  const loadRecycleBin = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getRecycleBin();
+      const payload = response?.data || [];
+      const formatted = (Array.isArray(payload) ? payload : []).map((p) => ({
+        ...p,
+        id: p._id || p.id,
+        name: p.name || 'Unnamed Product',
+        category: p.categoryId?.name || 'Uncategorized',
+        picture: p.image || p.images?.[0] || null,
+        price: Number(p.price) || 0,
+        stock: Number(p.stockQuantity) || 0,
+        created: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'N/A',
+      }));
+      setDeletedProducts(formatted);
+    } catch (error) {
+      setDeletedProducts([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecycleBin();
+  }, []);
 
   // Filtering Logic
   const filteredData = useMemo(() => {
     return deletedProducts.filter(item => {
-      const matchName = item.name.toLowerCase().includes(filters.name.toLowerCase());
-      const matchPublished = filters.published === 'Unspecified' 
-        || (filters.published === 'Yes' && item.published)
-        || (filters.published === 'No' && !item.published);
-      return matchName && matchPublished;
+      const matchName = (item.name || '').toLowerCase().includes(filters.name.toLowerCase());
+      return matchName;
     });
   }, [deletedProducts, filters]);
 
@@ -89,12 +111,7 @@ const RecycleBin = () => {
     name: '',
     type: 'All',
     published: 'Unspecified',
-    showHome: 'Unspecified',
-    noCategory: 'Unspecified',
     category: 'All Categories',
-    noManufacturer: 'Unspecified',
-    deliveryTime: '',
-    store: ''
   });
 
   const handleSelectAll = (e) => {
@@ -109,27 +126,65 @@ const RecycleBin = () => {
     setSelectedIds(newSelected);
   };
 
-  const handleEmptyBin = () => {
-    if (window.confirm('Are you sure you want to permanently delete ALL products in the recycle bin? This action cannot be undone.')) {
-      setDeletedProducts([]);
-      setSelectedIds(new Set());
-    }
+  const triggerEmptyBin = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Empty Recycle Bin',
+      message: 'Are you sure you want to remove all products from the recycle bin? They will be archived safely.',
+      type: 'danger',
+      action: async () => {
+        try {
+          await emptyRecycleBin();
+          toast.success('Recycle bin emptied safely');
+          setSelectedIds(new Set());
+          await loadRecycleBin();
+        } catch {
+          // Interceptor handles toast
+        }
+      },
+    });
   };
 
-  const handleRestore = () => {
+  const triggerRestoreSelected = () => {
     if (selectedIds.size === 0) return;
-    if (window.confirm(`Restore ${selectedIds.size} selected products to catalog?`)) {
-      setDeletedProducts(deletedProducts.filter(p => !selectedIds.has(p.id)));
-      setSelectedIds(new Set());
-    }
+    const ids = Array.from(selectedIds);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Restore Products',
+      message: `Are you sure you want to restore ${ids.length} selected product(s) to the live store catalog?`,
+      type: 'info',
+      action: async () => {
+        try {
+          await Promise.all(ids.map((id) => restoreRecycleBinItem(id)));
+          toast.success(`Restored ${ids.length} product(s) to catalog`);
+          setSelectedIds(new Set());
+          await loadRecycleBin();
+        } catch {
+          // Interceptor handles toast
+        }
+      },
+    });
   };
 
-  const handleDeletePermanently = () => {
+  const triggerDeleteSelected = () => {
     if (selectedIds.size === 0) return;
-    if (window.confirm(`Permanently delete ${selectedIds.size} selected products? This action cannot be undone.`)) {
-      setDeletedProducts(deletedProducts.filter(p => !selectedIds.has(p.id)));
-      setSelectedIds(new Set());
-    }
+    const ids = Array.from(selectedIds);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove Selected',
+      message: `Are you sure you want to remove ${ids.length} selected product(s) from the recycle bin? They will be archived safely.`,
+      type: 'danger',
+      action: async () => {
+        try {
+          await Promise.all(ids.map((id) => permanentDeleteRecycleBinItem(id)));
+          toast.success(`Removed ${ids.length} product(s) from recycle bin`);
+          setSelectedIds(new Set());
+          await loadRecycleBin();
+        } catch {
+          // Interceptor handles toast
+        }
+      },
+    });
   };
 
   // Table Columns Mapping
@@ -164,32 +219,68 @@ const RecycleBin = () => {
         </div>
       ) 
     },
-    { key: 'id', label: 'ID', hidden: !visibleColumns.id, render: (v) => <span className="font-mono text-[10px] font-black text-gray-400">{v}</span> },
-    { key: 'sku', label: 'SKU', hidden: !visibleColumns.sku, render: (v) => <span className="text-[10px] font-bold text-gray-800">{v}</span> },
-    { key: 'name', label: 'Product Name', hidden: !visibleColumns.name, render: (v) => <span className="font-bold text-gray-800 break-words max-w-xs block">{v}</span> },
-    { key: 'gtin', label: 'GTIN', hidden: !visibleColumns.gtin, render: (v) => <span className="text-[10px] text-gray-400">{v || '-'}</span> },
-    { key: 'mpn', label: 'MPN', hidden: !visibleColumns.mpn, render: (v) => <span className="text-[10px] text-gray-400">{v || '-'}</span> },
-    { key: 'orders', label: 'Orders', hidden: !visibleColumns.orders, render: (v) => <span className="px-2 py-0.5 bg-gray-100 rounded text-[10px] font-black text-gray-500">{v}</span> },
-    { key: 'price', label: 'Price', hidden: !visibleColumns.price, render: (v) => <span className="font-bold text-primary-600">${v.toFixed(2)}</span> },
-    { key: 'comparePrice', label: 'Compare Price', hidden: !visibleColumns.comparePrice, render: (v) => <span className="text-gray-400 line-through text-[11px]">${v?.toFixed(2) || '-'}</span> },
-    { key: 'specialPrice', label: 'Special Price', hidden: !visibleColumns.specialPrice, render: (v) => <span className="text-red-500 font-bold text-[11px]">${v?.toFixed(2) || '-'}</span> },
-    { key: 'stock', label: 'Stock', hidden: !visibleColumns.stock, render: (v) => <span className={`font-mono text-[11px] font-black ${v === 0 ? 'text-red-500' : 'text-gray-500'}`}>{v}</span> },
-    { key: 'stores', label: 'Stores', hidden: !visibleColumns.stores, render: (v) => <span className="text-[10px] text-gray-400 italic">{v}</span> },
-    { key: 'customerOrders', label: 'Limited roles', hidden: !visibleColumns.customerOrders, render: (v) => <span className="text-[10px] text-gray-400">{v}</span> },
-    { key: 'created', label: 'Created', hidden: !visibleColumns.created, render: (v) => <span className="text-[10px] text-gray-400">{v}</span> },
-    { key: 'updated', label: 'Updated', hidden: !visibleColumns.updated, render: (v) => <span className="text-[10px] text-gray-400">{v}</span> },
-    { 
-      key: 'published', 
-      label: 'Published', 
-      hidden: !visibleColumns.published, 
-      render: (v) => (
-        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${v ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-          {v ? 'Yes' : 'No'}
-        </span>
-      ) 
+    { key: 'name', label: 'Product Name', hidden: !visibleColumns.name, render: (v) => <span className="font-bold text-gray-800 break-words max-w-xs block text-sm">{v}</span> },
+    { key: 'category', label: 'Category', hidden: !visibleColumns.category, render: (v) => <span className="px-2.5 py-1 bg-gray-100 rounded-lg text-xs font-semibold text-gray-600">{v}</span> },
+    { key: 'price', label: 'Price', hidden: !visibleColumns.price, render: (v) => <span className="font-bold text-primary-600">${(Number(v) || 0).toFixed(2)}</span> },
+    { key: 'stock', label: 'Stock', hidden: !visibleColumns.stock, render: (v) => <span className={`font-mono text-xs font-black ${v === 0 ? 'text-red-500' : 'text-gray-600'}`}>{v}</span> },
+    { key: 'created', label: 'Deleted / Created', hidden: !visibleColumns.created, render: (v) => <span className="text-[11px] text-gray-400 font-medium">{v}</span> },
+    {
+      key: 'actions',
+      label: 'Actions',
+      sortable: false,
+      hidden: !visibleColumns.actions,
+      render: (_, row) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setConfirmModal({
+                isOpen: true,
+                title: 'Restore Product',
+                message: `Restore '${row.name}' back to the active store catalog?`,
+                type: 'info',
+                action: async () => {
+                  try {
+                    await restoreRecycleBinItem(row.id);
+                    toast.success(`Product '${row.name}' restored`);
+                    await loadRecycleBin();
+                  } catch {
+                    // Interceptor handles toast
+                  }
+                },
+              });
+            }}
+            className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg border border-green-200 bg-white transition-colors"
+            title="Restore Product"
+          >
+            <FiRefreshCw size={16} />
+          </button>
+
+          <button
+            onClick={() => {
+              setConfirmModal({
+                isOpen: true,
+                title: 'Remove Product',
+                message: `Are you sure you want to remove '${row.name}' from the recycle bin? It will be archived safely.`,
+                type: 'danger',
+                action: async () => {
+                  try {
+                    await permanentDeleteRecycleBinItem(row.id);
+                    toast.success(`Product '${row.name}' removed`);
+                    await loadRecycleBin();
+                  } catch {
+                    // Interceptor handles toast
+                  }
+                },
+              });
+            }}
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg border border-red-200 bg-white transition-colors"
+            title="Remove from Recycle Bin"
+          >
+            <FiTrash2 size={16} />
+          </button>
+        </div>
+      ),
     },
-    { key: 'startDate', label: 'Start Date', hidden: !visibleColumns.startDate, render: (v) => <span className="text-[10px] text-gray-400">{v || '-'}</span> },
-    { key: 'endDate', label: 'End Date', hidden: !visibleColumns.endDate, render: (v) => <span className="text-[10px] text-gray-400">{v || '-'}</span> },
   ];
 
   const filteredColumns = columns.filter(col => !col.hidden);
@@ -242,8 +333,9 @@ const RecycleBin = () => {
             </div>
             
             <button 
-              onClick={handleEmptyBin}
-              className="px-6 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-100 active:scale-95"
+              onClick={triggerEmptyBin}
+              disabled={isLoading || deletedProducts.length === 0}
+              className="px-6 py-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 transition-all text-sm font-bold flex items-center gap-2 shadow-lg shadow-red-100 active:scale-95"
             >
               <FiTrash2 className="text-lg" />
               <span>Empty Recycle Bin</span>
@@ -256,7 +348,7 @@ const RecycleBin = () => {
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
-                      onClick={handleRestore}
+                      onClick={triggerRestoreSelected}
                       className="px-6 py-2.5 bg-white border border-primary-200 text-primary-600 rounded-xl hover:bg-primary-50 transition-all text-xs font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 shadow-sm"
                     >
                       <FiRefreshCw size={14} />
@@ -266,11 +358,11 @@ const RecycleBin = () => {
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.9 }}
-                      onClick={handleDeletePermanently}
+                      onClick={triggerDeleteSelected}
                       className="px-6 py-2.5 bg-gray-800 text-white rounded-xl hover:bg-gray-900 transition-all text-xs font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 shadow-lg shadow-gray-200"
                     >
                       <FiTrash2 size={14} />
-                      <span>Permanent Delete ({selectedIds.size})</span>
+                      <span>Remove ({selectedIds.size})</span>
                     </motion.button>
                  </div>
                )}
@@ -670,6 +762,21 @@ const RecycleBin = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, title: '', message: '', type: 'danger', action: null })}
+        onConfirm={async () => {
+          if (confirmModal.action) {
+            await confirmModal.action();
+          }
+          setConfirmModal({ isOpen: false, title: '', message: '', type: 'danger', action: null });
+        }}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.type === 'info' ? 'Restore' : 'Proceed'}
+        type={confirmModal.type}
+      />
     </motion.div>
   );
 };

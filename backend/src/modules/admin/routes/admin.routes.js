@@ -153,6 +153,7 @@ router.post('/products', ...adminAuth, validate(createProductSchema), catalogCon
 router.put('/products/tax-pricing-rules', ...adminAuth, validate(taxPricingRulesSchema), catalogController.updateTaxPricingRules);
 
 router.put('/products/:id', ...adminAuth, validate(productIdParamSchema, 'params'), validate(updateProductSchema), catalogController.updateProduct);
+router.patch('/products/:id/stock', ...adminAuth, validate(productIdParamSchema, 'params'), catalogController.updateProductStock);
 router.delete('/products/:id', ...adminAuth, validate(productIdParamSchema, 'params'), catalogController.deleteProduct);
 
 // ─── Categories ───────────────────────────────────────────────────────────────
@@ -171,6 +172,12 @@ router.delete('/brands/:id', ...adminAuth, validate(brandIdParamSchema, 'params'
 // ─── Product Tags ─────────────────────────────────────────────────────────────
 router.get('/product-tags', ...adminAuth, catalogController.getProductTags);
 router.delete('/product-tags/:tag', ...adminAuth, catalogController.deleteProductTag);
+
+// ─── Recycle Bin ──────────────────────────────────────────────────────────────
+router.get('/recycle-bin', ...adminAuth, catalogController.getRecycleBin);
+router.put('/recycle-bin/:id/restore', ...adminAuth, catalogController.restoreRecycleBinItem);
+router.delete('/recycle-bin/empty', ...adminAuth, catalogController.emptyRecycleBin);
+router.delete('/recycle-bin/:id', ...adminAuth, catalogController.permanentDeleteRecycleBinItem);
 
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 router.get('/vendors', ...adminAuth, validate(vendorListQuerySchema, 'query'), vendorController.getAllVendors);
