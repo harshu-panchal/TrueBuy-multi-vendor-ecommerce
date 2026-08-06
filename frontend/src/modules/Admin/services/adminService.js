@@ -82,6 +82,19 @@ export const getAllRecurringPayments = (params = {}) =>
 export const updateRecurringPaymentStatus = (id, status) =>
     api.patch(`/admin/recurring-payments/${id}/status`, { status });
 
+// ─── Gift Cards ───────────────────────────────────────────────────────────────
+export const getAllGiftCards = (params = {}) =>
+    api.get('/admin/gift-cards', { params });
+
+export const createGiftCard = (payload) =>
+    api.post('/admin/gift-cards', payload);
+
+export const updateGiftCardStatus = (id, isActivated) =>
+    api.patch(`/admin/gift-cards/${id}/status`, { isActivated });
+
+export const deleteGiftCard = (id) =>
+    api.delete(`/admin/gift-cards/${id}`);
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });

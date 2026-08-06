@@ -570,6 +570,8 @@ const AppRoutes = () => {
         <Route path="sales/wishlists" element={<CurrentWishlists />} />
         <Route path="sales/bestsellers" element={<Bestsellers />} />
         <Route path="sales/never-purchased" element={<ProductsNeverPurchased />} />
+        <Route path="sales/return-requests" element={<ReturnRequests />} />
+        <Route path="sales/return-requests/:id" element={<ReturnRequestDetail />} />
         <Route path="return-requests" element={<ReturnRequests />} />
         <Route path="return-requests/:id" element={<ReturnRequestDetail />} />
         <Route path="customers" element={<Customers />} />

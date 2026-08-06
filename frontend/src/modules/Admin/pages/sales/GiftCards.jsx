@@ -1,34 +1,41 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  FiPlus,
+  FiPlus, 
   FiFilter, 
   FiSearch, 
   FiX, 
   FiCheck, 
-  FiSettings, 
-  FiChevronDown,
-  FiTag,
-  FiUser,
-  FiMail,
-  FiDollarSign,
-  FiActivity,
-  FiTrash2
+  FiTag, 
+  FiUser, 
+  FiMail, 
+  FiDollarSign, 
+  FiActivity, 
+  FiTrash2,
+  FiRefreshCw,
+  FiDownload,
+  FiPower,
+  FiGift
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import Badge from '../../../../shared/components/Badge';
+import AnimatedSelect from '../../components/AnimatedSelect';
+import { formatCurrency, formatDateTime } from '../../utils/adminHelpers';
+import { getAllGiftCards, createGiftCard, updateGiftCardStatus, deleteGiftCard } from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const GiftCards = () => {
-  // UI State
+  const [giftCards, setGiftCards] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [showFilter, setShowFilter] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null });
 
-  // Form State for Add New
+  // Form State for Add New Gift Card
   const [newGiftCard, setNewGiftCard] = useState({
     type: 'Virtual',
     initialValue: '',
-    isActivated: false,
+    isActivated: true,
     couponCode: '',
     recipientName: '',
     recipientEmail: '',
@@ -43,30 +50,111 @@ const GiftCards = () => {
     status: 'all'
   });
 
-  const [tableSettings, setTableSettings] = useState({
-    rowLines: true,
-    columnLines: false,
-    striped: false,
-    hover: true,
-  });
+  // Fetch Live Data
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await getAllGiftCards({
+        status: filters.status === 'all' ? undefined : filters.status,
+        search: filters.couponCode,
+        limit: 200,
+      });
 
-  const [visibleColumns, setVisibleColumns] = useState({
-    id: true,
-    couponCode: true,
-    initialValue: true,
-    remainingAmount: true,
-    isActivated: true,
-    createdOn: true,
-    senderName: true,
-    senderEmail: true,
-  });
+      const fetchedCards = response.data?.giftCards || [];
+      const normalizedData = fetchedCards.map((card, idx) => ({
+        ...card,
+        id: card._id || `GC-${idx + 1}`,
+        couponCode: card.couponCode || `GC-${idx + 1}`,
+        initialValue: card.initialValue || 0,
+        remainingAmount: card.remainingAmount ?? card.initialValue ?? 0,
+        isActivated: card.isActivated !== false,
+        createdOn: card.createdAt || card.createdOn,
+        senderName: card.senderName || 'System Admin',
+        senderEmail: card.senderEmail || 'admin@truebuy.com',
+        recipientName: card.recipientName || 'Customer',
+        recipientEmail: card.recipientEmail || 'customer@example.com',
+      }));
 
-  // Mock Data (Empty for now)
-  const initialData = [];
+      setGiftCards(normalizedData);
+    } catch (error) {
+      console.error("Failed to fetch gift cards:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters.status, filters.couponCode]);
 
-  const [giftCards, setGiftCards] = useState(initialData);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  // Filtering Logic
+  // Code Generator Helper
+  const generateCode = () => {
+    const p1 = Math.floor(1000 + Math.random() * 9000).toString(16).toUpperCase();
+    const p2 = Math.floor(1000 + Math.random() * 9000).toString(16).toUpperCase();
+    setNewGiftCard(prev => ({ ...prev, couponCode: `GC-${p1}-${p2}` }));
+  };
+
+  // Submit Handler for Add New Gift Card
+  const handleCreateGiftCard = async (e) => {
+    e.preventDefault();
+    if (!newGiftCard.initialValue || Number(newGiftCard.initialValue) <= 0) {
+      toast.error('Please enter a valid gift card initial value');
+      return;
+    }
+
+    try {
+      await createGiftCard({
+        ...newGiftCard,
+        initialValue: Number(newGiftCard.initialValue),
+      });
+
+      toast.success('Gift card created successfully!');
+      setShowAddModal(false);
+      setNewGiftCard({
+        type: 'Virtual',
+        initialValue: '',
+        isActivated: true,
+        couponCode: '',
+        recipientName: '',
+        recipientEmail: '',
+        senderName: '',
+        senderEmail: '',
+        message: ''
+      });
+      fetchData();
+    } catch (error) {
+      console.error("Create gift card error:", error);
+      toast.error(error.response?.data?.message || 'Failed to create gift card');
+    }
+  };
+
+  // Toggle Activation Status
+  const handleToggleActivation = async (id, currentStatus) => {
+    try {
+      await updateGiftCardStatus(id, !currentStatus);
+      toast.success(`Gift card ${!currentStatus ? 'activated' : 'deactivated'}`);
+      fetchData();
+    } catch (error) {
+      console.error("Toggle activation error:", error);
+      toast.error('Failed to update activation status');
+    }
+  };
+
+  // Confirm Delete Handler
+  const handleConfirmDelete = async () => {
+    if (!deleteModal.id) return;
+    try {
+      await deleteGiftCard(deleteModal.id);
+      toast.success('Gift card deleted');
+      setDeleteModal({ isOpen: false, id: null });
+      fetchData();
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast.error('Failed to delete gift card');
+    }
+  };
+
+  // Filter Computation
   const filteredData = useMemo(() => {
     return giftCards.filter(item => {
       const matchCode = !filters.couponCode || item.couponCode.toLowerCase().includes(filters.couponCode.toLowerCase());
@@ -91,50 +179,38 @@ const GiftCards = () => {
     setSelectedIds(newSelected);
   };
 
-  const handleResetFilters = () => {
-    setFilters({ couponCode: '', status: 'all' });
-  };
+  // Export CSV
+  const handleExportCSV = () => {
+    const exportData = filteredData.map(g => ({
+      'Gift Card Code': g.couponCode,
+      'Type': g.type,
+      'Initial Value': g.initialValue,
+      'Remaining Balance': g.remainingAmount,
+      'Status': g.isActivated ? 'Activated' : 'Deactivated',
+      'Recipient Name': g.recipientName,
+      'Recipient Email': g.recipientEmail,
+      'Sender Name': g.senderName,
+      'Created Date': formatDateTime(g.createdOn),
+    }));
 
-  const generateCode = () => {
-    const randomHex = () => Math.floor(Math.random() * 0xffffffff).toString(16).padEnd(8, '0');
-    const randomHexShort = () => Math.floor(Math.random() * 0xffff).toString(16).padEnd(4, '0');
-    const code = `${randomHex()}-${randomHexShort()}`;
-    setNewGiftCard({ ...newGiftCard, couponCode: code });
-  };
-
-  const handleSave = (e, continueEditing = false) => {
-    e?.preventDefault();
-    if (!newGiftCard.couponCode) return alert('Please generate or enter a coupon code');
-    
-    // Add to list logic
-    const cardToAdd = {
-      ...newGiftCard,
-      id: giftCards.length + 1,
-      createdOn: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      initialValue: `INR ${newGiftCard.initialValue}`,
-      remainingAmount: `INR ${newGiftCard.initialValue}`
-    };
-    
-    // Add to list
-    setGiftCards(prev => [...prev, cardToAdd]);
-    console.log('Saved Gift Card:', cardToAdd);
-    
-    if (!continueEditing) {
-      setShowAddModal(false);
-      setNewGiftCard({
-        type: 'Virtual', initialValue: '', isActivated: false, couponCode: '',
-        recipientName: '', recipientEmail: '', senderName: '', senderEmail: '', message: ''
-      });
+    if (exportData.length === 0) {
+      toast.error('No gift cards to export');
+      return;
     }
+
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Gift_Cards_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  const handleDelete = (id) => {
-    if (window.confirm('Are you sure you want to delete this gift card?')) {
-      setGiftCards(prev => prev.filter(card => card.id !== id));
-    }
-  };
-
-  // Table Columns
+  // Desktop Table Columns
   const columns = [
     {
       key: 'checkbox',
@@ -143,7 +219,7 @@ const GiftCards = () => {
           type="checkbox" 
           checked={selectedIds.size === filteredData.length && filteredData.length > 0} 
           onChange={handleSelectAll}
-          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
         />
       ),
       sortable: false,
@@ -152,55 +228,124 @@ const GiftCards = () => {
           type="checkbox" 
           checked={selectedIds.has(row.id)} 
           onChange={() => handleSelectRow(row.id)}
-          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 cursor-pointer"
         />
       )
     },
-    { key: 'id', label: 'ID', hidden: !visibleColumns.id, render: (v) => <span className="font-mono text-[10px] font-black tracking-tight text-gray-400">{v}</span> },
     { 
       key: 'couponCode', 
-      label: 'Coupon Code', 
-      hidden: !visibleColumns.couponCode, 
-      render: (v) => (
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-primary-50 rounded text-primary-600">
-            <FiTag />
-          </div>
-          <span className="font-bold text-gray-800 tracking-tight whitespace-nowrap">{v}</span>
-        </div>
-      ) 
+      label: 'Gift Card Code', 
+      sortable: true, 
+      render: (v) => <span className="font-mono text-xs font-black tracking-wider text-primary-600 bg-primary-50 px-2 py-0.5 rounded border border-primary-100 whitespace-nowrap">{v}</span> 
     },
-    { key: 'initialValue', label: 'Initial Value', hidden: !visibleColumns.initialValue, render: (v) => <span className="font-medium text-gray-600">{v}</span> },
-    { key: 'remainingAmount', label: 'Remaining', hidden: !visibleColumns.remainingAmount, render: (v) => <span className="font-black text-primary-600 uppercase text-[10px] tracking-tight">{v}</span> },
+    { 
+      key: 'type', 
+      label: 'Type', 
+      sortable: true, 
+      render: (v) => <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-[11px] font-bold uppercase whitespace-nowrap">{v || 'Virtual'}</span> 
+    },
+    { 
+      key: 'initialValue', 
+      label: 'Initial Value', 
+      sortable: true, 
+      render: (v) => <span className="font-extrabold text-xs text-gray-900 whitespace-nowrap">{formatCurrency(v || 0)}</span> 
+    },
+    { 
+      key: 'remainingAmount', 
+      label: 'Remaining Balance', 
+      sortable: true, 
+      render: (v) => <span className="font-extrabold text-xs text-green-700 whitespace-nowrap">{formatCurrency(v || 0)}</span> 
+    },
     { 
       key: 'isActivated', 
-      label: 'Status', 
-      hidden: !visibleColumns.isActivated,
-      render: (v) => (
-        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${v ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-          {v ? 'Activated' : 'Deactivated'}
-        </span>
+      label: 'Activated', 
+      sortable: true, 
+      render: (v, row) => (
+        <button
+          onClick={() => handleToggleActivation(row._id || row.id, v)}
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold transition-colors shadow-sm ${v ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-red-100 text-red-800 hover:bg-red-200'}`}
+        >
+          <FiPower size={11} />
+          <span>{v ? 'Active' : 'Deactivated'}</span>
+        </button>
       )
     },
-    { key: 'createdOn', label: 'Created On', hidden: !visibleColumns.createdOn, render: (v) => <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">{v}</span> },
-    { key: 'senderName', label: "Sender's Name", hidden: !visibleColumns.senderName, render: (v) => <div className="flex items-center gap-2 font-bold text-gray-800 whitespace-nowrap"><FiUser className="text-gray-300" />{v}</div> },
-    { key: 'senderEmail', label: "Sender's Email", hidden: !visibleColumns.senderEmail, render: (v) => <div className="flex items-center gap-2 text-[10px] text-gray-400 font-medium italic"><FiMail className="text-gray-200" />{v}</div> },
+    { 
+      key: 'recipient', 
+      label: 'Recipient', 
+      sortable: false, 
+      render: (_, row) => (
+        <div className="max-w-[140px]">
+          <p className="font-bold text-xs text-gray-800 truncate">{row.recipientName || 'Customer'}</p>
+          <p className="text-[11px] text-gray-500 truncate">{row.recipientEmail || 'N/A'}</p>
+        </div>
+      )
+    },
+    { key: 'createdOn', label: 'Issued Date', sortable: true, render: (v) => <span className="text-xs text-gray-600 whitespace-nowrap">{formatDateTime(v)}</span> },
     {
       key: 'action',
       label: 'Action',
+      sortable: false,
       render: (_, row) => (
         <button 
-          onClick={() => handleDelete(row.id)}
-          className="p-2 bg-gray-50 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-lg transition-all border border-gray-100 hover:border-red-100"
+          onClick={() => setDeleteModal({ isOpen: true, id: row._id || row.id })}
+          className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors border border-red-200"
           title="Delete Gift Card"
         >
-          <FiTrash2 className="text-sm" />
+          <FiTrash2 size={14} />
         </button>
       )
     }
   ];
 
-  const filteredColumns = columns.filter(col => !col.hidden);
+  // Mobile Responsive Card Renderer
+  const renderMobileCard = (row) => {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        {/* Header */}
+        <div className="flex justify-between items-start border-b border-gray-100 pb-2.5">
+          <div>
+            <span className="font-mono text-xs font-extrabold text-primary-600 bg-primary-50 px-2 py-0.5 rounded border border-primary-100">{row.couponCode}</span>
+            <p className="text-[11px] text-gray-500 mt-1 uppercase font-bold">{row.type || 'Virtual'} Card</p>
+          </div>
+          <button
+            onClick={() => handleToggleActivation(row._id || row.id, row.isActivated)}
+            className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm ${row.isActivated ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
+          >
+            <FiPower size={12} />
+            <span>{row.isActivated ? 'Active' : 'Deactivated'}</span>
+          </button>
+        </div>
+
+        {/* Values Grid */}
+        <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Initial Value</p>
+            <p className="font-extrabold text-gray-900">{formatCurrency(row.initialValue || 0)}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Remaining Balance</p>
+            <p className="font-extrabold text-green-700">{formatCurrency(row.remainingAmount || 0)}</p>
+          </div>
+        </div>
+
+        {/* Recipient & Dates */}
+        <div className="flex justify-between items-center text-xs pt-1">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Recipient</p>
+            <p className="font-bold text-gray-800">{row.recipientName || 'Customer'}</p>
+            <p className="text-[11px] text-gray-500">{row.recipientEmail || 'N/A'}</p>
+          </div>
+          <button
+            onClick={() => setDeleteModal({ isOpen: true, id: row._id || row.id })}
+            className="p-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-xs"
+          >
+            <FiTrash2 size={14} />
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <motion.div
@@ -208,366 +353,264 @@ const GiftCards = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      {/* Mobile Header */}
-      <div className="lg:hidden">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Gift Cards</h1>
-        <p className="text-sm sm:text-base text-gray-600">Manage and track gift card balances and activation status</p>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1.5">
+            Gift Cards & Stored Value Vouchers
+          </h1>
+          <p className="text-sm text-gray-500">
+            Issue, activate, and manage digital and physical gift cards and balances
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchData}
+            className="p-2.5 text-gray-600 hover:text-primary-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-colors"
+            title="Refresh Gift Cards"
+          >
+            <FiRefreshCw className={isLoading ? "animate-spin" : ""} />
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <FiDownload />
+            <span>Export CSV</span>
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <FiPlus />
+            <span>Add Gift Card</span>
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 relative mb-20">
-        
-        {/* Action Bar */}
-        <div className="p-4 border-b border-gray-100 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 text-primary-600 pr-4 border-r border-gray-100">
-              <div className="p-2 bg-primary-50 rounded-lg"><FiTag /></div>
-              <span className="text-sm font-bold text-gray-600">Inventory Gift Cards</span>
-            </div>
-            
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-all text-sm font-bold flex items-center gap-2 shadow-lg shadow-primary-200 active:scale-95"
-            >
-              <FiPlus />
-              <span>Add New</span>
-            </button>
+      {/* Filter Toolbar */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* Code/Email Search */}
+          <div className="relative col-span-1 sm:col-span-2">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search voucher code, recipient name, or email..."
+              value={filters.couponCode}
+              onChange={(e) => setFilters({ ...filters, couponCode: e.target.value })}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            />
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowFilter(!showFilter)}
-              className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium flex items-center gap-2 shadow-sm ${
-                showFilter || Object.values(filters).some(v => v !== '' && v !== 'all')
-                  ? 'bg-primary-600 text-white border-primary-600'
-                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-              }`}
-            >
-              <FiFilter className="text-xs" />
-              <span>Filter</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Filter Form Overlay */}
-        <AnimatePresence>
-          {showFilter && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="overflow-hidden bg-gray-50/50 border-b border-gray-100"
-            >
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <FiTag /> Coupon Code
-                  </label>
-                  <div className="relative">
-                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" />
-                    <input
-                      type="text"
-                      placeholder="GFT-..."
-                      value={filters.couponCode}
-                      onChange={(e) => setFilters({...filters, couponCode: e.target.value})}
-                      className="w-full pl-9 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-primary-500 outline-none transition-all shadow-sm"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <FiActivity /> Status
-                  </label>
-                  <select
-                    value={filters.status}
-                    onChange={(e) => setFilters({...filters, status: e.target.value})}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-primary-500 outline-none appearance-none transition-all shadow-sm"
-                  >
-                    <option value="all">Unspecified</option>
-                    <option value="activated">Activated</option>
-                    <option value="deactivated">Deactivated</option>
-                  </select>
-                </div>
-
-                <div className="md:col-span-2 flex items-center justify-between pt-2 border-t border-gray-100 mt-2">
-                  <span className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Matched Results: {filteredData.length}</span>
-                  <button onClick={handleResetFilters} className="text-xs font-bold text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors">
-                    <FiX size={14} /> Clear Selection
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Table Section */}
-        <div className="p-0 overflow-x-auto min-h-[400px]">
-          <DataTable
-            data={filteredData}
-            columns={filteredColumns}
-            pagination={false}
-            rowLines={tableSettings.rowLines}
-            columnLines={tableSettings.columnLines}
-            className={`${tableSettings.striped ? '[&_tbody_tr:nth-child(even)]:bg-gray-50/50' : ''} ${!tableSettings.hover ? '[&_tbody_tr]:hover:bg-transparent' : ''}`}
+          {/* Status Filter */}
+          <AnimatedSelect
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            options={[
+              { value: "all", label: "All Activation Statuses" },
+              { value: "activated", label: "Activated Gift Cards" },
+              { value: "deactivated", label: "Deactivated Cards" },
+            ]}
+            className="text-sm py-2"
           />
         </div>
-
-        {/* Footer with Settings */}
-        <div className="p-1 px-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4 relative">
-          <div className="flex items-center gap-3 order-2 sm:order-1">
-            <div className="p-1 px-2 bg-gray-200 text-gray-500 rounded text-[10px] font-bold font-mono">
-              COUNT_{filteredData.length}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 order-1 sm:order-2 w-full sm:w-auto justify-end">
-            {/* Page Size Select */}
-            <div className="relative">
-              <select className="appearance-none bg-white border border-gray-200 rounded px-3 pr-8 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none hover:border-gray-300 transition-colors">
-                <option>25 per page</option>
-                <option>50 per page</option>
-                <option>100 per page</option>
-              </select>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                <FiChevronDown className="text-gray-400 text-xs" />
-              </div>
-            </div>
-
-            {/* Settings Button */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 rounded border transition-all ${showSettings ? 'bg-primary-50 border-primary-300 text-primary-600 shadow-sm' : 'bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300'}`}
-              >
-                <FiSettings className={`text-lg ${showSettings ? 'animate-spin-slow' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showSettings && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full right-0 mb-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 z-50 pointer-events-auto"
-                  >
-                    <div className="space-y-4">
-                      {/* Toggles */}
-                      <div className="space-y-3">
-                        {['Row lines', 'Column lines', 'Striped', 'Hover'].map(label => {
-                          const key = label === 'Row lines' ? 'rowLines' : label === 'Column lines' ? 'columnLines' : label.toLowerCase();
-                          return (
-                            <div key={label} className="flex items-center justify-between group">
-                              <span className="text-sm text-gray-700">{label}</span>
-                              <button
-                                onClick={() => setTableSettings(s => ({ ...s, [key]: !s[key] }))}
-                                className={`w-10 h-5 rounded-full relative transition-colors duration-200 shadow-inner ${tableSettings[key] ? 'bg-primary-600' : 'bg-gray-300'}`}
-                              >
-                                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${tableSettings[key] ? 'translate-x-5' : 'translate-x-1'}`} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Column Visibility */}
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-3 border-t border-gray-50">
-                        {Object.entries(visibleColumns).map(([key, isVisible]) => (
-                          <label key={key} className="flex items-center gap-2 cursor-pointer group">
-                            <div
-                              onClick={() => setVisibleColumns(v => ({ ...v, [key]: !v[key] }))}
-                              className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors ${isVisible ? 'bg-primary-600 border-primary-600' : 'bg-white border-gray-300'}`}
-                            >
-                              {isVisible && <FiCheck className="text-white text-[10px]" />}
-                            </div>
-                            <span className={`text-xs capitalize transition-colors ${isVisible ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                              {key.replace(/([A-Z])/g, ' $1').trim()}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
       </div>
 
-      {/* Add Gift Card Modal */}
+      {/* Main DataTable */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <DataTable
+          data={filteredData}
+          columns={columns}
+          pagination={true}
+          itemsPerPage={15}
+          isLoading={isLoading}
+          renderMobileCard={renderMobileCard}
+        />
+      </div>
+
+      {/* Add New Gift Card Modal */}
       <AnimatePresence>
         {showAddModal && (
-          <>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 overflow-y-auto"
-              onClick={() => setShowAddModal(false)}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-gray-200 p-6 space-y-4"
             >
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden pointer-events-auto"
-                onClick={e => e.stopPropagation()}
-              >
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-800">Add New Gift Card</h2>
-                    <p className="text-sm text-gray-500 font-medium">Issue a new digital or physical credit coupon</p>
-                  </div>
-                  <button 
-                    onClick={() => setShowAddModal(false)}
-                    className="p-2 hover:bg-white rounded-full transition-colors text-gray-400 hover:text-gray-600 border border-transparent hover:border-gray-100"
-                  >
-                    <FiX size={20} />
-                  </button>
+              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <FiGift className="text-primary-600 text-lg" />
+                  <h2 className="font-bold text-gray-900 text-lg">Issue New Gift Card</h2>
                 </div>
+                <button onClick={() => setShowAddModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <FiX size={20} />
+                </button>
+              </div>
 
-                <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                  {/* Row 1: Type & Value */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Gift Card Type</label>
-                      <select
-                        value={newGiftCard.type}
-                        onChange={e => setNewGiftCard({...newGiftCard, type: e.target.value})}
-                        className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-xl outline-none transition-all font-medium text-gray-700 appearance-none"
-                      >
-                        <option>Virtual</option>
-                        <option>Physical</option>
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Initial Value</label>
-                      <div className="relative">
-                        <input
-                          type="number"
-                          placeholder="INR"
-                          value={newGiftCard.initialValue}
-                          onChange={e => setNewGiftCard({...newGiftCard, initialValue: e.target.value})}
-                          className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-xl outline-none transition-all font-medium text-gray-700"
-                        />
-                      </div>
-                    </div>
+              <form onSubmit={handleCreateGiftCard} className="space-y-3 text-xs">
+                {/* Type & Initial Value */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Gift Card Type</label>
+                    <AnimatedSelect
+                      value={newGiftCard.type}
+                      onChange={(e) => setNewGiftCard({ ...newGiftCard, type: e.target.value })}
+                      options={[
+                        { value: "Virtual", label: "Virtual (Digital)" },
+                        { value: "Physical", label: "Physical Card" },
+                      ]}
+                      className="text-xs py-2 w-full"
+                    />
                   </div>
-
-                  {/* Row 2: Activation & Coupon */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                    <div className="space-y-3">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Is Gift Card Activated?</label>
-                      <button
-                        onClick={() => setNewGiftCard({...newGiftCard, isActivated: !newGiftCard.isActivated})}
-                        className={`w-14 h-7 rounded-full relative transition-colors duration-300 flex items-center shadow-inner ${newGiftCard.isActivated ? 'bg-green-500' : 'bg-gray-200'}`}
-                      >
-                        <div className={`w-5 h-5 bg-white rounded-full shadow-lg transition-transform duration-300 ${newGiftCard.isActivated ? 'translate-x-[32px]' : 'translate-x-[4px]'}`} />
-                      </button>
-                    </div>
-
-                    <div className="md:col-span-2 space-y-1.5">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center justify-between">
-                        Coupon Code
-                        <button 
-                          type="button"
-                          onClick={generateCode}
-                          className="text-primary-600 hover:text-primary-700 text-xs font-bold transition-colors"
-                        >
-                          Generate Code
-                        </button>
-                      </label>
-                      <div className="relative group">
-                        <input
-                          type="text"
-                          placeholder="838bc5ae-40de"
-                          value={newGiftCard.couponCode}
-                          onChange={e => setNewGiftCard({...newGiftCard, couponCode: e.target.value})}
-                          className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-xl outline-none transition-all font-mono text-sm tracking-widest text-primary-700"
-                        />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300">
-                          <FiTag className="group-focus-within:text-primary-400 group-focus-within:animate-pulse" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <hr className="border-gray-100" />
-
-                  {/* Recipient Details */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                       Recipient Details
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input
-                        placeholder="Recipient's Name"
-                        value={newGiftCard.recipientName}
-                        onChange={e => setNewGiftCard({...newGiftCard, recipientName: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-gray-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-xl outline-none transition-all text-sm"
-                      />
-                      <input
-                        type="email"
-                        placeholder="Recipient's Email"
-                        value={newGiftCard.recipientEmail}
-                        onChange={e => setNewGiftCard({...newGiftCard, recipientEmail: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-gray-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-xl outline-none transition-all text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Sender Details */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2">
-                       Sender Details
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <input
-                        placeholder="Sender's Name"
-                        value={newGiftCard.senderName}
-                        onChange={e => setNewGiftCard({...newGiftCard, senderName: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-gray-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-xl outline-none transition-all text-sm"
-                      />
-                      <input
-                        type="email"
-                        placeholder="Sender's Email"
-                        value={newGiftCard.senderEmail}
-                        onChange={e => setNewGiftCard({...newGiftCard, senderEmail: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-gray-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-xl outline-none transition-all text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Message */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Message</label>
-                    <textarea
-                      placeholder="Special gift for your special one..."
-                      rows="3"
-                      value={newGiftCard.message}
-                      onChange={e => setNewGiftCard({...newGiftCard, message: e.target.value})}
-                      className="w-full px-4 py-3 bg-gray-50 border-2 border-transparent focus:border-primary-500 focus:bg-white rounded-xl outline-none transition-all text-sm resize-none"
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Initial Value ($ / ₹)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="100.00"
+                      value={newGiftCard.initialValue}
+                      onChange={(e) => setNewGiftCard({ ...newGiftCard, initialValue: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
                     />
                   </div>
                 </div>
 
-                <div className="p-6 bg-gray-50 border-t border-gray-100 flex flex-col md:flex-row gap-3">
+                {/* Coupon Code Generator */}
+                <div>
+                  <label className="block text-gray-700 font-bold mb-1">Voucher Code</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. GC-8A3B-9F12"
+                      value={newGiftCard.couponCode}
+                      onChange={(e) => setNewGiftCard({ ...newGiftCard, couponCode: e.target.value.toUpperCase() })}
+                      className="w-full px-3 py-2 font-mono uppercase font-bold border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={generateCode}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg font-bold whitespace-nowrap"
+                    >
+                      Generate Code
+                    </button>
+                  </div>
+                </div>
+
+                {/* Recipient Details */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Recipient Name</label>
+                    <input
+                      type="text"
+                      placeholder="Recipient full name"
+                      value={newGiftCard.recipientName}
+                      onChange={(e) => setNewGiftCard({ ...newGiftCard, recipientName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Recipient Email</label>
+                    <input
+                      type="email"
+                      placeholder="recipient@example.com"
+                      value={newGiftCard.recipientEmail}
+                      onChange={(e) => setNewGiftCard({ ...newGiftCard, recipientEmail: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Sender Details */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Sender Name</label>
+                    <input
+                      type="text"
+                      placeholder="Sender name"
+                      value={newGiftCard.senderName}
+                      onChange={(e) => setNewGiftCard({ ...newGiftCard, senderName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-gray-700 font-bold mb-1">Sender Email</label>
+                    <input
+                      type="email"
+                      placeholder="sender@example.com"
+                      value={newGiftCard.senderEmail}
+                      onChange={(e) => setNewGiftCard({ ...newGiftCard, senderEmail: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Activation Checkbox */}
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="isActivated"
+                    checked={newGiftCard.isActivated}
+                    onChange={(e) => setNewGiftCard({ ...newGiftCard, isActivated: e.target.checked })}
+                    className="w-4 h-4 text-primary-600 rounded"
+                  />
+                  <label htmlFor="isActivated" className="font-bold text-gray-700 cursor-pointer">Activate Gift Card Immediately</label>
+                </div>
+
+                <div className="pt-3 border-t border-gray-100 flex justify-end gap-2">
                   <button
-                    onClick={() => handleSave()}
-                    className="flex-1 py-3 bg-primary-600 text-white rounded-xl font-bold hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 active:scale-95 flex items-center justify-center gap-2"
+                    type="button"
+                    onClick={() => setShowAddModal(false)}
+                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl font-bold"
                   >
-                    Save
+                    Cancel
                   </button>
                   <button
-                    onClick={(e) => handleSave(e, true)}
-                    className="flex-1 py-3 bg-white border-2 border-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-50 hover:border-primary-300 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    type="submit"
+                    className="px-5 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold"
                   >
-                    Save & Continue Editing
+                    Issue Gift Card
                   </button>
                 </div>
-              </motion.div>
+              </form>
             </motion.div>
-          </>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {deleteModal.isOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl max-w-sm w-full shadow-2xl p-6 space-y-4 text-center border border-gray-200"
+            >
+              <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto">
+                <FiTrash2 size={24} />
+              </div>
+              <h3 className="font-bold text-gray-900 text-base">Delete Gift Card</h3>
+              <p className="text-xs text-gray-500">Are you sure you want to delete this gift card record? This action cannot be undone.</p>
+              <div className="flex justify-center gap-2 pt-2">
+                <button
+                  onClick={() => setDeleteModal({ isOpen: false, id: null })}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDelete}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </motion.div>

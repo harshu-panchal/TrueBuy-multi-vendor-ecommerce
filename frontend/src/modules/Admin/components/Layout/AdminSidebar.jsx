@@ -82,7 +82,7 @@ const getChildRoute = (parentRoute, childName) => {
       Orders: "/admin/orders",
       Shipments: "/admin/sales/shipments",
       "Recurring Payments": "/admin/sales/recurring-payments",
-      "Return Requests": "/admin/return-requests",
+      "Return Requests": "/admin/sales/return-requests",
       "Gift Cards": "/admin/sales/gift-cards",
       "Current Shopping Carts": "/admin/sales/shopping-carts",
       "Current Wishlists": "/admin/sales/wishlists",

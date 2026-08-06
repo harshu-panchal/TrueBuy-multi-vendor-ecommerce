@@ -18,6 +18,7 @@ import * as systemController from '../controllers/system.controller.js';
 import * as b2bController from '../controllers/b2b.controller.js';
 import * as financeController from '../controllers/finance.controller.js';
 import * as subscriptionController from '../controllers/subscription.controller.js';
+import * as giftCardController from '../controllers/giftCard.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -297,5 +298,11 @@ router.put('/policies/:type', ...adminAuth, validate(policyTypeParamSchema, 'par
 // ——— Subscriptions & Recurring Payments ——————————————————————————————————
 router.get('/recurring-payments', ...adminAuth, subscriptionController.getAllRecurringPayments);
 router.patch('/recurring-payments/:id/status', ...adminAuth, subscriptionController.updateRecurringPaymentStatus);
+
+// ——— Gift Cards —————————————————————————————————————————————————─────────
+router.get('/gift-cards', ...adminAuth, giftCardController.getAllGiftCards);
+router.post('/gift-cards', ...adminAuth, giftCardController.createGiftCard);
+router.patch('/gift-cards/:id/status', ...adminAuth, giftCardController.updateGiftCardStatus);
+router.delete('/gift-cards/:id', ...adminAuth, giftCardController.deleteGiftCard);
 
 export default router;
