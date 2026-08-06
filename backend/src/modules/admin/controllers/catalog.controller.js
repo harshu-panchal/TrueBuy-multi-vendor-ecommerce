@@ -587,3 +587,40 @@ export const deleteBrand = asyncHandler(async (req, res) => {
     await Brand.findByIdAndDelete(req.params.id);
     res.status(200).json(new ApiResponse(200, null, 'Brand deleted.'));
 });
+
+// GET /api/admin/product-tags
+export const getProductTags = asyncHandler(async (req, res) => {
+    const tagStats = await Product.aggregate([
+        { $unwind: "$tags" },
+        { $group: { _id: "$tags", count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+    ]);
+
+    const formattedTags = tagStats.map((item) => ({
+        id: item._id,
+        tagName: item._id,
+        taggedProducts: item.count,
+        published: true,
+        createdOn: new Date().toLocaleDateString(),
+        updatedOn: new Date().toLocaleDateString(),
+    }));
+
+    res.status(200).json(
+        new ApiResponse(200, formattedTags, 'Product tags fetched.')
+    );
+});
+
+// DELETE /api/admin/product-tags/:tag
+export const deleteProductTag = asyncHandler(async (req, res) => {
+    const tag = decodeURIComponent(req.params.tag);
+    if (!tag) throw new ApiError(400, 'Tag name is required.');
+
+    await Product.updateMany(
+        { tags: tag },
+        { $pull: { tags: tag } }
+    );
+
+    res.status(200).json(
+        new ApiResponse(200, null, `Tag '${tag}' deleted.`)
+    );
+});

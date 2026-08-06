@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FiFilter, 
@@ -19,12 +19,18 @@ import {
   FiCalendar
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import ConfirmModal from '../../components/ConfirmModal';
+import { getProductTags, deleteProductTag } from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const ProductsTags = () => {
   // UI State
+  const [tags, setTags] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showFilter, setShowFilter] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deleteModal, setDeleteModal] = useState({ isOpen: false, tag: null });
 
   // Table Settings State
   const [tableSettings, setTableSettings] = useState({
@@ -39,11 +45,8 @@ const ProductsTags = () => {
     tagName: true,
     taggedProducts: true,
     published: true,
-    mpn: true,
-    price: true,
-    stockQuantity: true,
     createdOn: true,
-    updatedOn: true,
+    actions: true,
   });
 
   // Filter State
@@ -52,13 +55,27 @@ const ProductsTags = () => {
     published: 'Unspecified'
   });
 
-  // Mock Data
-  const [tags, setTags] = useState([]);
+  const loadTags = async () => {
+    setIsLoading(true);
+    try {
+      const response = await getProductTags();
+      const payload = response?.data || [];
+      setTags(Array.isArray(payload) ? payload : []);
+    } catch {
+      setTags([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadTags();
+  }, []);
 
   // Filtering Logic
   const filteredData = useMemo(() => {
     return tags.filter(item => {
-      const matchName = item.tagName.toLowerCase().includes(filters.tagName.toLowerCase());
+      const matchName = (item.tagName || '').toLowerCase().includes(filters.tagName.toLowerCase());
       const matchPublished = filters.published === 'Unspecified' 
         || (filters.published === 'Published' && item.published)
         || (filters.published === 'Not Published' && !item.published);
@@ -80,23 +97,35 @@ const ProductsTags = () => {
     setSelectedIds(newSelected);
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
-    if (window.confirm(`Are you sure you want to delete ${selectedIds.size} selected tags?`)) {
-      setTags(tags.filter(t => !selectedIds.has(t.id)));
+    const tagList = Array.from(selectedIds);
+    try {
+      await Promise.all(tagList.map((tag) => deleteProductTag(tag)));
+      toast.success(`Deleted ${tagList.length} tag(s) successfully`);
       setSelectedIds(new Set());
+      loadTags();
+    } catch {
+      // Handled by api interceptor
     }
   };
 
-  const handleDeleteRow = (id) => {
-    if (window.confirm('Are you sure you want to delete this tag?')) {
-      setTags(tags.filter(t => t.id !== id));
-      if (selectedIds.has(id)) {
-        const newSelected = new Set(selectedIds);
-        newSelected.delete(id);
-        setSelectedIds(newSelected);
+  const confirmDeleteSingle = async () => {
+    if (deleteModal.tag) {
+      try {
+        await deleteProductTag(deleteModal.tag);
+        toast.success(`Tag '${deleteModal.tag}' deleted`);
+        if (selectedIds.has(deleteModal.tag)) {
+          const newSelected = new Set(selectedIds);
+          newSelected.delete(deleteModal.tag);
+          setSelectedIds(newSelected);
+        }
+        loadTags();
+      } catch {
+        // Handled by api interceptor
       }
     }
+    setDeleteModal({ isOpen: false, tag: null });
   };
 
   // Table Columns Mapping
@@ -122,36 +151,30 @@ const ProductsTags = () => {
       )
     },
     { key: 'tagName', label: 'Tag Name', hidden: !visibleColumns.tagName, render: (v) => <span className="font-bold text-gray-800 tracking-tight">{v}</span> },
-    { key: 'taggedProducts', label: 'Tagged Products', hidden: !visibleColumns.taggedProducts, render: (v) => <span className="px-2 py-1 bg-primary-50 text-primary-600 rounded-lg text-xs font-black">{v}</span> },
+    { key: 'taggedProducts', label: 'Linked Products', hidden: !visibleColumns.taggedProducts, render: (v) => <span className="px-2.5 py-1 bg-primary-50 text-primary-700 rounded-lg text-xs font-black border border-primary-100">{v} products</span> },
     { 
       key: 'published', 
-      label: 'Published', 
+      label: 'Status', 
       hidden: !visibleColumns.published,
       render: (v) => (
         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${v ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-          {v ? 'Published' : 'Draft'}
+          {v ? 'Active' : 'Draft'}
         </span>
       )
     },
-    { key: 'mpn', label: 'MPN', hidden: !visibleColumns.mpn, render: (v) => <span className="font-mono text-[10px] text-gray-400 font-black">{v || '-'}</span> },
-    { key: 'price', label: 'Price', hidden: !visibleColumns.price, render: (v) => <span className="text-gray-900 font-bold">${v.toFixed(2)}</span> },
-    { key: 'stockQuantity', label: 'Stock Quantity', hidden: !visibleColumns.stockQuantity, render: (v) => <span className={`font-mono text-xs font-black ${v < 100 ? 'text-amber-600' : 'text-gray-500'}`}>{v}</span> },
     { key: 'createdOn', label: 'Created On', hidden: !visibleColumns.createdOn, render: (v) => <span className="text-[10px] font-medium text-gray-400">{v}</span> },
-    { key: 'updatedOn', label: 'Updated On', hidden: !visibleColumns.updatedOn, render: (v) => <span className="text-[10px] font-medium text-gray-400">{v}</span> },
     {
       key: 'actions',
       label: 'Action',
       sortable: false,
       render: (_, row) => (
         <div className="flex items-center gap-2">
-          <button className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors shadow-sm bg-white border border-gray-100">
-            <FiEdit2 size={14} />
-          </button>
           <button 
-            onClick={() => handleDeleteRow(row.id)}
-            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors shadow-sm bg-white border border-gray-100"
+            onClick={() => setDeleteModal({ isOpen: true, tag: row.id })}
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors bg-white border border-gray-200"
+            title="Delete Tag"
           >
-            <FiTrash2 size={14} />
+            <FiTrash2 size={16} />
           </button>
         </div>
       )
@@ -358,6 +381,16 @@ const ProductsTags = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={deleteModal.isOpen}
+        onClose={() => setDeleteModal({ isOpen: false, tag: null })}
+        onConfirm={confirmDeleteSingle}
+        title="Delete Product Tag"
+        message={`Are you sure you want to delete the tag '${deleteModal.tag}'? It will be removed from all associated products.`}
+        confirmText="Delete"
+        type="danger"
+      />
     </motion.div>
   );
 };

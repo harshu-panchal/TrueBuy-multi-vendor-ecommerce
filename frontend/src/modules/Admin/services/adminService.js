@@ -132,6 +132,13 @@ export const updateBrand = (id, data) =>
 export const deleteBrand = (id) =>
     api.delete(`/admin/brands/${id}`);
 
+// ─── Product Tags ─────────────────────────────────────────────────────────────
+export const getProductTags = () =>
+    api.get('/admin/product-tags');
+
+export const deleteProductTag = (tag) =>
+    api.delete(`/admin/product-tags/${encodeURIComponent(tag)}`);
+
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 export const getAllVendors = (params = {}) =>
     api.get('/admin/vendors', { params });

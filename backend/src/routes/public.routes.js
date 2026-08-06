@@ -29,6 +29,17 @@ router.get('/settings/legal', getPublicLegalSettings);
 // GET /api/settings/footer (public)
 router.get('/settings/footer', getFooterSettings);
 
+// GET /api/tags (public & shared)
+router.get('/tags', asyncHandler(async (req, res) => {
+    const tagStats = await Product.aggregate([
+        { $unwind: "$tags" },
+        { $group: { _id: "$tags", count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+    ]);
+    const tags = tagStats.map((item) => item._id).filter(Boolean);
+    res.status(200).json(new ApiResponse(200, tags, 'Tags fetched.'));
+}));
+
 const toPublicVendor = (vendorDoc) => {
     const vendor = typeof vendorDoc?.toObject === 'function'
         ? vendorDoc.toObject()

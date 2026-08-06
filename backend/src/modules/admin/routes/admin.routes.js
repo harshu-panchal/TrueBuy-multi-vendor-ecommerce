@@ -168,6 +168,10 @@ router.post('/brands', ...adminAuth, validate(createBrandSchema), catalogControl
 router.put('/brands/:id', ...adminAuth, validate(brandIdParamSchema, 'params'), validate(updateBrandSchema), catalogController.updateBrand);
 router.delete('/brands/:id', ...adminAuth, validate(brandIdParamSchema, 'params'), catalogController.deleteBrand);
 
+// ─── Product Tags ─────────────────────────────────────────────────────────────
+router.get('/product-tags', ...adminAuth, catalogController.getProductTags);
+router.delete('/product-tags/:tag', ...adminAuth, catalogController.deleteProductTag);
+
 // ─── Vendors ──────────────────────────────────────────────────────────────────
 router.get('/vendors', ...adminAuth, validate(vendorListQuerySchema, 'query'), vendorController.getAllVendors);
 router.get('/vendors/pending', ...adminAuth, (req, res, next) => { req.query.status = 'pending'; next(); }, validate(vendorListQuerySchema, 'query'), vendorController.getAllVendors);

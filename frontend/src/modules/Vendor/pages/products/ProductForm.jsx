@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiSave, FiX, FiUpload } from "react-icons/fi";
+import { FiSave, FiX, FiUpload, FiTag } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { useVendorAuthStore } from "../../store/vendorAuthStore";
 import { useVendorProductStore } from "../../store/vendorProductStore";
 import { useCategoryStore } from "../../../../shared/store/categoryStore";
 import { useBrandStore } from "../../../../shared/store/brandStore";
+import api from "../../../../shared/utils/api";
 import { uploadVendorImage, uploadVendorImages } from "../../services/vendorService";
 import CategorySelector from "../../../Admin/components/CategorySelector";
 import AnimatedSelect from "../../../Admin/components/AnimatedSelect";
@@ -25,6 +26,7 @@ const ProductForm = () => {
   const { fetchProductById, editProduct, addProduct, getById, isSaving } =
     useVendorProductStore();
   const isEdit = id && id !== "new";
+  const [availableCatalogTags, setAvailableCatalogTags] = useState([]);
 
   const vendorId = vendor?.id;
 
@@ -136,6 +138,19 @@ const ProductForm = () => {
       }
     }
   }, [isEdit, id, vendorId, navigate, categories, getById, fetchProductById]);
+
+  useEffect(() => {
+    const fetchAvailableTags = async () => {
+      try {
+        const response = await api.get("/tags");
+        const payload = response?.data || [];
+        setAvailableCatalogTags(Array.isArray(payload) ? payload : []);
+      } catch {
+        setAvailableCatalogTags([]);
+      }
+    };
+    fetchAvailableTags();
+  }, []);
 
   const populateForm = (product, cats) => {
     const normalizedCategoryId = normalizeId(product.categoryId);
@@ -1373,10 +1388,14 @@ const ProductForm = () => {
 
         {/* Tags */}
         <div>
-          <h2 className="text-base font-bold text-gray-800 mb-2">Tags</h2>
-          <div>
+          <h2 className="text-base font-bold text-gray-800 mb-1">Tags</h2>
+          <p className="text-xs text-gray-500 mb-2">
+            Separate custom tags with commas, or click available catalog tags below to toggle them.
+          </p>
+          <div className="space-y-2">
             <input
               type="text"
+              list="vendor-catalog-tags-datalist"
               value={(formData.tags || []).join(", ")}
               onChange={(e) => {
                 const tags = e.target.value
@@ -1385,12 +1404,51 @@ const ProductForm = () => {
                   .filter((t) => t);
                 setFormData({ ...formData, tags });
               }}
-              placeholder="tag1, tag2, tag3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+              placeholder="e.g. electronics, wireless, bestseller"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm bg-white"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Separate tags with commas
-            </p>
+
+            <datalist id="vendor-catalog-tags-datalist">
+              {availableCatalogTags.map((tag) => (
+                <option key={tag} value={tag} />
+              ))}
+            </datalist>
+
+            {/* Quick Select Tag Badges */}
+            {availableCatalogTags.length > 0 && (
+              <div className="pt-1">
+                <span className="text-xs font-bold text-gray-600 mb-1 block">
+                  Quick-Select Available Catalog Tags:
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5 max-h-32 overflow-y-auto p-2 bg-gray-50 border border-gray-200 rounded-xl">
+                  {availableCatalogTags.map((tag) => {
+                    const isSelected = (formData.tags || []).some(
+                      (t) => t.toLowerCase() === tag.toLowerCase()
+                    );
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          const currentTags = formData.tags || [];
+                          const nextTags = isSelected
+                            ? currentTags.filter((t) => t.toLowerCase() !== tag.toLowerCase())
+                            : [...currentTags, tag];
+                          setFormData({ ...formData, tags: nextTags });
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-all ${
+                          isSelected
+                            ? "bg-primary-600 text-white shadow-xs"
+                            : "bg-white text-gray-700 hover:bg-gray-200 border border-gray-200"
+                        }`}
+                      >
+                        {isSelected ? `✓ ${tag}` : `+ ${tag}`}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
