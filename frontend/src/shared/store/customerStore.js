@@ -62,6 +62,32 @@ export const useCustomerStore = create(
         }
       },
 
+      // Create new customer via API
+      createCustomer: async (customerData) => {
+        set({ isLoading: true });
+        try {
+          const response = await adminService.createCustomer(customerData);
+          const newCustomer = response.data;
+
+          const normalizedNewCustomer = {
+            ...newCustomer,
+            id: newCustomer._id,
+            status: newCustomer.isActive ? 'active' : 'blocked'
+          };
+
+          set((state) => ({
+            customers: [normalizedNewCustomer, ...state.customers],
+            isLoading: false
+          }));
+
+          toast.success('Customer created successfully');
+          return normalizedNewCustomer;
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+
       // Update customer details via API
       updateCustomer: async (id, customerData) => {
         set({ isLoading: true });

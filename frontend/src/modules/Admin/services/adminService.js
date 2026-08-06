@@ -215,6 +215,9 @@ export const getVendorCommissions = (id, params = {}) =>
 export const getAllCustomers = (params = {}) =>
     api.get('/admin/customers', { params });
 
+export const createCustomer = (data) =>
+    api.post('/admin/customers', data);
+
 export const getCustomerById = (id) =>
     api.get(`/admin/customers/${id}`);
 

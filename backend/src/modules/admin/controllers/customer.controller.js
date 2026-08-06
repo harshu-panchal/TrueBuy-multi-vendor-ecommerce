@@ -101,6 +101,48 @@ export const getAllCustomers = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Create a new customer (Admin manual creation)
+ * @route   POST /api/admin/customers
+ * @access  Private (Admin)
+ */
+export const createCustomer = asyncHandler(async (req, res) => {
+    const { name, email, phone, password } = req.body;
+
+    if (!name || !email || !password) {
+        throw new ApiError(400, 'Name, email, and password are required');
+    }
+
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+        throw new ApiError(409, 'Customer with this email already exists');
+    }
+
+    const customer = new User({
+        name,
+        email: email.toLowerCase(),
+        phone: phone || '',
+        password,
+        role: 'customer',
+        isActive: true,
+        isVerified: true,
+    });
+
+    await customer.save();
+
+    const sanitizedCustomer = await User.findById(customer._id).select('-password -otp -otpExpiry').lean();
+
+    res.status(201).json(
+        new ApiResponse(201, {
+            ...sanitizedCustomer,
+            orders: 0,
+            totalSpent: 0,
+            lastOrderDate: null,
+            addresses: [],
+        }, 'Customer created successfully')
+    );
+});
+
+/**
  * @desc    Get customer details with order summary
  * @route   GET /api/admin/customers/:id
  * @access  Private (Admin)
