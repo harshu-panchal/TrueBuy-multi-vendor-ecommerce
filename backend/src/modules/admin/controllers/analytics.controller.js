@@ -4,6 +4,7 @@ import Order from '../../../models/Order.model.js';
 import User from '../../../models/User.model.js';
 import Vendor from '../../../models/Vendor.model.js';
 import Product from '../../../models/Product.model.js';
+import Address from '../../../models/Address.model.js';
 
 // GET /api/admin/analytics/dashboard
 const parseValidDate = (dateStr, fallback = null) => {
@@ -410,26 +411,51 @@ export const getRegisteredCustomersCount = asyncHandler(async (req, res) => {
 
 // GET /api/admin/analytics/online-customers
 export const getOnlineCustomers = asyncHandler(async (req, res) => {
-    const onlineCustomers = await User.find({ role: 'customer', isActive: true })
+    const { search, limit = 50 } = req.query;
+    const numericLimit = Number(limit) || 50;
+    
+    const filter = { role: 'customer', isActive: true };
+    if (search) {
+        filter.$or = [
+            { name: { $regex: search, $options: 'i' } },
+            { email: { $regex: search, $options: 'i' } },
+        ];
+    }
+
+    const onlineCustomers = await User.find(filter)
         .sort({ updatedAt: -1 })
-        .limit(20)
-        .select('name email address createdAt updatedAt')
+        .limit(numericLimit)
+        .select('name email phone createdAt updatedAt')
         .lean();
 
+    const customerIds = onlineCustomers.map(c => c._id);
+    const addresses = await Address.find({ userId: { $in: customerIds } }).lean();
+
+    const addressMap = new Map();
+    addresses.forEach(addr => {
+        if (!addressMap.has(String(addr.userId)) || addr.isDefault) {
+            addressMap.set(String(addr.userId), addr);
+        }
+    });
+
     const formatted = onlineCustomers.map(user => {
-        const city = user.address?.city || '';
-        const country = user.address?.country || '';
-        const locationStr = city && country ? `${city}, ${country}` : country || city || 'N/A';
+        const addr = addressMap.get(String(user._id));
+        const city = addr?.city || '';
+        const state = addr?.state || '';
+        const country = addr?.country || 'India';
+        const locationStr = city && state ? `${city}, ${state}` : city || country || 'N/A';
 
         return {
             id: user._id,
             customerInfo: user.name,
             customerNumber: user.email,
+            phone: user.phone || 'N/A',
             active: true,
+            ipAddress: '127.0.0.1',
             location: locationStr,
             lastActivity: user.updatedAt,
             createdOn: user.createdAt,
-            lastVisitedPage: '/'
+            lastVisitedPage: '/home'
         };
     });
 

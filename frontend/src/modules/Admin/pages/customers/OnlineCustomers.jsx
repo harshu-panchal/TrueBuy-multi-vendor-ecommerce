@@ -1,46 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiCheck, FiSettings, FiChevronDown, FiRefreshCw, FiSearch } from 'react-icons/fi';
+import { FiCheck, FiRefreshCw, FiSearch, FiDownload, FiMapPin, FiClock, FiUser, FiActivity } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import Badge from '../../../../shared/components/Badge';
 import { getOnlineCustomers } from '../../services/adminService';
 import { formatDateTime } from '../../utils/adminHelpers';
 import toast from 'react-hot-toast';
 
 const OnlineCustomers = () => {
-  const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [tableSettings, setTableSettings] = useState({
-    rowLines: true,
-    columnLines: false,
-    striped: false,
-    hover: true,
-  });
-
-  const [visibleColumns, setVisibleColumns] = useState({
-    id: true,
-    customerInfo: true,
-    customerNumber: true,
-    active: true,
-    ipAddress: true,
-    location: true,
-    lastActivity: true,
-    createdOn: true,
-    lastVisitedPage: true
-  });
-
   const [onlineData, setOnlineData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchOnlineCustomers = async () => {
+  const fetchOnlineCustomers = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await getOnlineCustomers();
+      const response = await getOnlineCustomers({ search: searchQuery });
       if (response && response.success) {
         const data = (response.data || []).map(item => ({
           ...item,
-          lastActivity: formatDateTime(item?.lastActivity),
-          createdOn: formatDateTime(item?.createdOn)
+          formattedLastActivity: formatDateTime(item?.lastActivity),
+          formattedCreatedOn: formatDateTime(item?.createdOn)
         }));
         setOnlineData(data);
       }
@@ -50,86 +30,160 @@ const OnlineCustomers = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchOnlineCustomers();
-    // Refresh every 30 seconds for "online" feel
+    // Auto-refresh every 30 seconds for live feel
     const interval = setInterval(fetchOnlineCustomers, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchOnlineCustomers]);
 
+  // Export CSV
+  const handleExportCSV = () => {
+    if (onlineData.length === 0) {
+      toast.error('No online customer records to export');
+      return;
+    }
+
+    const exportData = onlineData.map(c => ({
+      'Customer ID': c.id,
+      'Customer Name': c.customerInfo,
+      'Customer Email': c.customerNumber,
+      'Phone': c.phone || 'N/A',
+      'Location': c.location,
+      'IP Address': c.ipAddress,
+      'Last Activity': c.formattedLastActivity,
+      'Registration Date': c.formattedCreatedOn,
+      'Last Visited Route': c.lastVisitedPage,
+    }));
+
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Online_Customers_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Mobile Table Card Renderer
+  const renderMobileCard = (row) => {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        {/* Header */}
+        <div className="flex justify-between items-start border-b border-gray-100 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-sm relative">
+              {row.customerInfo.charAt(0).toUpperCase()}
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+            </div>
+            <div>
+              <p className="font-bold text-xs text-gray-900">{row.customerInfo}</p>
+              <p className="text-[11px] text-gray-500">{row.customerNumber}</p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
+            <FiCheck size={12} /> Active Now
+          </span>
+        </div>
+
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Location</p>
+            <p className="font-bold text-gray-800 flex items-center gap-1 mt-0.5">
+              <FiMapPin className="text-gray-400 text-xs" />
+              {row.location}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Last Activity</p>
+            <p className="font-semibold text-gray-700 mt-0.5">{row.formattedLastActivity}</p>
+          </div>
+          <div className="col-span-2 pt-1 border-t border-gray-200/60 flex justify-between items-center">
+            <span className="text-[10px] font-bold text-gray-400 uppercase">Current Page</span>
+            <span className="font-mono text-xs text-primary-600 bg-primary-50 px-2 py-0.5 rounded border border-primary-100">{row.lastVisitedPage}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Desktop Columns
   const columns = [
     {
       key: 'id',
       label: 'ID',
       sortable: true,
-      hidden: !visibleColumns.id,
-      render: (value) => <span className="text-gray-500 font-mono text-xs">{value || '—'}</span>
+      render: (v) => <span className="font-mono text-xs text-gray-400">#{String(v).slice(-6).toUpperCase()}</span>
     },
     {
       key: 'customerInfo',
       label: 'Customer Info',
       sortable: true,
-      hidden: !visibleColumns.customerInfo,
-      render: (value) => (
-        <button className="text-primary-600 hover:text-primary-700 font-medium transition-colors">
-          {value}
-        </button>
+      render: (value, row) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold text-xs relative">
+            {value.charAt(0).toUpperCase()}
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border border-white"></span>
+          </div>
+          <div>
+            <p className="font-bold text-xs text-gray-900">{value}</p>
+            <p className="text-[11px] text-gray-500">{row.customerNumber}</p>
+          </div>
+        </div>
       ),
     },
     {
-      key: 'customerNumber',
-      label: 'Customer Number',
-      sortable: true,
-      hidden: !visibleColumns.customerNumber,
-      render: (value) => <span className="text-gray-600">{value || '—'}</span>,
-    },
-    {
       key: 'active',
-      label: 'Active',
+      label: 'Status',
       sortable: false,
-      hidden: !visibleColumns.active,
-      render: (value) => value ? <FiCheck className="text-green-600 text-lg mx-auto" /> : <span className="text-gray-300">—</span>,
-    },
-    {
-      key: 'ipAddress',
-      label: 'IP Address',
-      sortable: true,
-      hidden: !visibleColumns.ipAddress,
-      render: (value) => <span className="text-gray-600">{value || '—'}</span>,
+      render: (value) => value ? (
+        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-green-700 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
+          <FiCheck size={12} /> Active Now
+        </span>
+      ) : (
+        <span className="text-gray-400 text-xs">—</span>
+      ),
     },
     {
       key: 'location',
       label: 'Location',
       sortable: true,
-      hidden: !visibleColumns.location,
-      render: (value) => <span className="text-gray-600">{value || '—'}</span>,
+      render: (value) => (
+        <span className="flex items-center gap-1 text-xs font-medium text-gray-700">
+          <FiMapPin className="text-gray-400 text-xs" />
+          {value || 'N/A'}
+        </span>
+      ),
     },
     {
       key: 'lastActivity',
-      label: 'Last Activity ↓',
+      label: 'Last Activity',
       sortable: true,
-      hidden: !visibleColumns.lastActivity,
-      render: (value) => <span className="text-gray-600 text-sm">{value}</span>,
+      render: (_, row) => <span className="text-xs text-gray-600 whitespace-nowrap">{row.formattedLastActivity}</span>,
     },
     {
       key: 'createdOn',
-      label: 'Created On',
+      label: 'Registered On',
       sortable: true,
-      hidden: !visibleColumns.createdOn,
-      render: (value) => <span className="text-gray-600 text-sm">{value}</span>,
+      render: (_, row) => <span className="text-xs text-gray-500 whitespace-nowrap">{row.formattedCreatedOn}</span>,
     },
     {
       key: 'lastVisitedPage',
-      label: 'Last Visited Page',
-      sortable: true,
-      hidden: !visibleColumns.lastVisitedPage,
-      render: (value) => <span className="text-gray-400 text-xs truncate max-w-[200px] block">{value}</span>,
+      label: 'Current Route',
+      sortable: false,
+      render: (value) => (
+        <span className="font-mono text-xs text-primary-600 bg-primary-50 px-2 py-0.5 rounded border border-primary-100">
+          {value || '/'}
+        </span>
+      ),
     },
   ];
-
-  const filteredColumns = columns.filter(col => !col.hidden);
 
   return (
     <motion.div
@@ -137,141 +191,61 @@ const OnlineCustomers = () => {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
-      {/* Header Info (Mobile Only as per layout) */}
-      <div className="lg:hidden">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2">Online customers</h1>
-        <p className="text-sm sm:text-base text-gray-600">Monitor currently active customers on your store</p>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+            <span>Online Customers</span>
+            <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+          </h1>
+          <p className="text-sm text-gray-500">
+            Real-time traffic monitoring of active buyer sessions currently browsing the platform
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchOnlineCustomers}
+            className="p-2.5 text-gray-600 hover:text-green-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm transition-colors flex items-center gap-1.5 text-sm font-semibold"
+            title="Refresh Live Sessions"
+          >
+            <FiRefreshCw className={loading ? "animate-spin" : ""} />
+            <span className="hidden sm:inline">Refresh Live Data</span>
+          </button>
+          <button
+            onClick={handleExportCSV}
+            className="px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium text-sm transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <FiDownload />
+            <span>Export CSV</span>
+          </button>
+        </div>
       </div>
 
-      {/* Action Bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 relative mb-20">
-        <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={fetchOnlineCustomers}
-              disabled={loading}
-              className={`p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 ${loading ? 'animate-spin' : ''}`}
-              title="Refresh"
-            >
-              <FiRefreshCw className="text-sm" />
-            </button>
-          </div>
-
-          <div className="relative flex-1 max-w-md">
-            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search online customers..."
-              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-            />
-          </div>
-        </div>
-        {/* Table Section */}
-        <div className="p-0 overflow-x-auto min-h-[300px]">
-          <DataTable
-            data={onlineData}
-            columns={filteredColumns}
-            pagination={false}
-            loading={loading}
-            rowLines={tableSettings.rowLines}
-            columnLines={tableSettings.columnLines}
-            className={`${tableSettings.striped ? '[&_tbody_tr:nth-child(even)]:bg-gray-50/50' : ''} ${!tableSettings.hover ? '[&_tbody_tr]:hover:bg-transparent' : ''}`}
+      {/* Filter Toolbar */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div className="relative w-full max-w-md">
+          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search active shopper name, email, or location..."
+            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
           />
         </div>
+      </div>
 
-        {/* Footer info/pagination with Settings */}
-        <div className="p-1 px-4 border-t border-gray-100 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-between gap-4 relative">
-          <div className="text-xs text-gray-400 font-medium order-2 sm:order-1">
-            Displaying {onlineData.length} active customers
-          </div>
-
-          <div className="flex items-center gap-2 order-1 sm:order-2 w-full sm:w-auto justify-end">
-            {/* Page Size Select */}
-            <div className="relative">
-              <select className="appearance-none bg-white border border-gray-200 rounded px-3 pr-8 py-1.5 text-xs font-semibold text-gray-700 focus:outline-none hover:border-gray-300 transition-colors">
-                <option>25 per page</option>
-                <option>50 per page</option>
-                <option>100 per page</option>
-              </select>
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">
-                <FiChevronDown className="text-gray-400 text-xs" />
-              </div>
-            </div>
-
-            {/* Settings Button */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 rounded border transition-all ${showSettings ? 'bg-primary-50 border-primary-300 text-primary-600 shadow-sm' : 'bg-gray-200 border-gray-300 text-gray-700 hover:bg-gray-300'}`}
-              >
-                <FiSettings className={`text-lg ${showSettings ? 'animate-spin-slow' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {showSettings && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full right-0 mb-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-4 z-50 pointer-events-auto"
-                  >
-                    <div className="space-y-4">
-                      {/* Toggles */}
-                      <div className="space-y-3">
-                        {['Row lines', 'Column lines', 'Striped', 'Hover'].map(label => {
-                          const key = label === 'Row lines' ? 'rowLines' : label === 'Column lines' ? 'columnLines' : label.toLowerCase();
-                          return (
-                            <div key={label} className="flex items-center justify-between group">
-                              <span className="text-sm text-gray-700">{label}</span>
-                              <button
-                                onClick={() => setTableSettings(s => ({ ...s, [key]: !s[key] }))}
-                                className={`w-10 h-5 rounded-full relative transition-colors duration-200 shadow-inner ${tableSettings[key] ? 'bg-primary-600' : 'bg-gray-300'}`}
-                              >
-                                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${tableSettings[key] ? 'translate-x-5' : 'translate-x-1'}`} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-2 pt-2 border-t border-gray-50">
-                        <button
-                          onClick={() => setTableSettings({ rowLines: true, columnLines: false, striped: false, hover: true })}
-                          className="flex-1 py-1.5 border border-gray-200 rounded text-xs font-semibold hover:bg-gray-50 transition-colors"
-                        >
-                          Reset
-                        </button>
-                        <button className="flex-1 py-1.5 border border-gray-200 rounded text-xs font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-1">
-                          <span className="font-mono text-[10px] tracking-tight">|↔|</span> Fit columns
-                        </button>
-                      </div>
-
-                      {/* Column Visibility */}
-                      <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-3 border-t border-gray-50">
-                        {Object.entries(visibleColumns).map(([key, isVisible]) => (
-                          <label key={key} className="flex items-center gap-2 cursor-pointer group">
-                            <div
-                              onClick={() => setVisibleColumns(v => ({ ...v, [key]: !v[key] }))}
-                              className={`w-4 h-4 rounded-md border flex items-center justify-center transition-colors ${isVisible ? 'bg-primary-600 border-primary-600' : 'bg-white border-gray-300'}`}
-                            >
-                              {isVisible && <FiCheck className="text-white text-[10px]" />}
-                            </div>
-                            <span className={`text-xs capitalize transition-colors ${isVisible ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                              {key.replace(/([A-Z])/g, ' $1').trim()}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </div>
+      {/* Main DataTable */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <DataTable
+          data={onlineData}
+          columns={columns}
+          pagination={true}
+          itemsPerPage={15}
+          isLoading={loading}
+          renderMobileCard={renderMobileCard}
+        />
       </div>
     </motion.div>
   );

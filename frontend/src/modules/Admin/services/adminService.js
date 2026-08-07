@@ -49,8 +49,8 @@ export const getTopCustomersReport = (params = {}) =>
 export const getRegisteredCustomersCount = () =>
     api.get('/admin/analytics/registered-customers-count');
 
-export const getOnlineCustomers = () =>
-    api.get('/admin/analytics/online-customers');
+export const getOnlineCustomers = (params = {}) =>
+    api.get('/admin/analytics/online-customers', { params });
 
 // ─── Orders ───────────────────────────────────────────────────────────────────
 export const getAllOrders = (params = {}) =>
