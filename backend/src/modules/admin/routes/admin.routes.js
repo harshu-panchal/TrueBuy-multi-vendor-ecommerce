@@ -25,6 +25,7 @@ import * as bestsellerController from '../controllers/bestseller.controller.js';
 import * as neverPurchasedController from '../controllers/neverPurchased.controller.js';
 import * as activityLogController from '../controllers/activityLog.controller.js';
 import * as affiliateController from '../controllers/affiliate.controller.js';
+import * as newsletterController from '../controllers/newsletter.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -334,5 +335,12 @@ router.get('/affiliates/:id', ...adminAuth, affiliateController.getAffiliateById
 router.post('/affiliates', ...adminAuth, affiliateController.createAffiliate);
 router.put('/affiliates/:id', ...adminAuth, affiliateController.updateAffiliate);
 router.delete('/affiliates/:id', ...adminAuth, affiliateController.deleteAffiliate);
+
+// ——— Newsletter Subscribers ————————————————————————————————————————————————
+router.get('/newsletter-subscribers', ...adminAuth, newsletterController.getAllSubscribers);
+router.post('/newsletter-subscribers', ...adminAuth, newsletterController.createSubscriber);
+router.put('/newsletter-subscribers/:id', ...adminAuth, newsletterController.updateSubscriber);
+router.delete('/newsletter-subscribers/:id', ...adminAuth, newsletterController.deleteSubscriber);
+router.delete('/newsletter-subscribers', ...adminAuth, newsletterController.deleteSubscriber);
 
 export default router;

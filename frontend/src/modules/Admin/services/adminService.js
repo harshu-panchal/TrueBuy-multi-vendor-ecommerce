@@ -134,6 +134,19 @@ export const updateAffiliate = (id, data) =>
 export const deleteAffiliate = (id) =>
     api.delete(`/admin/affiliates/${id}`);
 
+// ─── Newsletter Subscribers ───────────────────────────────────────────────────
+export const getAllNewsletterSubscribers = (params = {}) =>
+    api.get('/admin/newsletter-subscribers', { params });
+
+export const createNewsletterSubscriber = (data) =>
+    api.post('/admin/newsletter-subscribers', data);
+
+export const updateNewsletterSubscriber = (id, data) =>
+    api.put(`/admin/newsletter-subscribers/${id}`, data);
+
+export const deleteNewsletterSubscriber = (id, payload) =>
+    id ? api.delete(`/admin/newsletter-subscribers/${id}`) : api.delete('/admin/newsletter-subscribers', { data: payload });
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });

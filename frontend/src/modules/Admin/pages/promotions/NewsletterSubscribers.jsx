@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiFilter,
@@ -16,9 +16,18 @@ import {
   FiLayout,
   FiType,
   FiUsers as FiRoles,
-  FiSettings
+  FiSettings,
+  FiDownload,
+  FiRefreshCw
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import { 
+  getAllNewsletterSubscribers, 
+  createNewsletterSubscriber, 
+  updateNewsletterSubscriber, 
+  deleteNewsletterSubscriber 
+} from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const SubscriberForm = ({ onBack, onSave, onUpdate, initialData = null }) => {
   const isEdit = !!initialData;
@@ -152,11 +161,36 @@ const NewsletterSubscribers = () => {
   });
 
   const [subscribers, setSubscribers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSubscribers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await getAllNewsletterSubscribers({
+        email: filters.email || undefined,
+        store: filters.store !== 'All' ? filters.store : undefined,
+        role: filters.role !== 'All' ? filters.role : undefined,
+      });
+
+      if (response && response.success) {
+        setSubscribers(response.data?.subscribers || []);
+      }
+    } catch (error) {
+      console.error('Error fetching newsletter subscribers:', error);
+      toast.error('Failed to fetch subscribers');
+    } finally {
+      setLoading(false);
+    }
+  }, [filters]);
+
+  useEffect(() => {
+    fetchSubscribers();
+  }, [fetchSubscribers]);
 
   const filteredSubscribers = useMemo(() => {
     return subscribers.filter(sub => {
-      const matchEmail = sub.email.toLowerCase().includes(filters.email.toLowerCase());
-      const matchRole = filters.role === 'All' || sub.roles.includes(filters.role);
+      const matchEmail = (sub.email || '').toLowerCase().includes((filters.email || '').toLowerCase());
+      const matchRole = filters.role === 'All' || (sub.roles && sub.roles.includes(filters.role));
       const matchStore = filters.store === 'All' || sub.store === filters.store;
       return matchEmail && matchRole && matchStore;
     });
@@ -180,30 +214,119 @@ const NewsletterSubscribers = () => {
     setSelectedIds(newSelected);
   };
 
-  const handleSaveSub = (newSub) => {
-    setSubscribers([newSub, ...subscribers]);
-    setView('list');
+  const handleSaveSub = async (newSub) => {
+    try {
+      await createNewsletterSubscriber(newSub);
+      toast.success('Subscriber created successfully');
+      fetchSubscribers();
+      setView('list');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleUpdateSub = (updated) => {
-    setSubscribers(subscribers.map(s => s.id === updated.id ? updated : s));
-    setView('list');
+  const handleUpdateSub = async (updated) => {
+    try {
+      await updateNewsletterSubscriber(updated.id, updated);
+      toast.success('Subscriber updated successfully');
+      fetchSubscribers();
+      setView('list');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleDeleteSub = (id) => {
+  const handleDeleteSub = async (id) => {
     if (window.confirm('Delete this subscriber record?')) {
-      setSubscribers(subscribers.filter(s => s.id !== id));
-      const newSelected = new Set(selectedIds);
-      newSelected.delete(id);
-      setSelectedIds(newSelected);
+      try {
+        await deleteNewsletterSubscriber(id);
+        toast.success('Subscriber record deleted');
+        fetchSubscribers();
+        const newSelected = new Set(selectedIds);
+        newSelected.delete(id);
+        setSelectedIds(newSelected);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
     if (window.confirm(`Permanently delete ${selectedIds.size} records?`)) {
-      setSubscribers(subscribers.filter(s => !selectedIds.has(s.id)));
-      setSelectedIds(new Set());
+      try {
+        await deleteNewsletterSubscriber(null, { ids: Array.from(selectedIds) });
+        toast.success(`${selectedIds.size} subscriber records deleted`);
+        fetchSubscribers();
+        setSelectedIds(new Set());
+      } catch (err) {
+        toast.error('Failed to delete some subscriber records');
+      }
     }
+  };
+
+  const handleExportCSV = () => {
+    if (subscribers.length === 0) {
+      toast.error('No subscribers to export');
+      return;
+    }
+
+    const exportData = subscribers.map(s => ({
+      'ID': s.id,
+      'Email': s.email,
+      'Status': s.active ? 'Active' : 'Inactive',
+      'Target Store': s.store || 'Main Store',
+      'Roles': (s.roles || []).join(', '),
+      'Created Date': s.createdOn || 'N/A',
+    }));
+
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Newsletter_Subscribers_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderMobileCard = (row) => {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        <div className="flex justify-between items-start border-b border-gray-100 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs">
+              <FiMail size={18} />
+            </div>
+            <div>
+              <p className="font-bold text-xs text-gray-900">{row.email}</p>
+              <p className="text-[11px] text-gray-500">{row.store}</p>
+            </div>
+          </div>
+          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${row.active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+            {row.active ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+
+        <div className="flex justify-between items-center text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Customer Role</p>
+            <p className="font-bold text-gray-800">{Array.isArray(row.roles) ? row.roles.join(', ') : 'Registered'}</p>
+          </div>
+          <button
+            onClick={() => {
+              setEditingSubscriber(row);
+              setView('edit');
+            }}
+            className="px-3 py-1.5 bg-primary-600 text-white rounded-lg font-bold text-xs hover:bg-primary-700 transition-colors"
+          >
+            Edit
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const columns = [
@@ -337,6 +460,22 @@ const NewsletterSubscribers = () => {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={handleExportCSV}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              title="Export CSV"
+            >
+              <FiDownload size={14} />
+              <span>Export CSV</span>
+            </button>
+            <button
+              onClick={fetchSubscribers}
+              disabled={loading}
+              className={`p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 ${loading ? 'animate-spin' : ''}`}
+              title="Refresh"
+            >
+              <FiRefreshCw className="text-sm" />
+            </button>
+            <button
               onClick={() => setShowFilter(!showFilter)}
               className={`px-4 py-2 rounded-xl border transition-all text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-sm ${
                 showFilter 
@@ -427,7 +566,9 @@ const NewsletterSubscribers = () => {
             data={filteredSubscribers}
             columns={columns}
             pagination={true}
+            loading={loading}
             itemsPerPage={10}
+            renderMobileCard={renderMobileCard}
             className="border-none shadow-none rounded-none"
           />
 
