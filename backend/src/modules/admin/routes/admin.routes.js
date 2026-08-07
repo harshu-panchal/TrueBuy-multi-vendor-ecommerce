@@ -24,6 +24,7 @@ import * as wishlistAdminController from '../controllers/wishlist.controller.js'
 import * as bestsellerController from '../controllers/bestseller.controller.js';
 import * as neverPurchasedController from '../controllers/neverPurchased.controller.js';
 import * as activityLogController from '../controllers/activityLog.controller.js';
+import * as affiliateController from '../controllers/affiliate.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -326,5 +327,12 @@ router.get('/never-purchased', ...adminAuth, neverPurchasedController.getNeverPu
 // ——— Activity Logs —————————————————————————————————————————————————───────
 router.get('/activity-logs', ...adminAuth, activityLogController.getAllActivityLogs);
 router.delete('/activity-logs', ...adminAuth, activityLogController.deleteActivityLogs);
+
+// ——— Affiliates —————————————————————————————————————————————————───────────
+router.get('/affiliates', ...adminAuth, affiliateController.getAllAffiliates);
+router.get('/affiliates/:id', ...adminAuth, affiliateController.getAffiliateById);
+router.post('/affiliates', ...adminAuth, affiliateController.createAffiliate);
+router.put('/affiliates/:id', ...adminAuth, affiliateController.updateAffiliate);
+router.delete('/affiliates/:id', ...adminAuth, affiliateController.deleteAffiliate);
 
 export default router;

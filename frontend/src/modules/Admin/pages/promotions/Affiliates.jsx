@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiSettings,
@@ -21,9 +21,13 @@ import {
   FiLoader,
   FiExternalLink,
   FiUsers as FiCustomers,
-  FiShoppingCart
+  FiShoppingCart,
+  FiDownload,
+  FiRefreshCw
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import { getAllAffiliates, createAffiliate, updateAffiliate, deleteAffiliate } from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const AffiliateForm = ({ onBack, onSave, onUpdate, initialData = null, onDelete }) => {
   const isEdit = !!initialData;
@@ -440,6 +444,26 @@ const Affiliates = () => {
   });
 
   const [affiliates, setAffiliates] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchAffiliates = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await getAllAffiliates();
+      if (response && response.success) {
+        setAffiliates(response.data?.affiliates || []);
+      }
+    } catch (error) {
+      console.error('Error fetching affiliates:', error);
+      toast.error('Failed to fetch affiliates');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAffiliates();
+  }, [fetchAffiliates]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) setSelectedIds(new Set(affiliates.map(a => a.id)));
@@ -453,38 +477,130 @@ const Affiliates = () => {
     setSelectedIds(newSelected);
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
     if (window.confirm(`Permanently remove ${selectedIds.size} affiliate accounts?`)) {
-      setAffiliates(affiliates.filter(a => !selectedIds.has(a.id)));
-      setSelectedIds(new Set());
+      try {
+        await Promise.all(Array.from(selectedIds).map(id => deleteAffiliate(id)));
+        toast.success(`${selectedIds.size} affiliate accounts deleted`);
+        fetchAffiliates();
+        setSelectedIds(new Set());
+      } catch (err) {
+        toast.error('Failed to delete some affiliate accounts');
+      }
     }
   };
 
-  const handleSaveAffiliate = (formData, continueEditing) => {
-    const newAffiliate = {
-      id: (affiliates.length + 1).toString(),
-      ...formData
-    };
-    setAffiliates([...affiliates, newAffiliate]);
-    if (!continueEditing) setView('list');
-    else {
-      setEditingAffiliate(newAffiliate);
-      setView('edit');
+  const handleSaveAffiliate = async (formData, continueEditing) => {
+    try {
+      const response = await createAffiliate(formData);
+      const newAffiliate = response.data;
+      toast.success('Affiliate created successfully');
+      fetchAffiliates();
+      if (!continueEditing) setView('list');
+      else {
+        setEditingAffiliate(newAffiliate);
+        setView('edit');
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
-  const handleUpdateAffiliate = (formData, continueEditing) => {
-    setAffiliates(affiliates.map(a => a.id === formData.id ? formData : a));
-    if (!continueEditing) setView('list');
-    else alert('Affiliate updated successfully.');
+  const handleUpdateAffiliate = async (formData, continueEditing) => {
+    try {
+      await updateAffiliate(formData.id, formData);
+      toast.success('Affiliate updated successfully');
+      fetchAffiliates();
+      if (!continueEditing) setView('list');
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleRowDelete = (id) => {
+  const handleRowDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this affiliate?')) {
-      setAffiliates(affiliates.filter(a => a.id !== id));
-      setView('list');
+      try {
+        await deleteAffiliate(id);
+        toast.success('Affiliate deleted successfully');
+        fetchAffiliates();
+        setView('list');
+      } catch (err) {
+        console.error(err);
+      }
     }
+  };
+
+  const handleExportCSV = () => {
+    if (affiliates.length === 0) {
+      toast.error('No affiliates to export');
+      return;
+    }
+
+    const exportData = affiliates.map(a => ({
+      'ID': a.id,
+      'First Name': a.firstName,
+      'Last Name': a.lastName,
+      'Email': a.email,
+      'Company': a.company || 'N/A',
+      'Phone': a.phone || 'N/A',
+      'City': a.city || 'N/A',
+      'Country': a.country || 'India',
+      'Status': a.active ? 'Active' : 'Inactive',
+    }));
+
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Affiliates_Directory_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderMobileCard = (row) => {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        <div className="flex justify-between items-start border-b border-gray-100 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-sm">
+              {row.firstName ? row.firstName.charAt(0).toUpperCase() : 'A'}
+            </div>
+            <div>
+              <p className="font-bold text-xs text-gray-900">{row.firstName} {row.lastName}</p>
+              <p className="text-[11px] text-gray-500">{row.email}</p>
+            </div>
+          </div>
+          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${row.active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+            {row.active ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Company</p>
+            <p className="font-bold text-gray-800">{row.company || 'N/A'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Location</p>
+            <p className="font-semibold text-gray-700">{row.city || row.country || 'N/A'}</p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            setEditingAffiliate(row);
+            setView('edit');
+          }}
+          className="w-full py-2 bg-primary-600 text-white rounded-lg font-bold text-xs hover:bg-primary-700 transition-colors"
+        >
+          Edit Affiliate Details
+        </button>
+      </div>
+    );
   };
 
   if (view === 'add') {
@@ -616,6 +732,25 @@ const Affiliates = () => {
               )}
             </AnimatePresence>
           </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportCSV}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              title="Export CSV"
+            >
+              <FiDownload size={14} />
+              <span>Export CSV</span>
+            </button>
+            <button
+              onClick={fetchAffiliates}
+              disabled={loading}
+              className={`p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 ${loading ? 'animate-spin' : ''}`}
+              title="Refresh"
+            >
+              <FiRefreshCw className="text-sm" />
+            </button>
+          </div>
         </div>
 
         {/* Table Section */}
@@ -624,7 +759,9 @@ const Affiliates = () => {
             data={affiliates}
             columns={filteredColumns}
             pagination={true}
+            loading={loading}
             itemsPerPage={10}
+            renderMobileCard={renderMobileCard}
             rowLines={tableSettings.rowLines}
             columnLines={tableSettings.columnLines}
             className={`rounded-none shadow-none border-none ${tableSettings.striped ? '[&_tbody_tr:nth-child(even)]:bg-gray-50/50' : ''} ${!tableSettings.hover ? '[&_tbody_tr]:hover:bg-transparent' : ''}`}

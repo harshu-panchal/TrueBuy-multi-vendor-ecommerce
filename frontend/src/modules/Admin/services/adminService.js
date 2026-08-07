@@ -118,6 +118,22 @@ export const getAllActivityLogs = (params = {}) =>
 export const deleteActivityLogs = (payload) =>
     api.delete('/admin/activity-logs', { data: payload });
 
+// ─── Affiliates ───────────────────────────────────────────────────────────────
+export const getAllAffiliates = (params = {}) =>
+    api.get('/admin/affiliates', { params });
+
+export const getAffiliateById = (id) =>
+    api.get(`/admin/affiliates/${id}`);
+
+export const createAffiliate = (data) =>
+    api.post('/admin/affiliates', data);
+
+export const updateAffiliate = (id, data) =>
+    api.put(`/admin/affiliates/${id}`, data);
+
+export const deleteAffiliate = (id) =>
+    api.delete(`/admin/affiliates/${id}`);
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });
