@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiPlus,
@@ -15,10 +15,14 @@ import {
   FiCheck,
   FiType,
   FiCode,
-  FiInfo
+  FiInfo,
+  FiDownload,
+  FiRefreshCw
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
 import { formatDate } from '../../utils/adminHelpers';
+import { getAllCampaigns, createCampaign, updateCampaign, deleteCampaign } from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const CampaignForm = ({ onBack, onSave, initialData = null }) => {
   const isEdit = !!initialData;
@@ -209,6 +213,34 @@ const Campaigns = () => {
 
   // Mock Data
   const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchCampaigns = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await getAllCampaigns();
+      if (response && response.success) {
+        const rawList = Array.isArray(response.data) ? response.data : (response.data?.campaigns || []);
+        const formatted = rawList.map(c => ({
+          ...c,
+          id: c._id || c.id,
+          createdOn: c.createdAt ? new Date(c.createdAt).toISOString().split('T')[0] : (c.createdOn || 'N/A'),
+          limitedToRoles: c.limitedToRoles || c.targetRole || 'All',
+          limitedToStores: c.limitedToStores || c.targetStore || 'All',
+        }));
+        setCampaigns(formatted);
+      }
+    } catch (error) {
+      console.error('Error fetching campaigns:', error);
+      toast.error('Failed to fetch campaigns');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCampaigns();
+  }, [fetchCampaigns]);
 
   // Handle Selection
   const handleSelectAll = (e) => {
@@ -224,38 +256,128 @@ const Campaigns = () => {
   };
 
   // Actions
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this campaign?')) {
-      setCampaigns(campaigns.filter(c => c.id !== id));
-      const newSelected = new Set(selectedIds);
-      newSelected.delete(id);
-      setSelectedIds(newSelected);
+      try {
+        await deleteCampaign(id);
+        toast.success('Campaign deleted successfully');
+        fetchCampaigns();
+        const newSelected = new Set(selectedIds);
+        newSelected.delete(id);
+        setSelectedIds(newSelected);
+      } catch (err) {
+        console.error(err);
+      }
     }
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
     if (window.confirm(`Permanently delete ${selectedIds.size} selected campaigns?`)) {
-      setCampaigns(campaigns.filter(c => !selectedIds.has(c.id)));
-      setSelectedIds(new Set());
+      try {
+        await Promise.all(Array.from(selectedIds).map(id => deleteCampaign(id)));
+        toast.success(`${selectedIds.size} campaigns deleted`);
+        fetchCampaigns();
+        setSelectedIds(new Set());
+      } catch (err) {
+        toast.error('Failed to delete some campaigns');
+      }
     }
   };
 
-  const handleSaveCampaign = (data, continueEditing) => {
-    if (editingCampaign) {
-      setCampaigns(campaigns.map(c => c.id === editingCampaign.id ? { ...data, id: c.id, createdOn: c.createdOn } : c));
-    } else {
-      const newCampaign = {
-        ...data,
-        id: Date.now().toString(),
-        createdOn: new Date().toISOString().split('T')[0],
-      };
-      setCampaigns([newCampaign, ...campaigns]);
+  const handleSaveCampaign = async (data, continueEditing) => {
+    try {
+      if (editingCampaign) {
+        await updateCampaign(editingCampaign.id, data);
+        toast.success('Campaign updated successfully');
+      } else {
+        await createCampaign(data);
+        toast.success('Campaign created successfully');
+      }
+
+      fetchCampaigns();
+
+      if (!continueEditing) {
+        setView('list');
+        setEditingCampaign(null);
+      } else {
+        toast.success('Campaign progress saved. Continue composing.');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (campaigns.length === 0) {
+      toast.error('No campaigns to export');
+      return;
     }
 
-    if (!continueEditing) {
-      setView('list');
-      setEditingCampaign(null);
-    } else alert('Campaign progress saved. Continue composing.');
+    const exportData = campaigns.map(c => ({
+      'ID': c.id,
+      'Name': c.name,
+      'Subject': c.subject || 'N/A',
+      'Target Stores': c.limitedToStores || 'All',
+      'Target Roles': c.limitedToRoles || 'All',
+      'Created Date': c.createdOn || 'N/A',
+    }));
+
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Campaigns_Directory_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderMobileCard = (row) => {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        <div className="flex justify-between items-start border-b border-gray-100 pb-2.5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs">
+              <FiLayout size={18} />
+            </div>
+            <div>
+              <p className="font-bold text-xs text-gray-900">{row.name}</p>
+              <p className="text-[11px] text-gray-500">{row.subject || 'No subject'}</p>
+            </div>
+          </div>
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+            {row.limitedToStores || 'All Stores'}
+          </span>
+        </div>
+
+        <div className="flex justify-between items-center text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Target Roles</p>
+            <p className="font-bold text-gray-800">{row.limitedToRoles || 'All'}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setEditingCampaign(row);
+                setView('add');
+              }}
+              className="px-3 py-1.5 bg-primary-600 text-white rounded-lg font-bold text-xs hover:bg-primary-700 transition-colors"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => handleDelete(row.id)}
+              className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <FiTrash2 size={14} />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   // Table Columns
@@ -416,6 +538,25 @@ const Campaigns = () => {
               )}
             </AnimatePresence>
           </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportCSV}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              title="Export CSV"
+            >
+              <FiDownload size={14} />
+              <span>Export CSV</span>
+            </button>
+            <button
+              onClick={fetchCampaigns}
+              disabled={loading}
+              className={`p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 ${loading ? 'animate-spin' : ''}`}
+              title="Refresh"
+            >
+              <FiRefreshCw className="text-sm" />
+            </button>
+          </div>
         </div>
 
         {/* Table View */}
@@ -424,7 +565,9 @@ const Campaigns = () => {
             data={campaigns}
             columns={columns}
             pagination={true}
+            loading={loading}
             itemsPerPage={10}
+            renderMobileCard={renderMobileCard}
             className="border-none shadow-none rounded-none"
           />
 
