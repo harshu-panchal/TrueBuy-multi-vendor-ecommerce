@@ -23,6 +23,7 @@ import * as cartAdminController from '../controllers/cart.controller.js';
 import * as wishlistAdminController from '../controllers/wishlist.controller.js';
 import * as bestsellerController from '../controllers/bestseller.controller.js';
 import * as neverPurchasedController from '../controllers/neverPurchased.controller.js';
+import * as activityLogController from '../controllers/activityLog.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -321,5 +322,9 @@ router.get('/bestsellers', ...adminAuth, bestsellerController.getBestsellersRepo
 
 // ——— Never Purchased Products ————————————————————————————————————————————
 router.get('/never-purchased', ...adminAuth, neverPurchasedController.getNeverPurchasedReport);
+
+// ——— Activity Logs —————————————————————————————————————————————————───────
+router.get('/activity-logs', ...adminAuth, activityLogController.getAllActivityLogs);
+router.delete('/activity-logs', ...adminAuth, activityLogController.deleteActivityLogs);
 
 export default router;

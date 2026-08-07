@@ -111,6 +111,13 @@ export const getBestsellers = (params = {}) =>
 export const getNeverPurchased = (params = {}) =>
     api.get('/admin/never-purchased', { params });
 
+// ─── Activity Logs ────────────────────────────────────────────────────────────
+export const getAllActivityLogs = (params = {}) =>
+    api.get('/admin/activity-logs', { params });
+
+export const deleteActivityLogs = (payload) =>
+    api.delete('/admin/activity-logs', { data: payload });
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });
