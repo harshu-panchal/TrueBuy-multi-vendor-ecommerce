@@ -25,12 +25,13 @@ import {
   FiShoppingCart,
   FiBox,
   FiAlertCircle,
-  FiRefreshCw
+  FiRefreshCw,
+  FiDownload
 } from 'react-icons/fi';
 // import { IndianRupee } from 'lucide-react';
 import DataTable from '../../components/DataTable';
 import { formatDate, formatCurrency } from '../../utils/adminHelpers';
-import { getAllCoupons, deleteCoupon } from '../../services/adminService';
+import { getAllCoupons, createCoupon, deleteCoupon } from '../../services/adminService';
 import toast from 'react-hot-toast';
 
 const RuleForm = ({ onBack, onSave }) => {
@@ -659,21 +660,99 @@ const Discounts = () => {
     }
   };
 
-  const handleSaveDiscount = (formData, continueEditing) => {
+  const handleSaveDiscount = async (formData, continueEditing) => {
     // Date validation
     if (formData.startDate && formData.endDate && new Date(formData.startDate) >= new Date(formData.endDate)) {
       toast.error('End date must be after start date');
       return;
     }
-    console.log('Saving discount:', formData);
-    const newDiscount = {
-      id: (discounts.length + 1).toString(),
-      ...formData,
-      rules: formData.requirementRules.length // Dynamic rules count
+
+    const isPercentage = formData.usePercentage;
+    const val = isPercentage ? Number(formData.discountPercentage) : Number(formData.discountAmount);
+
+    const generatedCode = formData.couponCode 
+      ? formData.couponCode.toUpperCase() 
+      : `SAVE${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const payload = {
+      code: generatedCode,
+      name: formData.name || 'Promotional Discount',
+      type: isPercentage ? 'percentage' : 'fixed',
+      value: val || 0,
+      startDate: formData.startDate || null,
+      endDate: formData.endDate || null,
+      isActive: true,
     };
-    setDiscounts([...discounts, newDiscount]);
-    if (!continueEditing) setView('list');
-    else alert('Discount saved! You may proceed with further configuration.');
+
+    try {
+      await createCoupon(payload);
+      toast.success('Discount created successfully!');
+      fetchDiscounts();
+      if (!continueEditing) setView('list');
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (discounts.length === 0) {
+      toast.error('No discounts to export');
+      return;
+    }
+
+    const exportData = discounts.map(d => ({
+      'ID': d.id,
+      'Name': d.name,
+      'Code': d.code || 'N/A',
+      'Type': d.type,
+      'Value': d.usePercentage ? `${d.discountPercentage}%` : formatCurrency(d.discountAmount),
+      'Start Date': formatDate(d.startDate),
+      'End Date': formatDate(d.endDate),
+    }));
+
+    const headers = Object.keys(exportData[0]).join(',');
+    const rows = exportData.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+    const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Discounts_List_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const renderMobileCard = (row) => {
+    return (
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+        <div className="flex justify-between items-start border-b border-gray-100 pb-2.5">
+          <div>
+            <span className="font-mono text-[10px] font-extrabold text-gray-400">#{String(row.id).slice(-6).toUpperCase()}</span>
+            <h4 className="font-bold text-xs text-gray-900 line-clamp-1">{row.name}</h4>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-primary-700 bg-primary-50 px-2 py-0.5 rounded-full border border-primary-200">
+            {row.code || 'N/A'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Discount Value</p>
+            <p className="font-extrabold text-green-600 text-sm">
+              {row.usePercentage ? `${row.discountPercentage}% OFF` : formatCurrency(row.discountAmount)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase">Discount Type</p>
+            <p className="font-semibold text-gray-700">{row.type}</p>
+          </div>
+          <div className="col-span-2 pt-1 border-t border-gray-200/60 flex justify-between items-center">
+            <span className="text-[10px] font-bold text-gray-400 uppercase">Valid Period</span>
+            <span className="font-medium text-gray-600">{formatDate(row.startDate)} - {formatDate(row.endDate)}</span>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (view === 'add') {
@@ -766,6 +845,14 @@ const Discounts = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleExportCSV}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+              title="Export CSV"
+            >
+              <FiDownload size={14} />
+              <span>Export CSV</span>
+            </button>
             <button
               onClick={fetchDiscounts}
               disabled={loading}
@@ -873,6 +960,7 @@ const Discounts = () => {
             pagination={true}
             loading={loading}
             itemsPerPage={10}
+            renderMobileCard={renderMobileCard}
             rowLines={tableSettings.rowLines}
             columnLines={tableSettings.columnLines}
             className={`rounded-none shadow-none border-none ${tableSettings.striped ? '[&_tbody_tr:nth-child(even)]:bg-gray-50/50' : ''} ${!tableSettings.hover ? '[&_tbody_tr]:hover:bg-transparent' : ''}`}
