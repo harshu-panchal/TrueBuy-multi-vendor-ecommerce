@@ -147,6 +147,22 @@ export const updateNewsletterSubscriber = (id, data) =>
 export const deleteNewsletterSubscriber = (id, payload) =>
     id ? api.delete(`/admin/newsletter-subscribers/${id}`) : api.delete('/admin/newsletter-subscribers', { data: payload });
 
+// ─── CMS Topics ───────────────────────────────────────────────────────────────
+export const getAllTopics = (params = {}) =>
+    api.get('/admin/cms/topics', { params });
+
+export const getTopicById = (id) =>
+    api.get(`/admin/cms/topics/${id}`);
+
+export const createTopic = (data) =>
+    api.post('/admin/cms/topics', data);
+
+export const updateTopic = (id, data) =>
+    api.put(`/admin/cms/topics/${id}`, data);
+
+export const deleteTopic = (id, payload) =>
+    id ? api.delete(`/admin/cms/topics/${id}`) : api.delete('/admin/cms/topics', { data: payload });
+
 // ─── Products ─────────────────────────────────────────────────────────────────
 export const getAllProducts = (params = {}) =>
     api.get('/admin/products', { params });

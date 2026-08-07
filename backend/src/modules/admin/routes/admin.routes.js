@@ -26,6 +26,7 @@ import * as neverPurchasedController from '../controllers/neverPurchased.control
 import * as activityLogController from '../controllers/activityLog.controller.js';
 import * as affiliateController from '../controllers/affiliate.controller.js';
 import * as newsletterController from '../controllers/newsletter.controller.js';
+import * as topicController from '../controllers/topic.controller.js';
 import { authenticate } from '../../../middlewares/authenticate.js';
 import { authorize, enforceAccountStatus } from '../../../middlewares/authorize.js';
 import { authLimiter } from '../../../middlewares/rateLimiter.js';
@@ -342,5 +343,13 @@ router.post('/newsletter-subscribers', ...adminAuth, newsletterController.create
 router.put('/newsletter-subscribers/:id', ...adminAuth, newsletterController.updateSubscriber);
 router.delete('/newsletter-subscribers/:id', ...adminAuth, newsletterController.deleteSubscriber);
 router.delete('/newsletter-subscribers', ...adminAuth, newsletterController.deleteSubscriber);
+
+// ——— CMS Topics —————————————————————————————————————————————————───────────
+router.get('/cms/topics', ...adminAuth, topicController.getAllTopics);
+router.get('/cms/topics/:id', ...adminAuth, topicController.getTopicById);
+router.post('/cms/topics', ...adminAuth, topicController.createTopic);
+router.put('/cms/topics/:id', ...adminAuth, topicController.updateTopic);
+router.delete('/cms/topics/:id', ...adminAuth, topicController.deleteTopic);
+router.delete('/cms/topics', ...adminAuth, topicController.deleteTopic);
 
 export default router;

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     FiPlus,
@@ -21,9 +21,13 @@ import {
     FiLock,
     FiMap,
     FiType,
-    FiInfo
+    FiInfo,
+    FiDownload,
+    FiRefreshCw
 } from 'react-icons/fi';
 import DataTable from '../../components/DataTable';
+import { getAllTopics, createTopic, updateTopic, deleteTopic } from '../../services/adminService';
+import toast from 'react-hot-toast';
 
 const TopicForm = ({ onBack, onSave, initialData = null }) => {
     const isEdit = !!initialData;
@@ -701,13 +705,40 @@ const Topics = () => {
 
     // Mock Data
     const [topics, setTopics] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchTopics = useCallback(async () => {
+        setLoading(true);
+        try {
+            const response = await getAllTopics({
+                systemName: filters.systemName || undefined,
+                title: filters.title || undefined,
+                store: filters.store !== 'All' ? filters.store : undefined,
+                renderAsHtmlWidget: filters.renderAsHtmlWidget !== 'All' ? filters.renderAsHtmlWidget : undefined,
+                widgetZone: filters.widgetZone !== 'All' ? filters.widgetZone : undefined,
+            });
+
+            if (response && response.success) {
+                setTopics(response.data?.topics || []);
+            }
+        } catch (error) {
+            console.error('Error fetching CMS topics:', error);
+            toast.error('Failed to fetch topics');
+        } finally {
+            setLoading(false);
+        }
+    }, [filters]);
+
+    useEffect(() => {
+        fetchTopics();
+    }, [fetchTopics]);
 
     // Filtering Logic
     const filteredTopics = useMemo(() => {
         return topics.filter(topic => {
             const matchesStore = filters.store === 'All' || topic.limitedToStores === filters.store;
-            const matchesSystemName = !filters.systemName || topic.systemName.toLowerCase().includes(filters.systemName.toLowerCase());
-            const matchesTitle = !filters.title || topic.title.toLowerCase().includes(filters.title.toLowerCase());
+            const matchesSystemName = !filters.systemName || (topic.systemName || '').toLowerCase().includes(filters.systemName.toLowerCase());
+            const matchesTitle = !filters.title || (topic.title || '').toLowerCase().includes(filters.title.toLowerCase());
             const matchesWidget = filters.renderAsHtmlWidget === 'All' ||
                 (filters.renderAsHtmlWidget === 'Yes' && topic.renderAsHtmlWidget) ||
                 (filters.renderAsHtmlWidget === 'No' && !topic.renderAsHtmlWidget);
@@ -718,38 +749,130 @@ const Topics = () => {
     }, [topics, filters]);
 
     // Actions
-    const handleSaveTopic = (data, continueEditing) => {
-        if (editingTopic) {
-            setTopics(topics.map(t => t.id === editingTopic.id ? { ...data, id: t.id, createdOn: t.createdOn } : t));
-        } else {
-            const newTopic = {
-                ...data,
-                id: Date.now().toString(),
-                createdOn: new Date().toISOString().split('T')[0],
-            };
-            setTopics([newTopic, ...topics]);
-        }
+    const handleSaveTopic = async (data, continueEditing) => {
+        try {
+            if (editingTopic) {
+                await updateTopic(editingTopic.id, data);
+                toast.success('Topic updated successfully');
+            } else {
+                await createTopic(data);
+                toast.success('Topic created successfully');
+            }
 
-        if (!continueEditing) {
-            setView('list');
-            setEditingTopic(null);
+            fetchTopics();
+
+            if (!continueEditing) {
+                setView('list');
+                setEditingTopic(null);
+            } else {
+                toast.success('Topic progress saved.');
+            }
+        } catch (err) {
+            console.error(err);
         }
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (window.confirm('Permanently delete this topic?')) {
-            setTopics(topics.filter(t => t.id !== id));
-            const newSelected = new Set(selectedIds);
-            newSelected.delete(id);
-            setSelectedIds(newSelected);
+            try {
+                await deleteTopic(id);
+                toast.success('Topic deleted successfully');
+                fetchTopics();
+                const newSelected = new Set(selectedIds);
+                newSelected.delete(id);
+                setSelectedIds(newSelected);
+            } catch (err) {
+                console.error(err);
+            }
         }
     };
 
-    const handleDeleteSelected = () => {
+    const handleDeleteSelected = async () => {
+        if (selectedIds.size === 0) return;
         if (window.confirm(`Delete ${selectedIds.size} selected topics?`)) {
-            setTopics(topics.filter(t => !selectedIds.has(t.id)));
-            setSelectedIds(new Set());
+            try {
+                await deleteTopic(null, { ids: Array.from(selectedIds) });
+                toast.success(`${selectedIds.size} topics deleted`);
+                fetchTopics();
+                setSelectedIds(new Set());
+            } catch (err) {
+                toast.error('Failed to delete some topics');
+            }
         }
+    };
+
+    const handleExportCSV = () => {
+        if (topics.length === 0) {
+            toast.error('No topics to export');
+            return;
+        }
+
+        const exportData = topics.map(t => ({
+            'ID': t.id,
+            'System Name': t.systemName,
+            'Title': t.title,
+            'Published': t.published ? 'Yes' : 'No',
+            'Is HTML Widget': t.renderAsHtmlWidget ? 'Yes' : 'No',
+            'Widget Zone': t.widgetZone || 'N/A',
+            'Target Stores': t.limitedToStores || 'All',
+            'Created Date': t.createdOn || 'N/A',
+        }));
+
+        const headers = Object.keys(exportData[0]).join(',');
+        const rows = exportData.map(row => Object.values(row).map(v => `"${v}"`).join(','));
+        const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `CMS_Topics_${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const renderMobileCard = (row) => {
+        return (
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200 space-y-3">
+                <div className="flex justify-between items-start border-b border-gray-100 pb-2.5">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">
+                            <FiFileText size={18} />
+                        </div>
+                        <div>
+                            <p className="font-bold text-xs text-gray-900">{row.title}</p>
+                            <p className="text-[11px] text-gray-500 font-mono">{row.systemName}</p>
+                        </div>
+                    </div>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${row.published ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                        {row.published ? 'Published' : 'Draft'}
+                    </span>
+                </div>
+
+                <div className="flex justify-between items-center text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100">
+                    <div>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase">Widget Zone</p>
+                        <p className="font-bold text-gray-800">{row.renderAsHtmlWidget ? (row.widgetZone || 'Widget') : 'Page'}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => {
+                                setEditingTopic(row);
+                                setView('add');
+                            }}
+                            className="px-3 py-1.5 bg-primary-600 text-white rounded-lg font-bold text-xs hover:bg-primary-700 transition-colors"
+                        >
+                            Edit
+                        </button>
+                        <button
+                            onClick={() => handleDelete(row.id)}
+                            className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                        >
+                            <FiTrash2 size={14} />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     const handleSelectAll = (e) => {
@@ -922,22 +1045,40 @@ const Topics = () => {
                         </AnimatePresence>
                     </div>
 
-                    <button
-                        onClick={() => {
-                            setShowFilters(!showFilters);
-                            if (showFilters) {
-                                setFilters({ store: 'All', systemName: '', title: '', renderAsHtmlWidget: 'All', widgetZone: 'All' });
-                            }
-                        }}
-                        className={`px-8 py-2.5 rounded-xl transition-all text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border active:scale-95 shadow-lg ${showFilters
-                                ? 'bg-[#6b2bd9] border-[#6b2bd9] text-white shadow-purple-100'
-                                : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                            }`}
-                    >
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleExportCSV}
+                            className="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-medium text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                            title="Export CSV"
+                        >
+                            <FiDownload size={14} />
+                            <span>Export CSV</span>
+                        </button>
+                        <button
+                            onClick={fetchTopics}
+                            disabled={loading}
+                            className={`p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 ${loading ? 'animate-spin' : ''}`}
+                            title="Refresh"
+                        >
+                            <FiRefreshCw className="text-sm" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShowFilters(!showFilters);
+                                if (showFilters) {
+                                    setFilters({ store: 'All', systemName: '', title: '', renderAsHtmlWidget: 'All', widgetZone: 'All' });
+                                }
+                            }}
+                            className={`px-8 py-2.5 rounded-xl transition-all text-[11px] font-black uppercase tracking-[0.2em] flex items-center gap-2 border active:scale-95 shadow-lg ${showFilters
+                                    ? 'bg-[#6b2bd9] border-[#6b2bd9] text-white shadow-purple-100'
+                                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                                }`}
+                        >
                         <FiFilter className={showFilters ? 'text-white' : 'text-gray-400'} />
                         <span>Filter</span>
                     </button>
                 </div>
+            </div>
 
                 {/* Filter Overlay */}
                 <AnimatePresence>
@@ -1030,7 +1171,9 @@ const Topics = () => {
                         data={filteredTopics}
                         columns={columns}
                         pagination={true}
+                        loading={loading}
                         itemsPerPage={10}
+                        renderMobileCard={renderMobileCard}
                         className="border-none shadow-none rounded-none"
                     />
 
